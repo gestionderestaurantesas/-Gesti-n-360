@@ -6298,6 +6298,41 @@ function encuestaStatsPorMesero(desde, hasta){
   });
   return [...map.values()].map(o=>Object.assign({}, o, { promedio: o.respuestas ? Math.round((o.suma/o.respuestas)*10)/10 : 0 })).sort((a,b)=>b.promedio-a.promedio);
 }
+function encuestaInicioSemana(fechaStr){
+  // Devuelve el lunes (YYYY-MM-DD) de la semana ISO que contiene fechaStr.
+  const d = new Date(fechaStr + 'T00:00:00');
+  const diff = (d.getDay() + 6) % 7; // lunes=0 ... domingo=6
+  d.setDate(d.getDate() - diff);
+  return pvFmtYMD(d);
+}
+const ENCUESTA_META_SEMANAL = 50;
+function encuestaKpiPorMesero(fechaRef){
+  const hoy = fechaRef || hoyStr();
+  const ayer = pvFmtYMD(pvSumarDias(new Date(hoy+'T00:00:00'), -1));
+  const lunes = encuestaInicioSemana(hoy);
+  const domingo = pvFmtYMD(pvSumarDias(new Date(lunes+'T00:00:00'), 6));
+  const mesActual = hoy.slice(0,7);
+  const arr = DB.get('encuesta_satisfaccion', []).filter(r=>r.mesero && String(r.mesero).trim());
+  const meseros = new Set(arr.map(r=>String(r.mesero).trim()));
+  const contar = pred => {
+    const m = new Map();
+    arr.forEach(r=>{ if(pred(r)){ const k=String(r.mesero).trim(); m.set(k,(m.get(k)||0)+1); } });
+    return m;
+  };
+  const cHoy = contar(r=>r.fecha===hoy);
+  const cAyer = contar(r=>r.fecha===ayer);
+  const cSemana = contar(r=>r.fecha>=lunes && r.fecha<=domingo);
+  const cMes = contar(r=>r.fecha.slice(0,7)===mesActual);
+  const filas = [...meseros].map(m=>{
+    const semana = cSemana.get(m)||0;
+    return {
+      mesero:m, hoy:cHoy.get(m)||0, ayer:cAyer.get(m)||0, semana, mes:cMes.get(m)||0,
+      meta: ENCUESTA_META_SEMANAL, cumple: semana>=ENCUESTA_META_SEMANAL,
+      faltan: Math.max(0, ENCUESTA_META_SEMANAL-semana)
+    };
+  }).sort((a,b)=>b.semana-a.semana || a.mesero.localeCompare(b.mesero));
+  return { hoy, ayer, lunes, domingo, mesActual, filas };
+}
 function renderEncuestaModule(sec, group, item, ruta){
   if(ruta) encuestaLastRuta = ruta;
   const todas = DB.get('encuesta_satisfaccion', []);
@@ -6306,7 +6341,13 @@ function renderEncuestaModule(sec, group, item, ruta){
   const cinco = todas.filter(r=>Number(r.calificacion)===5).length;
   const pctCinco = total ? Math.round(cinco/total*100) : 0;
   const ranking = encuestaStatsPorMesero(null, null);
-  const comentarios = todas.filter(r=>r.comentario && String(r.comentario).trim()).slice().sort((a,b)=>String(b.fecha).localeCompare(String(a.fecha))).slice(0,20);
+  const kpi = encuestaKpiPorMesero(hoyStr());
+  const mesNombre = V360_MES_ES[Number(kpi.mesActual.slice(5,7))-1];
+  const hace30 = pvFmtYMD(pvSumarDias(new Date(hoyStr()+'T00:00:00'), -29));
+  const comentarios = todas.filter(r=>r.comentario && String(r.comentario).trim() && r.fecha>=hace30).slice().sort((a,b)=>{
+    const c = String(b.fecha).localeCompare(String(a.fecha));
+    return c;
+  });
 
   const html = `
     <div class="panel">
@@ -6324,17 +6365,32 @@ function renderEncuestaModule(sec, group, item, ruta){
         <div class="module-card" style="cursor:default;"><div class="icon-circle" style="background:${hexToRgba('#8A6D1F',0.14)};color:#8A6D1F;">${ic('trend',22)}</div><h3>${pctCinco}%</h3><p>Calificación 5</p></div>
       </div>
 
-      <div class="form-section-title">Ranking por mesero</div>
+      <div class="form-section-title">KPI: reseñas por mesero (meta semanal: ${ENCUESTA_META_SEMANAL})</div>
+      <p style="font-size:11.5px;color:var(--text-light);margin-bottom:10px;">Semana actual: ${kpi.lunes} al ${kpi.domingo} · Mes actual: ${mesNombre}. Cada mesero debe acumular mínimo ${ENCUESTA_META_SEMANAL} reseñas por semana.</p>
+      ${kpi.filas.length ? `<table class="mini-table">
+        <thead><tr><th>Mesero</th><th>Hoy</th><th>Ayer</th><th>Semana actual</th><th>Mes actual</th><th>Meta semanal</th><th>Estado</th></tr></thead>
+        <tbody>${kpi.filas.map(f=>`<tr>
+          <td>${f.mesero}</td>
+          <td>${f.hoy}</td>
+          <td>${f.ayer}</td>
+          <td><b>${f.semana}</b></td>
+          <td>${f.mes}</td>
+          <td>${f.meta}</td>
+          <td>${f.cumple ? `<span class="badge badge-verde">✓ Cumple</span>` : `<span class="badge badge-rojo">✗ Faltan ${f.faltan}</span>`}</td>
+        </tr>`).join('')}</tbody>
+      </table>` : `<div class="placeholder-box"><p>Todavía no hay respuestas importadas con mesero asignado.</p></div>`}
+
+      <div class="form-section-title">Ranking histórico por mesero</div>
       ${ranking.length ? `<table class="mini-table">
         <thead><tr><th>Mesero</th><th>Respuestas</th><th>Promedio</th><th>Calificaciones &lt; 5</th></tr></thead>
         <tbody>${ranking.map(r=>`<tr><td>${r.mesero}</td><td>${r.respuestas}</td><td>${r.promedio}</td><td>${r.bajas}</td></tr>`).join('')}</tbody>
       </table>` : `<div class="placeholder-box"><p>Todavía no hay respuestas importadas.</p></div>`}
 
-      <div class="form-section-title">Comentarios recientes</div>
+      <div class="form-section-title">Comentarios de clientes (últimos 30 días, más recientes primero)</div>
       ${comentarios.length ? `<table class="mini-table">
         <thead><tr><th>Fecha</th><th>Mesero</th><th>Calificación</th><th>Comentario</th></tr></thead>
         <tbody>${comentarios.map(r=>`<tr><td>${r.fecha}</td><td>${r.mesero||'—'}</td><td>${r.calificacion}</td><td>${r.comentario}</td></tr>`).join('')}</tbody>
-      </table>` : `<div class="placeholder-box"><p>Sin comentarios registrados todavía.</p></div>`}
+      </table>` : `<div class="placeholder-box"><p>Sin comentarios registrados en los últimos 30 días.</p></div>`}
     </div>`;
   document.getElementById('content').innerHTML = html;
   // Al abrir el módulo, intenta traer datos frescos automáticamente (una
