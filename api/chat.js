@@ -23,7 +23,7 @@ const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages';
 // Cuesta más por uso que 'claude-haiku-4-5-20251001' (el modelo económico),
 // que sigue siendo una alternativa si el volumen de preguntas sube mucho.
 const MODELO = 'claude-sonnet-5';
-const MAX_TOKENS_RESPUESTA = 700;
+const MAX_TOKENS_RESPUESTA = 1500;
 const MAX_LARGO_MENSAJE = 1500;
 const MAX_TURNOS_HISTORIAL = 8;
 
@@ -120,7 +120,11 @@ module.exports = async function handler(req, res){
     }
 
     const data = await respuestaApi.json();
-    const texto = (data.content && data.content[0] && data.content[0].text) ? data.content[0].text : 'No obtuve una respuesta clara, ¿puedes reformular la pregunta?';
+    // La respuesta puede traer varios "bloques" (a veces uno de razonamiento
+    // interno antes del texto real) — por eso buscamos específicamente los
+    // bloques de tipo "text" en vez de asumir que el primero ya es el texto.
+    const bloquesTexto = Array.isArray(data.content) ? data.content.filter(b => b && b.type === 'text' && b.text) : [];
+    const texto = bloquesTexto.length ? bloquesTexto.map(b => b.text).join('\n\n') : 'No obtuve una respuesta clara, ¿puedes reformular la pregunta?';
     res.status(200).json({ respuesta: texto });
   } catch(err){
     console.error('Error llamando a Anthropic', err);
