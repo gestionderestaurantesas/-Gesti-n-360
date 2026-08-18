@@ -1130,7 +1130,7 @@ const NAV = [
       ]},
       { id:'servicio_cliente', label:'Servicio al cliente', icon:'user', matchArea:'servicio_cliente', items:[
         { id:'chk_briefing', label:'Briefing de servicio', icon:'megaphone', area:'servicio_cliente', categoria:'briefing', roles:['empleado','administracion','gerencia'], customRender:'renderBriefingServicioModule' },
-        { id:'chk_mise_servicio', label:'Mise en place de servicio', icon:'user', area:'servicio_cliente', categoria:'mise_en_place', roles:['empleado','administracion','gerencia'] },
+        { id:'chk_mise_servicio', label:'Mise en place de servicio', icon:'user', area:'servicio_cliente', categoria:'mise_en_place', roles:['empleado','administracion','gerencia'], customRender:'renderAlistamientoAreaModule' },
         { id:'chk_aseo_salon', label:'Aseo del salón', icon:'checklist', area:'servicio_cliente', categoria:'aseo', roles:['empleado','administracion','gerencia'] },
         { id:'chk_cierre_servicio', label:'Cierre de área', icon:'checklist', area:'servicio_cliente', categoria:'cierre', roles:['empleado','administracion','gerencia'], customRender:'renderCierreAreaModule' }
       ]},
@@ -2745,7 +2745,92 @@ const ALISTAMIENTO_AREA_ITEMS = {
     { id:'al_st_8', label:'Área de secado y almacenamiento de loza despejada' },
     { id:'al_st_9', label:'Caneca de basura vacía y con bolsa nueva' },
     { id:'al_st_10', label:'Piso del área de lavado limpio y sin riesgo de resbalones' }
+  ],
+  servicio_cliente: [
+    { id:'al_sv_1', seccion:'1. Salsas, condimentos y complementos', label:'Chimichurri disponible, fresco y en cantidad suficiente' },
+    { id:'al_sv_2', seccion:'1. Salsas, condimentos y complementos', label:'Suero disponible y en buen estado' },
+    { id:'al_sv_3', seccion:'1. Salsas, condimentos y complementos', label:'Salsa de ajo disponible y en buen estado' },
+    { id:'al_sv_4', seccion:'1. Salsas, condimentos y complementos', label:'Salsa de tomate disponible y en cantidad suficiente' },
+    { id:'al_sv_5', seccion:'1. Salsas, condimentos y complementos', label:'Picante disponible, limpio y correctamente presentado' },
+    { id:'al_sv_6', seccion:'1. Salsas, condimentos y complementos', label:'Saleros abastecidos y limpios' },
+    { id:'al_sv_7', seccion:'1. Salsas, condimentos y complementos', label:'Pimenteros abastecidos y limpios' },
+    { id:'al_sv_8', seccion:'1. Salsas, condimentos y complementos', label:'Palillos disponibles y organizados' },
+    { id:'al_sv_9', seccion:'1. Salsas, condimentos y complementos', label:'Servilletas disponibles y organizadas' },
+
+    { id:'al_sv_10', seccion:'2. Cubiertos y utensilios de mesa', label:'Juegos de cubiertos de tres piezas completos, limpios y pulidos' },
+    { id:'al_sv_11', seccion:'2. Cubiertos y utensilios de mesa', label:'Juegos de cubiertos de dos piezas completos, limpios y pulidos' },
+    { id:'al_sv_12', seccion:'2. Cubiertos y utensilios de mesa', label:'Cuchillos para carne disponibles, limpios y pulidos' },
+    { id:'al_sv_13', seccion:'2. Cubiertos y utensilios de mesa', label:'Cantidad de cubiertos suficiente para el servicio proyectado' },
+    { id:'al_sv_14', seccion:'2. Cubiertos y utensilios de mesa', label:'Servilleteros limpios, abastecidos y organizados' },
+    { id:'al_sv_15', seccion:'2. Cubiertos y utensilios de mesa', label:'Mezcladores disponibles y organizados' },
+    { id:'al_sv_16', seccion:'2. Cubiertos y utensilios de mesa', label:'Destapador disponible y ubicado en su lugar' },
+    { id:'al_sv_17', seccion:'2. Cubiertos y utensilios de mesa', label:'Paños de servicio limpios y disponibles' },
+
+    { id:'al_sv_18', seccion:'3. Estación de bebidas y café', label:'Vasos limpios, secos y en cantidad suficiente' },
+    { id:'al_sv_19', seccion:'3. Estación de bebidas y café', label:'Pocillos de café limpios y en cantidad suficiente' },
+    { id:'al_sv_20', seccion:'3. Estación de bebidas y café', label:'Azúcar disponible y organizada' },
+    { id:'al_sv_21', seccion:'3. Estación de bebidas y café', label:'Cava de hielo limpia' },
+    { id:'al_sv_22', seccion:'3. Estación de bebidas y café', label:'Cantidad de hielo suficiente para iniciar el servicio' },
+    { id:'al_sv_23', seccion:'3. Estación de bebidas y café', label:'Pala para hielo limpia y ubicada dentro de su soporte o recipiente' },
+    { id:'al_sv_24', seccion:'3. Estación de bebidas y café', label:'Neveras limpias, organizadas y recargadas' },
+    { id:'al_sv_25', seccion:'3. Estación de bebidas y café', label:'Productos de las neveras correctamente ubicados y con buena presentación' },
+
+    { id:'al_sv_26', seccion:'4. Elementos de aseo y manejo de residuos', label:'Pisos del área de servicio limpios y secos' },
+    { id:'al_sv_27', seccion:'4. Elementos de aseo y manejo de residuos', label:'Escoba limpia y ubicada en su lugar' },
+    { id:'al_sv_28', seccion:'4. Elementos de aseo y manejo de residuos', label:'Recogedor limpio y ubicado en su lugar' },
+    { id:'al_sv_29', seccion:'4. Elementos de aseo y manejo de residuos', label:'Caneca de basura limpia, con bolsa y desocupada' },
+    { id:'al_sv_30', seccion:'4. Elementos de aseo y manejo de residuos', label:'Recipiente para reciclaje de tapas limpio, desocupado y disponible' },
+    { id:'al_sv_31', seccion:'4. Elementos de aseo y manejo de residuos', label:'Implementos de aseo organizados y fuera de la vista del cliente' },
+
+    { id:'al_sv_32', seccion:'5. Baños', label:'Baños completamente limpios y desinfectados' },
+    { id:'al_sv_33', seccion:'5. Baños', label:'Inodoros limpios y en funcionamiento' },
+    { id:'al_sv_34', seccion:'5. Baños', label:'Pisos limpios, secos y sin residuos' },
+    { id:'al_sv_35', seccion:'5. Baños', label:'Lavamanos y grifería limpios' },
+    { id:'al_sv_36', seccion:'5. Baños', label:'Canecas limpias, con bolsa y desocupadas' },
+    { id:'al_sv_37', seccion:'5. Baños', label:'Papel higiénico disponible y con reposición suficiente' },
+    { id:'al_sv_38', seccion:'5. Baños', label:'Jabón de manos disponible' },
+    { id:'al_sv_39', seccion:'5. Baños', label:'Papel para secado de manos disponible' },
+    { id:'al_sv_40', seccion:'5. Baños', label:'Espejos limpios y sin manchas' },
+    { id:'al_sv_41', seccion:'5. Baños', label:'Ambiente con olor limpio y agradable' },
+    { id:'al_sv_42', seccion:'5. Baños', label:'Puertas, paredes y divisiones limpias' },
+    { id:'al_sv_43', seccion:'5. Baños', label:'Iluminación y ventilación funcionando correctamente' },
+
+    { id:'al_sv_44', seccion:'6. Organización del salón', label:'Mesas limpias, secas y alineadas' },
+    { id:'al_sv_45', seccion:'6. Organización del salón', label:'Sillas limpias, alineadas y uniformes' },
+    { id:'al_sv_46', seccion:'6. Organización del salón', label:'Distancias entre mesas y pasillos adecuadas para circular' },
+    { id:'al_sv_47', seccion:'6. Organización del salón', label:'Servilleteros limpios y ubicados correctamente' },
+    { id:'al_sv_48', seccion:'6. Organización del salón', label:'Servilletas organizadas y listas para el servicio' },
+    { id:'al_sv_49', seccion:'6. Organización del salón', label:'Ventiladores limpios, ubicados correctamente y funcionando' },
+    { id:'al_sv_50', seccion:'6. Organización del salón', label:'Paredes, techos y pisos limpios y sin telarañas' },
+    { id:'al_sv_51', seccion:'6. Organización del salón', label:'Puerta principal limpia, despejada y lista para recibir clientes' },
+    { id:'al_sv_52', seccion:'6. Organización del salón', label:'Tarima limpia, despejada y organizada' },
+    { id:'al_sv_53', seccion:'6. Organización del salón', label:'Instrumentos y equipos de la tarima organizados' },
+    { id:'al_sv_54', seccion:'6. Organización del salón', label:'Música ambiental activa y con volumen adecuado' },
+    { id:'al_sv_55', seccion:'6. Organización del salón', label:'Salón con aire acondicionado funcionando' },
+    { id:'al_sv_56', seccion:'6. Organización del salón', label:'Encender un aire acondicionado a las 11:40 a. m.' },
+    { id:'al_sv_57', seccion:'6. Organización del salón', label:'Temperatura del salón agradable antes de recibir clientes' },
+
+    { id:'al_sv_58', seccion:'7. Cartas y material informativo', label:'Cartas disponibles en cantidad suficiente' },
+    { id:'al_sv_59', seccion:'7. Cartas y material informativo', label:'Cartas limpias, completas y en buen estado' },
+    { id:'al_sv_60', seccion:'7. Cartas y material informativo', label:'Códigos QR visibles, identificados y funcionando' },
+    { id:'al_sv_61', seccion:'7. Cartas y material informativo', label:'Información de productos, promociones o actividades del día disponible para el equipo' },
+
+    { id:'al_sv_62', seccion:'8. Equipos de servicio y comunicación', label:'Datáfono de servicio cargado, identificado y funcionando' },
+    { id:'al_sv_63', seccion:'8. Equipos de servicio y comunicación', label:'Teléfono del restaurante cargado, con señal, timbre activo y funcionando' },
+    { id:'al_sv_64', seccion:'8. Equipos de servicio y comunicación', label:'Radios de comunicación cargados, encendidos y activos' },
+    { id:'al_sv_65', seccion:'8. Equipos de servicio y comunicación', label:'Relojes o localizadores cargados, identificados y funcionando' },
+    { id:'al_sv_66', seccion:'8. Equipos de servicio y comunicación', label:'Localizadores ubicados en las mesas o estaciones asignadas' }
   ]
+};
+// Texto de contexto (objetivo del checklist y qué hacer ante un
+// incumplimiento) que se muestra arriba del listado, cuando el área lo
+// define — opcional, así que las áreas sin este texto (ej. steward) no
+// se ven afectadas.
+const ALISTAMIENTO_AREA_INTRO = {
+  servicio_cliente: {
+    objetivo: 'Garantizar que el salón, las estaciones de servicio, los baños y los equipos estén limpios, abastecidos, organizados y listos antes de recibir a los clientes.',
+    incumplimiento: 'Registrar la novedad y corregirla antes de abrir el servicio.'
+  }
 };
 
 let alistamientoAreaLastRuta = '';
@@ -2818,15 +2903,22 @@ function alistamientoAreaUpdateProgress(){
 
 function alistamientoAreaChecklistHtml(area){
   const items = ALISTAMIENTO_AREA_ITEMS[area] || [];
-  const checksHtml = items.map(it => `
-    <div class="check-row3">
+  let ultimaSeccion = null;
+  const checksHtml = items.map(it => {
+    let seccionHtml = '';
+    if(it.seccion && it.seccion !== ultimaSeccion){
+      ultimaSeccion = it.seccion;
+      seccionHtml = `<div class="form-section-title" style="margin-top:18px;">${it.seccion}</div>`;
+    }
+    return `${seccionHtml}<div class="check-row3">
       <span>${it.label}</span>
       <div class="toggle-yn" id="alseg_${it.id}">
         <button type="button" class="yn-btn yes" onclick="alistamientoAreaSetCheck('${it.id}','Cumple',this)">Sí</button>
         <button type="button" class="yn-btn no" onclick="alistamientoAreaSetCheck('${it.id}','No cumple',this)">No</button>
         <button type="button" class="yn-btn na" onclick="alistamientoAreaSetCheck('${it.id}','N/A',this)">N/A</button>
       </div>
-    </div>`).join('');
+    </div>`;
+  }).join('');
 
   const historial = filtrarPorSede(DB.get('alistamientos_area', [])).filter(h => h.area === area).slice(-8).reverse();
   const historialHtml = historial.length ? `
@@ -2839,8 +2931,16 @@ function alistamientoAreaChecklistHtml(area){
       </tr>`).join('')}</tbody>
     </table>` : `<p style="color:var(--text-light);font-size:13px;">Todavía no hay alistamientos registrados en esta área.</p>`;
 
+  const intro = ALISTAMIENTO_AREA_INTRO[area];
+  const introHtml = intro ? `
+    <div style="background:var(--crema);border:1px solid var(--border);border-radius:8px;padding:10px 14px;margin-bottom:16px;font-size:12.5px;color:var(--text-light);">
+      <p><b style="color:var(--text);">Objetivo:</b> ${intro.objetivo}</p>
+      <p style="margin-top:4px;"><b style="color:var(--text);">En caso de incumplimiento:</b> ${intro.incumplimiento}</p>
+    </div>` : '';
+
   return `
     <div class="compact-form">
+    ${introHtml}
     <div class="progress-box2">
       <div class="progress-circle" id="al_progressCircle" style="background:conic-gradient(var(--bronce) 0%, var(--border) 0%);"><span id="al_progressPct">0%</span></div>
       <div class="progress-legend">Progreso del alistamiento<br>Responde los ${items.length} puntos para llegar al 100%.</div>
