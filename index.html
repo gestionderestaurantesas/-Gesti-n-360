@@ -3905,9 +3905,45 @@ function asistenteConocimientoCordova(){
   ).join('\n\n');
 }
 
-// Datos en vivo NO confidenciales que el asistente puede usar para
-// responder preguntas de "interés general" (ej. reseñas por mesero).
-// Deliberadamente NO incluye nada de ventas, caja, pagos ni finanzas.
+// Resumen financiero: SOLO se arma y se agrega al contexto cuando quien
+// tiene la sesión abierta es gerencia (SESSION.rol), nunca por lo que
+// alguien escriba en el chat. Se construye con los datos que ya están
+// cargados en el reporte de Ventas 360 (v360_dias), guardados en este
+// mismo navegador/dispositivo.
+function asistenteDatosFinancierosGerencia(){
+  try {
+    if(typeof v360Historico !== 'function') return null;
+    const hist = v360Historico();
+    if(!hist.length) return null;
+    const ultimo = hist[hist.length - 1];
+    const ultimos7 = hist.slice(-7);
+    const totalUltimos7 = ultimos7.reduce((a,d) => a + (d.totalVentas || 0), 0);
+    return {
+      ultimoDiaRegistrado: {
+        fecha: ultimo.fecha,
+        ventaTotal: ultimo.totalVentas,
+        personasAtendidas: ultimo.personas,
+        cuentasCerradas: ultimo.numOrdenes,
+        ticketPromedioOficial: ultimo.ticketPromedioOficial,
+        ticketPromedioAjustado: ultimo.ticketPromedioAjustado,
+        descuentos: ultimo.descuentos,
+        propinas: ultimo.propinas,
+        canceladosMonto: ultimo.canceladosMonto
+      },
+      ultimos7DiasConDatos: {
+        desde: ultimos7[0].fecha, hasta: ultimo.fecha,
+        ventaTotalAcumulada: totalUltimos7,
+        promedioDiario: ultimos7.length ? Math.round(totalUltimos7 / ultimos7.length) : 0
+      }
+    };
+  } catch(e){ return null; }
+}
+
+// Datos en vivo que el asistente puede usar para responder preguntas de
+// "interés general" (ej. reseñas por mesero). Las cifras financieras
+// (datosFinancierosGerencia) solo se incluyen cuando SESSION.rol es
+// 'gerencia' — si ese campo no viene, la IA tiene instrucción de no
+// hablar de ventas/caja/finanzas sin importar lo que le insistan.
 function asistenteDatosPermitidos(){
   const datos = { fecha: hoyStr(), hora: horaStr(), sede: SESSION.sede };
   try {
@@ -3919,6 +3955,10 @@ function asistenteDatosPermitidos(){
       cumpleMetaMensual: f.cumpleMensual
     }));
   } catch(e){ /* si la encuesta no está cargada todavía, seguimos sin ese dato */ }
+  if(SESSION && SESSION.rol === 'gerencia'){
+    const financieros = asistenteDatosFinancierosGerencia();
+    if(financieros) datos.datosFinancierosGerencia = financieros;
+  }
   return datos;
 }
 
