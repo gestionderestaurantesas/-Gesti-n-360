@@ -7136,6 +7136,22 @@ function pagosMarcarPagadosAntesDe(){
   renderPagosModule(NAV.find(s=>s.id==='operacion'), null, null, pagosLastRuta);
 }
 
+// Borra TODA la información de pagos guardada en este dispositivo
+// (cargas manuales y automáticas por igual) y deja el módulo listo para
+// que, al volver a abrirlo, se recargue solo con la semana activa de
+// cada responsable desde Google Sheets. Pide confirmación porque no se
+// puede deshacer.
+function pagosBorrarTodo(){
+  const ok = window.confirm('¿Seguro que quieres borrar TODA la información de pagos a proveedores guardada en este dispositivo? Esta acción no se puede deshacer. Después se puede volver a traer la semana activa desde Google Sheets.');
+  if(!ok) return;
+  DB.set('pagos_items', []);
+  DB.set('pagos_lotes', []);
+  DB.set('pagos_ultima_sync', null);
+  pagosAutoStatus = 'idle';
+  pagosAutoMsg = '';
+  renderPagosModule(NAV.find(s=>s.id==='operacion'), null, null, pagosLastRuta);
+}
+
 // Carga automática desde Google Sheets: reutiliza el mismo parser de
 // bloques (pagosParsearHoja) que usa la carga manual de Excel, solo que
 // las filas vienen de un CSV descargado en vivo en vez de un archivo
@@ -7149,14 +7165,27 @@ async function pagosCargarDesdeGoogleSheets(silencioso){
     if(!resp.ok) throw new Error('HTTP ' + resp.status);
     const text = await resp.text();
     const rows = encuestaParseCSV(text); // parser CSV genérico, ya usado por Encuesta
-    const bloques = pagosParsearHoja(rows);
-    if(!bloques.length) throw new Error('No se encontraron listas de pagos reconocibles en la hoja "Proveedores".');
+    const todosLosBloques = pagosParsearHoja(rows);
+    if(!todosLosBloques.length) throw new Error('No se encontraron listas de pagos reconocibles en la hoja "Proveedores".');
+
+    // La hoja va acumulando semanas viejas hacia abajo, pero lo que
+    // interesa traer a la app automáticamente es la lista ACTIVA de cada
+    // responsable (la semana más reciente) — no todo el historial. Para
+    // subir semanas anteriores completas, sigue disponible la carga
+    // manual de Excel más abajo.
+    const masRecientePorResponsable = new Map();
+    todosLosBloques.forEach(b => {
+      const hasta = pagosExtraerFechaHasta(b.titulo) || '';
+      const actual = masRecientePorResponsable.get(b.responsable);
+      if(!actual || hasta > actual.hasta) masRecientePorResponsable.set(b.responsable, { bloque: b, hasta });
+    });
+    const bloques = Array.from(masRecientePorResponsable.values()).map(x => x.bloque);
 
     const existentes = DB.get('pagos_items', []);
     const clavesExistentes = new Set(existentes.map(it => pagosClaveAutoItem(it, it.loteTitulo)));
     let nuevos = 0, omitidos = 0;
     const lote = DB.push('pagos_lotes', {
-      archivo: 'Google Sheets — pestaña Proveedores (automático)',
+      archivo: 'Google Sheets — pestaña Proveedores (automático, solo semana activa)',
       fecha: hoyStr(), hora: horaStr(),
       usuario: 'auto', nombre: 'Automático (Google Sheets)',
       bloques: bloques.map(b => b.titulo),
@@ -7197,10 +7226,13 @@ function pagosSyncBannerHtml(){
   else if(pagosAutoStatus === 'ok') estadoHtml = `<div class="verif-box ok">${pagosAutoMsg}</div>`;
   else if(pagosAutoStatus === 'error') estadoHtml = `<div class="verif-box bad">${pagosAutoMsg}</div>`;
   return `<div id="pagos_syncBanner" style="margin-bottom:16px;">
-    <p style="font-size:11.5px;color:var(--text-light);margin-bottom:8px;">Los pagos también se traen automáticamente desde la pestaña "Proveedores" del Google Sheets donde se cuelgan por fecha (requiere internet en este momento). Si prefieres, también puedes subir el Excel manualmente más abajo.</p>
+    <p style="font-size:11.5px;color:var(--text-light);margin-bottom:8px;">Los pagos se traen automáticamente desde la pestaña "Proveedores" del Google Sheets — solo la semana activa de cada responsable (requiere internet en este momento). Si prefieres, también puedes subir el Excel manualmente más abajo.</p>
     ${estadoHtml}
-    <button class="btn-primary" style="width:auto;padding:8px 16px;margin-top:8px;" onclick="pagosCargarDesdeGoogleSheets(false)">Actualizar ahora</button>
-    <span style="font-size:11px;color:var(--text-light);margin-left:10px;">Última actualización: ${ultimaTxt}</span>
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:8px;">
+      <button class="btn-primary" style="width:auto;padding:8px 16px;" onclick="pagosCargarDesdeGoogleSheets(false)">Actualizar ahora</button>
+      <span style="font-size:11px;color:var(--text-light);">Última actualización: ${ultimaTxt}</span>
+      <a href="#" onclick="pagosBorrarTodo();return false;" style="font-size:11px;color:#B7423A;margin-left:auto;">Borrar toda la información de pagos</a>
+    </div>
   </div>`;
 }
 
