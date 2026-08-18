@@ -6905,6 +6905,19 @@ function pagosNormalizarTexto(s){
   return (s==null?'':s.toString()).trim();
 }
 function pagosEsVacio(v){ return v===null || v===undefined || (typeof v==='string' && v.trim()===''); }
+// Convierte un valor de monto a número, sin importar si llega como número
+// puro (típico al leer un .xlsx con SheetJS) o como texto con formato de
+// moneda (típico al leer un CSV exportado de Google Sheets, ej: " $
+// 8,047,745 " o " $ -   " para cero) — quita el símbolo de pesos, espacios
+// y comas de miles antes de convertir.
+function pagosParseMonto(v){
+  if(v == null || v === '') return 0;
+  if(typeof v === 'number') return isNaN(v) ? 0 : v;
+  const limpio = v.toString().replace(/[^0-9,.\-]/g, '').trim();
+  if(!limpio || limpio === '-') return 0;
+  const num = Number(limpio.replace(/,/g, ''));
+  return isNaN(num) ? 0 : num;
+}
 function pagosFormatearFecha(v){
   if(v instanceof Date && !isNaN(v)) return v.toISOString().slice(0,10);
   if(typeof v === 'number'){
@@ -6932,51 +6945,103 @@ function pagosExtraerResponsable(titulo){
   return t || 'Sin responsable identificado';
 }
 // Lee las filas crudas de una hoja (array de arrays, como las entrega
-// XLSX.utils.sheet_to_json(ws,{header:1})) y detecta uno o varios
-// "bloques" de pagos: título, fila de encabezados (con "VALOR TOTAL"),
-// filas de proveedores, hasta la fila "TOTAL".
+// XLSX.utils.sheet_to_json(ws,{header:1}) o el parser CSV de Google
+// Sheets) y detecta uno o varios "bloques" de pagos: título ("PAGOS
+// PENDIENTES A PROVEEDORES DEL... "), fila de encabezados (con
+// "FACTURA"/"VENCE"/"CUENTA", y a veces también "VALOR TOTAL"), filas de
+// proveedores, hasta la fila "TOTAL".
+//
+// El título es lo único que aparece de forma confiable en TODOS los
+// bloques de la hoja real (se verificó contra la hoja en vivo: "VALOR
+// TOTAL" solo está escrito una vez, en el bloque más antiguo — los demás
+// bloques ya no lo repiten). Por eso la detección se ancla en el título,
+// no en "VALOR TOTAL". La fila de encabezados puede estar en la MISMA
+// fila que el título (como en el bloque más antiguo) o en alguna de las
+// 2 filas siguientes.
 function pagosParsearHoja(rows){
   const bloques = [];
   let i = 0;
   while(i < rows.length){
     const row = rows[i] || [];
-    const esHeaderCols = row.some(c => typeof c === 'string' && /valor\s*total/i.test(c));
-    if(esHeaderCols){
+    let titulo = '';
+    row.forEach(c => { if(typeof c === 'string' && /pagos\s*pendientes/i.test(c)) titulo = c.trim(); });
+    const esTitulo = !!titulo;
+    if(esTitulo){
+      let headerRowIdx = -1;
+      for(let j = i; j <= i + 2 && j < rows.length; j++){
+        const r = rows[j] || [];
+        if(r.some(c => typeof c === 'string' && /^\s*factura\s*$/i.test(c))){ headerRowIdx = j; break; }
+      }
+      if(headerRowIdx === -1){ i++; continue; } // bloque sin fila de encabezados reconocible: se salta
+
+      const headerRow = rows[headerRowIdx] || [];
       const colMap = { proveedor:0, valorTotal:1, valorAlterno:2, factura:3, vence:4, cuentaBanco:5, cuentaNumero:6, email:7 };
-      row.forEach((c, idx) => {
+      let proveedorDetectado = false;
+      const colDetectadas = new Set(); // solo columnas confirmadas por texto real del encabezado, no los valores por defecto
+      headerRow.forEach((c, idx) => {
         if(typeof c !== 'string') return;
         const t = c.toLowerCase();
-        if(/proveedor/.test(t)) colMap.proveedor = idx;
-        else if(/valor\s*total/.test(t)) colMap.valorTotal = idx;
-        else if(/valor\s*alterno/.test(t)) colMap.valorAlterno = idx;
-        else if(/factura/.test(t)) colMap.factura = idx;
-        else if(/vence/.test(t)) colMap.vence = idx;
-        else if(/cuenta/.test(t)) colMap.cuentaBanco = idx;
+        if(/proveedor/.test(t)){ colMap.proveedor = idx; proveedorDetectado = true; colDetectadas.add(idx); }
+        else if(/valor\s*total/.test(t)){ colMap.valorTotal = idx; colDetectadas.add(idx); }
+        else if(/valor\s*alterno/.test(t)){ colMap.valorAlterno = idx; colDetectadas.add(idx); }
+        else if(/factura/.test(t)){ colMap.factura = idx; colDetectadas.add(idx); }
+        else if(/vence/.test(t)){ colMap.vence = idx; colDetectadas.add(idx); }
+        else if(/cuenta/.test(t)){ colMap.cuentaBanco = idx; colDetectadas.add(idx); }
       });
-      let titulo = '';
-      for(let j = i-1; j >= 0 && j >= i-4; j--){
-        const prevRow = rows[j] || [];
-        const textos = prevRow.filter(c => typeof c === 'string' && c.trim() !== '');
-        if(textos.length === 1 && textos[0].trim().length > 8){ titulo = textos[0].trim(); break; }
-        if(textos.length > 1) break;
+      // Algunos bloques (típicamente los de "C&H") no rotulan la columna
+      // de proveedor con la palabra "PROVEEDOR" en su encabezado. En ese
+      // caso se detecta observando las primeras filas de datos: la
+      // columna de proveedor es la primera, de izquierda a derecha, que
+      // trae texto (no un monto ni vacío) y que no es ya otra columna
+      // confirmada por el encabezado (factura, cuenta, etc.) — ojo: solo
+      // se excluyen columnas confirmadas por texto real, no los valores
+      // por defecto de valorTotal/valorAlterno, porque esos "por defecto"
+      // pueden coincidir justo con la columna real del proveedor.
+      if(!proveedorDetectado){
+        const usadas = colDetectadas;
+        const muestraFilas = rows.slice(headerRowIdx + 1, headerRowIdx + 5);
+        for(let col = 0; col < 12; col++){
+          if(usadas.has(col)) continue;
+          const tieneTexto = muestraFilas.some(r => r && typeof r[col] === 'string' && r[col].trim() !== '' && !/^[\s$.,0-9-]+$/.test(r[col].trim()));
+          if(tieneTexto){ colMap.proveedor = col; break; }
+        }
       }
-      if(!titulo) titulo = 'Lote sin título (fila ' + (i+1) + ')';
 
       const items = [];
-      let k = i + 1;
+      let k = headerRowIdx + 1;
       while(k < rows.length){
         const r = rows[k] || [];
         const proveedorVal = r[colMap.proveedor];
         const esTotal = typeof proveedorVal === 'string' && /^total$/i.test(proveedorVal.trim());
         if(esTotal){ k++; break; }
+        const esOtroTitulo = r.some(c => typeof c === 'string' && /pagos\s*pendientes/i.test(c));
+        if(esOtroTitulo) break; // llegó al siguiente bloque sin pasar por una fila "TOTAL"
         const filaVacia = r.every(c => pagosEsVacio(c));
         if(filaVacia){
           const nextRow = rows[k+1] || [];
-          const nextEsHeader = nextRow.some(c => typeof c === 'string' && /valor\s*total/i.test(c));
-          if(nextEsHeader || k+1 >= rows.length){ break; }
+          const nextEsTitulo = nextRow.some(c => typeof c === 'string' && /pagos\s*pendientes/i.test(c));
+          if(nextEsTitulo || k+1 >= rows.length){ break; }
           k++; continue;
         }
         if(!pagosEsVacio(proveedorVal)){
+          // En los bloques que no rotulan explícitamente su columna de
+          // monto con el texto "VALOR TOTAL" (todos menos el más antiguo),
+          // el índice por defecto de "valorTotal" queda pisado por la
+          // columna del proveedor, y el monto real termina cayendo en el
+          // índice por defecto de "valorAlterno" — por eso se usa el que
+          // sí tenga un número, prefiriendo valorTotal cuando ambos traen algo.
+          const valorTotalCrudo = pagosParseMonto(r[colMap.valorTotal]);
+          const valorAlterno = pagosParseMonto(r[colMap.valorAlterno]);
+          const valorTotal = valorTotalCrudo || valorAlterno || 0;
+          const factura = pagosNormalizarTexto(r[colMap.factura]);
+          const vence = pagosFormatearFecha(r[colMap.vence]);
+          // La hoja lista TODOS los proveedores habituales en cada bloque,
+          // aunque esa semana no les deban nada (fila sin valor, sin
+          // factura y sin fecha de vencimiento) — esas filas son solo el
+          // listado de referencia, no un pago pendiente real, así que se
+          // omiten para no llenar la lista de pagos "de $0".
+          if(valorTotal === 0 && !factura && !vence){ k++; continue; }
+
           let link = '';
           r.forEach(c => { if(typeof c === 'string' && /^https?:\/\//i.test(c.trim())) link = c.trim(); });
           let email = '';
@@ -6986,10 +7051,7 @@ function pagosParsearHoja(rows){
 
           items.push({
             proveedor: pagosNormalizarTexto(proveedorVal),
-            valorTotal: Number(r[colMap.valorTotal]) || 0,
-            valorAlterno: Number(r[colMap.valorAlterno]) || 0,
-            factura: pagosNormalizarTexto(r[colMap.factura]),
-            vence: pagosFormatearFecha(r[colMap.vence]),
+            valorTotal, valorAlterno, factura, vence,
             cuentaBanco: pagosNormalizarTexto(r[colMap.cuentaBanco]),
             cuentaNumero: pagosEsVacio(r[colMap.cuentaNumero]) ? '' : r[colMap.cuentaNumero].toString(),
             email,
@@ -7005,6 +7067,94 @@ function pagosParsearHoja(rows){
     }
   }
   return bloques;
+}
+
+// URL pública (CSV) de la única pestaña "Proveedores" del Google Sheets
+// donde se cuelgan los pagos pendientes por fecha. El archivo debe estar
+// compartido como "cualquiera con el enlace" para que este endpoint gviz
+// funcione sin clave ni sesión — igual que la Encuesta de satisfacción,
+// esto necesita internet en el momento de abrir el módulo.
+const PAGOS_SHEET_URL = 'https://docs.google.com/spreadsheets/d/16ZyjS7jGHEGM7Lrqml2wtuqXfNsj-lC7/gviz/tq?tqx=out:csv&gid=0';
+let pagosAutoStatus = 'idle'; // idle | cargando | ok | error
+let pagosAutoMsg = '';
+
+// Clave de deduplicación para la carga automática: cuando el pago SÍ trae
+// número de factura, esa es la clave más confiable (proveedor+factura,
+// igual que en la carga manual). Muchas filas de esta hoja no traen
+// factura — en ese caso se usa proveedor + título del bloque (que ya
+// incluye el rango de fechas de esa semana) + valor, para que abrir la
+// app varias veces no duplique el mismo pago una y otra vez.
+function pagosClaveAutoItem(it, loteTitulo){
+  if(it.factura) return 'f:' + compraNormalizar(it.proveedor) + '|' + compraNormalizar(it.factura);
+  return 'b:' + compraNormalizar(it.proveedor) + '|' + compraNormalizar(loteTitulo || '') + '|' + (it.valorTotal || 0);
+}
+
+// Carga automática desde Google Sheets: reutiliza el mismo parser de
+// bloques (pagosParsearHoja) que usa la carga manual de Excel, solo que
+// las filas vienen de un CSV descargado en vivo en vez de un archivo
+// subido. Se llama sola cuando alguien abre el módulo, y también se
+// puede disparar a mano con el botón "Actualizar ahora".
+async function pagosCargarDesdeGoogleSheets(silencioso){
+  pagosAutoStatus = 'cargando';
+  if(!silencioso) pagosRefrescarBanner();
+  try{
+    const resp = await fetch(PAGOS_SHEET_URL, { cache:'no-store' });
+    if(!resp.ok) throw new Error('HTTP ' + resp.status);
+    const text = await resp.text();
+    const rows = encuestaParseCSV(text); // parser CSV genérico, ya usado por Encuesta
+    const bloques = pagosParsearHoja(rows);
+    if(!bloques.length) throw new Error('No se encontraron listas de pagos reconocibles en la hoja "Proveedores".');
+
+    const existentes = DB.get('pagos_items', []);
+    const clavesExistentes = new Set(existentes.map(it => pagosClaveAutoItem(it, it.loteTitulo)));
+    let nuevos = 0, omitidos = 0;
+    const lote = DB.push('pagos_lotes', {
+      archivo: 'Google Sheets — pestaña Proveedores (automático)',
+      fecha: hoyStr(), hora: horaStr(),
+      usuario: 'auto', nombre: 'Automático (Google Sheets)',
+      bloques: bloques.map(b => b.titulo),
+      responsables: bloques.map(b => b.responsable)
+    });
+    bloques.forEach(b => {
+      b.items.forEach(it => {
+        const k = pagosClaveAutoItem(it, b.titulo);
+        if(clavesExistentes.has(k)){ omitidos++; return; }
+        clavesExistentes.add(k);
+        DB.push('pagos_items', Object.assign({}, it, {
+          loteId: lote.id, loteTitulo: b.titulo, responsable: b.responsable,
+          estado: 'pendiente', fechaPago: null, comprobantePago: null, notaPago: ''
+        }));
+        nuevos++;
+      });
+    });
+    DB.set('pagos_ultima_sync', new Date().toISOString());
+    pagosAutoStatus = 'ok';
+    pagosAutoMsg = nuevos
+      ? `Se cargaron ${nuevos} pago(s) nuevo(s) desde Google Sheets.` + (omitidos ? ` (${omitidos} ya estaban registrados.)` : '')
+      : 'Ya estaba al día — sin pagos nuevos en la hoja.';
+  }catch(err){
+    pagosAutoStatus = 'error';
+    pagosAutoMsg = 'No se pudo conectar con Google Sheets (' + (err && err.message ? err.message : err) + '). Verifica tu conexión a internet.';
+  }
+  if(!silencioso) renderPagosModule(NAV.find(s=>s.id==='operacion'), null, null, pagosLastRuta);
+}
+function pagosRefrescarBanner(){
+  const box = document.getElementById('pagos_syncBanner');
+  if(box) box.outerHTML = pagosSyncBannerHtml();
+}
+function pagosSyncBannerHtml(){
+  const ultima = DB.get('pagos_ultima_sync', null);
+  const ultimaTxt = ultima ? new Date(ultima).toLocaleString('es-CO') : 'nunca';
+  let estadoHtml = '';
+  if(pagosAutoStatus === 'cargando') estadoHtml = '<div class="verif-box" style="background:var(--tint-dorado);color:var(--dorado);">Conectando con Google Sheets...</div>';
+  else if(pagosAutoStatus === 'ok') estadoHtml = `<div class="verif-box ok">${pagosAutoMsg}</div>`;
+  else if(pagosAutoStatus === 'error') estadoHtml = `<div class="verif-box bad">${pagosAutoMsg}</div>`;
+  return `<div id="pagos_syncBanner" style="margin-bottom:16px;">
+    <p style="font-size:11.5px;color:var(--text-light);margin-bottom:8px;">Los pagos también se traen automáticamente desde la pestaña "Proveedores" del Google Sheets donde se cuelgan por fecha (requiere internet en este momento). Si prefieres, también puedes subir el Excel manualmente más abajo.</p>
+    ${estadoHtml}
+    <button class="btn-primary" style="width:auto;padding:8px 16px;margin-top:8px;" onclick="pagosCargarDesdeGoogleSheets(false)">Actualizar ahora</button>
+    <span style="font-size:11px;color:var(--text-light);margin-left:10px;">Última actualización: ${ultimaTxt}</span>
+  </div>`;
 }
 
 let pagosLastRuta = 'Operación → Administración → Pagos a proveedores';
@@ -7062,7 +7212,9 @@ function renderPagosModule(sec, group, item, ruta){
         <div><h2>Pagos a proveedores</h2><div class="path">${pagosLastRuta}</div></div>
       </div>
 
-      <div class="form-section-title" style="margin-top:0;">Subir archivo de pagos</div>
+      ${pagosSyncBannerHtml()}
+
+      <div class="form-section-title" style="margin-top:0;">Subir archivo de pagos (opcional)</div>
       <p style="font-size:11.5px;color:var(--text-light);margin-bottom:8px;">Sube el Excel de pagos pendientes a proveedores (.xlsx). La app arma la lista automáticamente, separando cada lista por quién está a cargo (por ejemplo C&H o María Consuelo) y señalando lo pagado y lo pendiente.</p>
       <input type="file" id="pagos_archivo" accept=".xlsx,.xls" onchange="pagosArchivoSeleccionado(this)">
       <div id="pagos_previewBox" style="margin-top:10px;"></div>
@@ -7108,6 +7260,7 @@ function renderPagosModule(sec, group, item, ruta){
   pagosRenderResumenResponsables();
   pagosRenderTabla();
   if(window.innerWidth <= 820) document.getElementById('sidebar').classList.remove('open');
+  if(pagosAutoStatus === 'idle') pagosCargarDesdeGoogleSheets(false);
 }
 
 function pagosRenderKPIs(){
