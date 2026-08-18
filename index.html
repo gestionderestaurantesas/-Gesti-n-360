@@ -4028,13 +4028,71 @@ function asistenteToggleVoz(){
   if(!asistenteVozActiva() && window.speechSynthesis) window.speechSynthesis.cancel();
   asistenteRefrescarVista();
 }
+
+/* ---- Selección de voz femenina para SonIA. El navegador carga la lista
+   de voces de forma asíncrona (a veces está vacía al inicio), por eso se
+   cachea y se vuelve a intentar tanto al cargar como cuando el navegador
+   avisa que ya tiene la lista lista (evento 'voiceschanged'). ---- */
+let asistenteVozCache = null;
+function asistenteElegirVozFemenina(){
+  if(!window.speechSynthesis) return null;
+  const voces = window.speechSynthesis.getVoices() || [];
+  if(!voces.length) return null;
+  const esVoces = voces.filter(v => (v.lang || '').toLowerCase().startsWith('es'));
+  const candidatas = esVoces.length ? esVoces : voces;
+  // Nombres de voces femeninas en español comunes en Windows/Chrome/Edge/macOS.
+  const nombresFemeninos = ['mónica','monica','paulina','sabina','helena','lucia','lucía','camila','esperanza','francisca','isabela','soledad','laura','elvira','marisol','victoria','samantha','female','mujer'];
+  const nombresMasculinos = ['jorge','diego','carlos','miguel','pablo','male','hombre','enrique','raul','raúl'];
+  let elegida = candidatas.find(v => nombresFemeninos.some(n => v.name.toLowerCase().includes(n)));
+  if(!elegida) elegida = candidatas.find(v => !nombresMasculinos.some(n => v.name.toLowerCase().includes(n)));
+  return elegida || candidatas[0] || null;
+}
+function asistenteObtenerVoz(){
+  if(!asistenteVozCache) asistenteVozCache = asistenteElegirVozFemenina();
+  return asistenteVozCache;
+}
+if(window.speechSynthesis){
+  try {
+    window.speechSynthesis.addEventListener('voiceschanged', function(){ asistenteVozCache = asistenteElegirVozFemenina(); });
+  } catch(e){ /* algunos navegadores viejos no soportan el evento, no pasa nada */ }
+}
+
+// Limpia el texto antes de leerlo en voz alta: quita marcado (asteriscos,
+// guiones bajos, encabezados, viñetas, enlaces, código) y símbolos sueltos
+// para que SonIA lea solo palabras naturales, sin nombrar signos.
+function asistenteLimpiarTextoParaVoz(texto){
+  return (texto || '')
+    .replace(/\*\*(.*?)\*\*/g, '$1')
+    .replace(/\*(.*?)\*/g, '$1')
+    .replace(/__(.*?)__/g, '$1')
+    .replace(/_(.*?)_/g, '$1')
+    .replace(/~~(.*?)~~/g, '$1')
+    .replace(/`{1,3}([^`]*)`{1,3}/g, '$1')
+    .replace(/^#{1,6}\s*/gm, '')
+    .replace(/^\s*[-*•]\s+/gm, '')
+    .replace(/^\s*\d+[.)]\s+/gm, '')
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+    .replace(/[*_~`#>|^]/g, '')
+    .replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/gu, '')
+    .replace(/\n{2,}/g, '. ')
+    .replace(/\n/g, '. ')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+}
+
 function asistenteHablar(texto){
   if(!asistenteVozActiva() || !texto) return;
   if(!window.speechSynthesis || typeof SpeechSynthesisUtterance === 'undefined') return;
   try {
+    const limpio = asistenteLimpiarTextoParaVoz(texto);
+    if(!limpio) return;
     window.speechSynthesis.cancel();
-    const u = new SpeechSynthesisUtterance(texto);
+    const u = new SpeechSynthesisUtterance(limpio);
     u.lang = 'es-CO';
+    const voz = asistenteObtenerVoz();
+    if(voz) u.voice = voz;
+    u.pitch = 1.08; // un poco más agudo, para un timbre más femenino
+    u.rate = 0.98;  // ritmo natural, ni acelerado ni robótico
     window.speechSynthesis.speak(u);
   } catch(e){ /* si falla la síntesis de voz, no interrumpe el chat */ }
 }
