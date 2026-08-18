@@ -1136,7 +1136,11 @@ const NAV = [
       ]},
       { id:'cocina', label:'Cocina', icon:'chef', matchArea:'cocina', items:[
         { id:'chk_briefing_cocina', label:'Briefing de cocina', icon:'megaphone', area:'cocina', categoria:'briefing', roles:['empleado','administracion','gerencia'], customRender:'renderBriefingCocinaModule' },
-        { id:'chk_mise_cocina', label:'Mise en place de estaciones', icon:'chef', area:'cocina', categoria:'mise_en_place', roles:['empleado','administracion','gerencia'], customRender:'renderMiseCocinaModule' },
+        { id:'chk_mise_cocina_parrilla', label:'Mise en place: Parrilla', icon:'chef', area:'cocina', categoria:'mise_en_place', roles:['empleado','administracion','gerencia'], customRender:'renderMiseCocinaModule', estacion:'parrilla' },
+        { id:'chk_mise_cocina_fritos', label:'Mise en place: Fritos', icon:'chef', area:'cocina', categoria:'mise_en_place', roles:['empleado','administracion','gerencia'], customRender:'renderMiseCocinaModule', estacion:'fritos' },
+        { id:'chk_mise_cocina_armado', label:'Mise en place: Armado / Cantador', icon:'chef', area:'cocina', categoria:'mise_en_place', roles:['empleado','administracion','gerencia'], customRender:'renderMiseCocinaModule', estacion:'armado' },
+        { id:'chk_mise_cocina_corrientes', label:'Mise en place: Corrientes / Sopas / Mote', icon:'chef', area:'cocina', categoria:'mise_en_place', roles:['empleado','administracion','gerencia'], customRender:'renderMiseCocinaModule', estacion:'corrientes' },
+        { id:'chk_mise_cocina_pastas', label:'Mise en place: Pastas y Mariscos', icon:'chef', area:'cocina', categoria:'mise_en_place', roles:['empleado','administracion','gerencia'], customRender:'renderMiseCocinaModule', estacion:'pastas_mariscos' },
         { id:'chk_higiene', label:'Aseo de cocina', icon:'checklist', area:'cocina', categoria:'aseo', roles:['empleado','administracion','gerencia'] },
         { id:'chk_prueba_prep', label:'Prueba de preparaciones diarias', icon:'chef', area:'cocina', categoria:'prueba', roles:['empleado','administracion','gerencia'] },
         { id:'chk_alistamiento_steward', label:'Alistamiento de steward / lavado de platos', icon:'checklist', area:'cocina', categoria:'alistamiento', roles:['empleado','administracion','gerencia'], customRender:'renderAlistamientoAreaModule', contentKey:'steward' },
@@ -1713,6 +1717,7 @@ function enterApp(){
   renderSidebar();
   goHome();
   alarmaMiseServicioIniciar();
+  if(typeof miseCocinaAlarmaMasterIniciar === 'function') miseCocinaAlarmaMasterIniciar();
 }
 
 /* ==================================================================
@@ -1815,7 +1820,15 @@ function fmtMoney(n){
   n = Number(n) || 0;
   return '$' + n.toLocaleString('es-CO', {maximumFractionDigits:0});
 }
-function hoyStr(){ return new Date().toISOString().slice(0,10); }
+function hoyStr(){
+  // OJO: NO usar toISOString() aquí — toISOString() da la fecha en UTC, y
+  // Colombia está en UTC-5. Eso hacía que "hoy" saltara al día siguiente
+  // desde ~7:00 p.m. hora local en adelante (justo en medio del servicio
+  // de cena), afectando fechas guardadas en toda la app. Se arma con los
+  // componentes de fecha LOCALES en su lugar (mismo criterio que pvFmtYMD).
+  const d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+}
 function horaStr(){ return new Date().toLocaleTimeString('es-CO', {hour:'2-digit', minute:'2-digit'}); }
 function sedeActivaFiltro(){ return SESSION.sede === 'todas' ? null : SESSION.sede; }
 function filtrarPorSede(arr){
@@ -2866,6 +2879,7 @@ const MISE_COCINA_ESTACIONES = {
 };
 let miseCocinaLastRuta = '';
 let miseCocinaActiveEstacion = 'parrilla';
+let miseCocinaLockedEstacion = false;
 let miseCocinaValues = {};
 let miseCocinaResponsable = '';
 let miseCocinaTurno = '';
@@ -2878,7 +2892,25 @@ function miseCocinaTotalItems(cfg){
 }
 function renderMiseCocinaModule(sec, group, item, ruta){
   if(ruta) miseCocinaLastRuta = ruta;
+  const estacionFija = item && item.estacion;
+  miseCocinaLockedEstacion = !!estacionFija;
+  if(estacionFija){
+    // Este computador queda "emparejado" con esta estación: las alarmas de
+    // las 11:30 y las 6:00 p.m. de este dispositivo se calculan sobre ella,
+    // sin importar a qué otra pantalla navegue el usuario después.
+    DB.set('mise_cocina_estacion_dispositivo', estacionFija);
+    if(estacionFija !== miseCocinaActiveEstacion){
+      miseCocinaActiveEstacion = estacionFija;
+      miseCocinaValues = {};
+      miseCocinaResponsable = '';
+      miseCocinaTurno = '';
+      miseCocinaInspector = '';
+      miseCocinaListo = null;
+      miseCocinaFotoData = null;
+    }
+  }
   renderMiseCocinaBody();
+  if(typeof miseCocinaAlarmaMasterCheck === 'function') miseCocinaAlarmaMasterCheck();
 }
 function miseCocinaSetEstacion(estacion){
   if(estacion !== miseCocinaActiveEstacion){
@@ -2978,9 +3010,15 @@ function miseCocinaDatosGeneralesHtml(){
 function renderMiseCocinaBody(){
   const sec = NAV.find(s=>s.id==='checklists');
   const cfg = MISE_COCINA_ESTACIONES[miseCocinaActiveEstacion];
-  const estacionesTabs = Object.keys(MISE_COCINA_ESTACIONES).map(k=>
+  // Cada uno de los 5 ítems del menú abre directo su estación (para que
+  // cada computador de cocina quede fijo en la suya) — el selector de
+  // pestañas solo aparece si por algún motivo se entra sin estación fija.
+  const tabsHtml = miseCocinaLockedEstacion ? `
+    <div style="background:var(--tint-dorado);border:1px solid var(--border);border-radius:8px;padding:8px 14px;margin-bottom:16px;font-size:12px;color:var(--text-light);">
+      Este computador queda vinculado a la estación <b style="color:var(--text);">${cfg.label}</b>. Las alarmas de las 11:30 a.m. y 6:00 p.m. de esta pantalla son para esta estación.
+    </div>` : `<div class="tabs" style="margin-bottom:18px;">${Object.keys(MISE_COCINA_ESTACIONES).map(k=>
     `<button class="tab-btn ${k===miseCocinaActiveEstacion?'active':''}" onclick="miseCocinaSetEstacion('${k}')">${ic('chef',14)}${MISE_COCINA_ESTACIONES[k].label}</button>`
-  ).join('');
+  ).join('')}</div>`;
 
   const tecHtml = miseCocinaSeccionHtml('📡 Tecnología', cfg.tecnologia, 'tec', 'Sí', 'No');
   const insHtml = miseCocinaSeccionHtml('🧂 Insumos', cfg.insumos, 'ins', 'Sí', 'No');
@@ -3004,7 +3042,7 @@ function renderMiseCocinaBody(){
         <div class="icon-circle" style="background:${hexToRgba(sec.color,0.14)}; color:${sec.color};">${ic('chef',21)}</div>
         <div><h2>Mise en place de cocina</h2><div class="path">${miseCocinaLastRuta}</div></div>
       </div>
-      <div class="tabs" style="margin-bottom:18px;">${estacionesTabs}</div>
+      ${tabsHtml}
       <div class="compact-form">
         <div class="progress-box2">
           <div class="progress-circle" id="mc_progressCircle" style="background:conic-gradient(var(--bronce) 0%, var(--border) 0%);"><span id="mc_progressPct">0%</span></div>
@@ -3060,10 +3098,15 @@ function guardarMiseCocina(){
   const todosItems = [...tecnologia, ...insumos, ...equipo, ...limpieza];
   const itemsOk = todosItems.filter(i => i.val === 'Sí' || i.val === 'Cumple').length;
 
+  const ahora = new Date();
   const registro = {
     estacion: miseCocinaActiveEstacion, estacionLabel: cfg.label,
     sede: sedeParaGuardar(), usuario: SESSION.usuario, nombre: SESSION.nombre,
     fecha: hoyStr(), hora: horaStr(),
+    // Minutos desde medianoche, en 24h — horaStr() es solo para mostrar
+    // (12h con a.m./p.m.) y no sirve para comparar contra las 11:30/18:00
+    // de la alarma, por eso se guarda este campo aparte.
+    horaMinutos: ahora.getHours()*60 + ahora.getMinutes(),
     responsable, turno, inspector,
     tecnologia, insumos, equipo, limpieza,
     itemsOk, itemsTotal: todosItems.length,
@@ -3076,6 +3119,123 @@ function guardarMiseCocina(){
   miseCocinaResponsable = ''; miseCocinaTurno = ''; miseCocinaInspector = ''; miseCocinaListo = null; miseCocinaFotoData = null;
   showMsg('mc_msg','Checklist guardado correctamente.','verde');
   renderMiseCocinaBody();
+  if(typeof miseCocinaAlarmaMasterCheck === 'function') miseCocinaAlarmaMasterCheck();
+}
+
+/* ==================================================================
+   ALARMA DE MISE EN PLACE DE COCINA — a las 11:30 a.m. y a las 6:00
+   p.m., si el dispositivo (computador de esa estación) no ha guardado
+   el checklist correspondiente a ese turno, suena una alarma
+   estridente (pitido + voz) que se repite sola cada pocos segundos y
+   NO se detiene hasta que se guarda el checklist de esa estación — no
+   tiene botón para silenciarla, es intencional.
+   ================================================================== */
+const MISE_COCINA_ALARMA_HORARIOS = [
+  { label:'11:30 a.m.', minutos: 11*60+30 },
+  { label:'6:00 p.m.', minutos: 18*60 }
+];
+function miseCocinaAlarmaPendiente(estacion, idx){
+  const hoy = hoyStr();
+  // Ventana de 4 horas antes de cada checkpoint: un checklist hecho a las
+  // 11:50 (para el checkpoint de las 11:30) no debe contar también como
+  // el checklist de las 6:00 p.m. — cada checkpoint necesita su propio
+  // checklist, hecho razonablemente cerca de esa hora.
+  const desdeMin = Math.max(0, MISE_COCINA_ALARMA_HORARIOS[idx].minutos - 240);
+  const registros = DB.get('mise_cocina', []).filter(r =>
+    r.estacion === estacion && r.fecha === hoy && (r.horaMinutos == null || r.horaMinutos >= desdeMin)
+  );
+  return registros.length === 0;
+}
+let miseCocinaAlarmaActiva = false;
+let miseCocinaAlarmaIntervalId = null;
+let miseCocinaAlarmaContador = 0;
+let miseCocinaAlarmaEstacionActual = null;
+let miseCocinaAlarmaSlotActual = null;
+function miseCocinaReproducirBeep(){
+  try{
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    if(!AudioCtx) return;
+    const ctx = new AudioCtx();
+    [880, 660, 880, 660].forEach((freq, i) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'square';
+      osc.frequency.value = freq;
+      gain.gain.value = 0.18;
+      osc.connect(gain); gain.connect(ctx.destination);
+      const start = ctx.currentTime + i*0.22;
+      osc.start(start);
+      osc.stop(start + 0.2);
+    });
+    setTimeout(()=>{ try{ ctx.close(); }catch(e){} }, 1400);
+  }catch(e){ /* si el navegador no soporta audio, sigue el aviso visual + voz */ }
+}
+function miseCocinaAlarmaMostrarBanner(){
+  let banner = document.getElementById('miseCocinaAlarmaBanner');
+  const cfg = MISE_COCINA_ESTACIONES[miseCocinaAlarmaEstacionActual];
+  const nombreEstacion = cfg ? cfg.label : miseCocinaAlarmaEstacionActual;
+  const texto = '⚠ Falta guardar el Mise en place de ' + nombreEstacion + ' (check de las ' + miseCocinaAlarmaSlotActual + '). No se detiene sola hasta guardar el checklist.';
+  if(!banner){
+    banner = document.createElement('div');
+    banner.id = 'miseCocinaAlarmaBanner';
+    banner.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:99999;background:#B7423A;color:#fff;padding:14px 20px;text-align:center;font-size:14px;font-weight:700;box-shadow:0 4px 14px rgba(0,0,0,.3);';
+    document.body.appendChild(banner);
+  }
+  banner.textContent = texto;
+}
+function miseCocinaAlarmaDispararCiclo(){
+  miseCocinaAlarmaContador++;
+  miseCocinaReproducirBeep();
+  miseCocinaAlarmaMostrarBanner();
+  if(miseCocinaAlarmaContador % 5 === 1){
+    const cfg = MISE_COCINA_ESTACIONES[miseCocinaAlarmaEstacionActual];
+    const msg = 'Atención. Falta completar el mise en place de ' + (cfg ? cfg.label : miseCocinaAlarmaEstacionActual) + '.';
+    try{
+      if('speechSynthesis' in window){
+        const u = new SpeechSynthesisUtterance(msg);
+        u.lang = 'es-CO'; u.rate = 0.95;
+        window.speechSynthesis.cancel();
+        window.speechSynthesis.speak(u);
+      }
+    }catch(e){}
+  }
+}
+function miseCocinaAlarmaIniciar(){
+  if(miseCocinaAlarmaActiva) return;
+  miseCocinaAlarmaActiva = true;
+  miseCocinaAlarmaContador = 0;
+  miseCocinaAlarmaDispararCiclo();
+  miseCocinaAlarmaIntervalId = setInterval(miseCocinaAlarmaDispararCiclo, 6000);
+}
+function miseCocinaAlarmaDetener(){
+  miseCocinaAlarmaActiva = false;
+  if(miseCocinaAlarmaIntervalId){ clearInterval(miseCocinaAlarmaIntervalId); miseCocinaAlarmaIntervalId = null; }
+  const banner = document.getElementById('miseCocinaAlarmaBanner');
+  if(banner) banner.remove();
+}
+function miseCocinaAlarmaMasterCheck(){
+  const estacion = DB.get('mise_cocina_estacion_dispositivo', null);
+  const cfg = estacion ? MISE_COCINA_ESTACIONES[estacion] : null;
+  if(!cfg){ miseCocinaAlarmaDetener(); return; }
+  const ahora = new Date();
+  const minutosActual = ahora.getHours()*60 + ahora.getMinutes();
+  let slotActivo = null;
+  MISE_COCINA_ALARMA_HORARIOS.forEach((slot, idx) => {
+    if(minutosActual >= slot.minutos && miseCocinaAlarmaPendiente(estacion, idx)) slotActivo = slot;
+  });
+  if(slotActivo){
+    miseCocinaAlarmaEstacionActual = estacion;
+    miseCocinaAlarmaSlotActual = slotActivo.label;
+    miseCocinaAlarmaIniciar();
+  } else {
+    miseCocinaAlarmaDetener();
+  }
+}
+let miseCocinaAlarmaMasterIntervalId = null;
+function miseCocinaAlarmaMasterIniciar(){
+  if(miseCocinaAlarmaMasterIntervalId) return;
+  miseCocinaAlarmaMasterCheck();
+  miseCocinaAlarmaMasterIntervalId = setInterval(miseCocinaAlarmaMasterCheck, 20000);
 }
 
 /* ==================================================================
@@ -6608,8 +6768,11 @@ let previsionFechaVista = null;
 function renderPrevisionModule(sec, group, item, ruta){
   if(ruta) previsionLastRuta = ruta;
   if(!previsionFechaVista){
+    // pvFmtYMD (fecha local), no toISOString (UTC) — de noche en Colombia
+    // (después de ~7pm) toISOString ya está un día adelante y "mañana"
+    // terminaba mostrando pasado mañana.
     const d = new Date(); d.setDate(d.getDate()+1);
-    previsionFechaVista = d.toISOString().slice(0,10);
+    previsionFechaVista = pvFmtYMD(d);
   }
   const info = previsionEvaluarDia(previsionFechaVista);
   const nota = previsionNotasDelDia(previsionFechaVista);
