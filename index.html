@@ -299,6 +299,45 @@
   .panel-header h2{ font-size:18px; }
   .panel-header .path{ font-size:12px; color:var(--text-light); margin-top:2px; }
 
+  /* SONIA — identidad visual. La lógica de chat, voz e historial se conserva. */
+  .sonia-shell{position:relative;overflow:hidden;min-height:560px;padding:14px 26px 4px;isolation:isolate;}
+  .sonia-shell::before{content:"";position:absolute;z-index:-1;width:520px;height:320px;left:50%;top:-160px;transform:translateX(-50%);border-radius:50%;background:radial-gradient(circle,rgba(217,181,76,.16) 0%,rgba(217,181,76,.04) 45%,transparent 72%);pointer-events:none;}
+  .sonia-top-action{display:flex;justify-content:flex-end;min-height:34px;}
+  .sonia-new-chat{display:inline-flex;align-items:center;gap:7px;border:1px solid color-mix(in srgb,var(--dorado) 48%,var(--border));border-radius:9px;background:transparent;color:var(--dorado);padding:8px 12px;font-size:11.5px;font-weight:600;text-decoration:none;transition:.15s ease;}
+  .sonia-new-chat:hover{background:var(--tint-dorado);transform:translateY(-1px);}
+  .sonia-hero{text-align:center;max-width:760px;margin:-2px auto 18px;}
+  .sonia-emblem{width:78px;height:78px;margin:0 auto 10px;border-radius:50%;display:grid;place-items:center;color:var(--dorado);border:1px solid var(--dorado);background:linear-gradient(145deg,color-mix(in srgb,var(--dorado) 12%,var(--white)),var(--marfil));box-shadow:0 0 0 9px rgba(217,181,76,.045),0 12px 30px rgba(0,0,0,.12);}
+  .sonia-emblem svg{width:43px;height:43px;stroke:currentColor;fill:none;stroke-width:1.5;}
+  .sonia-title{font-family:'Inter',system-ui,sans-serif;font-size:27px;line-height:1.15;letter-spacing:-.5px;margin-bottom:5px;}
+  .sonia-title .ia{color:var(--dorado);}
+  .sonia-subtitle{font-size:15px;color:var(--text-light);margin-bottom:12px;}
+  .sonia-status{display:inline-flex;align-items:center;gap:8px;border:1px solid color-mix(in srgb,var(--dorado) 38%,var(--border));border-radius:999px;padding:6px 13px;color:var(--dorado);font-size:11.5px;font-weight:600;background:color-mix(in srgb,var(--dorado) 5%,transparent);}
+  .sonia-status::before{content:"";width:7px;height:7px;border-radius:50%;background:#32b65c;box-shadow:0 0 0 3px rgba(50,182,92,.12);}
+  .sonia-chat{max-width:1080px;margin:0 auto;}
+  .sonia-messages{min-height:190px;max-height:390px;overflow-y:auto;padding:20px 22px;border:1px solid var(--border);border-radius:15px;background:color-mix(in srgb,var(--white) 78%,transparent);box-shadow:inset 0 1px 0 rgba(255,255,255,.025);}
+  .sonia-message-row{display:flex;align-items:flex-end;gap:10px;margin-bottom:12px;}
+  .sonia-message-row.user{justify-content:flex-end;}
+  .sonia-avatar{width:38px;height:38px;flex:0 0 38px;border-radius:50%;display:grid;place-items:center;color:var(--dorado);border:1px solid var(--dorado);background:var(--marfil);}
+  .sonia-avatar svg{width:21px;height:21px;}
+  .sonia-listen{background:none;border:none;cursor:pointer;padding:5px;opacity:.55;color:var(--text-light);flex-shrink:0;}
+  .sonia-bubble{max-width:72%;padding:12px 15px;border-radius:14px;font-size:13.5px;line-height:1.55;white-space:pre-wrap;border:1px solid var(--border);}
+  .sonia-bubble.assistant{background:var(--crema);color:var(--text);border-bottom-left-radius:5px;}
+  .sonia-bubble.user{background:linear-gradient(145deg,color-mix(in srgb,var(--dorado) 75%,#6a4c16),var(--dorado));color:#fff;border-color:transparent;border-bottom-right-radius:5px;}
+  .sonia-learning{text-align:center;font-size:20px;font-weight:500;color:var(--espresso);margin:24px 0 14px;}
+  .sonia-composer{display:flex;align-items:center;gap:8px;min-height:66px;padding:8px 9px 8px 14px;border:1px solid var(--dorado);border-radius:16px;background:var(--white);box-shadow:0 12px 30px rgba(31,22,15,.12),0 0 22px rgba(217,181,76,.06);transition:.15s ease;}
+  .sonia-composer:focus-within{box-shadow:0 12px 34px rgba(31,22,15,.15),0 0 0 3px rgba(217,181,76,.10);}
+  .sonia-composer textarea{flex:1;resize:none;min-height:28px;max-height:110px;border:none!important;background:transparent!important;padding:6px 4px!important;color:var(--text);font:13.5px/1.45 'Inter',sans-serif;outline:none;}
+  .sonia-composer textarea::placeholder{color:var(--text-light);}
+  .sonia-icon-btn{width:40px;height:40px;flex:0 0 40px;border:none;background:transparent;color:var(--text-light);border-radius:50%;display:grid;place-items:center;cursor:pointer;}
+  .sonia-icon-btn:hover{background:var(--crema);color:var(--dorado);}
+  .sonia-send{width:48px;height:48px;flex:0 0 48px;border:none;border-radius:50%;display:grid;place-items:center;background:linear-gradient(145deg,#f1ca68,var(--dorado));color:#231b12;box-shadow:0 7px 16px rgba(217,181,76,.24);margin:0!important;padding:0!important;}
+  .sonia-send:hover{filter:brightness(1.06);transform:translateY(-1px);}
+  .sonia-send:disabled{opacity:.55;transform:none;}
+  .sonia-state{min-height:18px;text-align:center;font-size:11.5px;color:var(--text-light);margin:7px 0 0;}
+  .sonia-tools{display:flex;justify-content:center;margin-top:7px;}
+  .sonia-voice{font-size:10.5px;color:var(--text-light);text-decoration:none;display:flex;align-items:center;gap:5px;}
+  @media(max-width:760px){.sonia-shell{padding:4px 0;min-height:500px}.sonia-top-action{margin-bottom:8px}.sonia-hero{margin-top:0}.sonia-title{font-size:23px}.sonia-messages{padding:14px 12px}.sonia-bubble{max-width:84%}.sonia-learning{font-size:17px}.sonia-composer{min-height:58px;padding-left:9px}.sonia-send{width:42px;height:42px;flex-basis:42px}}
+
   .placeholder-box{ border:2px dashed var(--border); border-radius:12px; padding:36px 24px; text-align:center; color:var(--text-light); }
   .placeholder-box h4{ color:var(--bronce); font-size:15px; margin-bottom:8px; font-family:'Inter'; }
   .placeholder-box p{ font-size:13px; max-width:460px; margin:0 auto; line-height:1.6; }
@@ -884,48 +923,62 @@ aplicarTema(temaActual());
    desde la propia app (agregar, desactivar, cambiar clave, etc.)
    ================================================================== */
 const USUARIOS_SEED = [
-{"usuario":"harol","pass":"cordova","nombre":"Harol (Propietario)","cargo":"Propietario","sede":"todas","area":"todas","rol":"gerencia","activo":true},
-{"usuario":"deimer.villadiego","pass":"562","nombre":"Deimer Alfonso Zapata Villadiego","cargo":"Vigilancia","sede":"chinu","area":"inspecciones","rol":"empleado","activo":true},
-{"usuario":"leidis.vergara","pass":"788","nombre":"Leidis Ester Sarmiento Vergara","cargo":"Líder General","sede":"chinu","area":"todas","rol":"gerencia","activo":true},
-{"usuario":"heriberto.urdaneta","pass":"392","nombre":"Heriberto De Jesus Sarmiento Urdaneta","cargo":"Aux. Cocina","sede":"chinu","area":"cocina","rol":"empleado","activo":true},
-{"usuario":"yoenys.bello","pass":"251","nombre":"Yoenys Yanith Humanez Bello","cargo":"Servicio Cliente","sede":"chinu","area":"servicio_cliente","rol":"empleado","activo":true},
-{"usuario":"luisana.bello","pass":"168","nombre":"Luisana Monterroza Bello","cargo":"Servicio Cliente","sede":"chinu","area":"servicio_cliente","rol":"empleado","activo":true},
-{"usuario":"julio.simanca","pass":"954","nombre":"Julio Eduardo Garcia Simanca","cargo":"Aux. Bar","sede":"chinu","area":"bar","rol":"empleado","activo":true},
-{"usuario":"alberto.moteroza","pass":"299","nombre":"Alberto Lobo Moteroza","cargo":"Aux. Cocina","sede":"chinu","area":"cocina","rol":"empleado","activo":true},
-{"usuario":"beatriz.monterroza","pass":"403","nombre":"Beatriz Elena Sarmiento Monterroza","cargo":"Aux. Cocina","sede":"chinu","area":"cocina","rol":"empleado","activo":true},
-{"usuario":"juan.mendoza","pass":"765","nombre":"Juan Sebastian Perez Mendoza","cargo":"Aux. Cocina","sede":"chinu","area":"cocina","rol":"empleado","activo":true},
-{"usuario":"valentina.dias","pass":"244","nombre":"Valentina Alvarez Dias","cargo":"Aux. Cocina","sede":"chinu","area":"cocina","rol":"empleado","activo":true},
-{"usuario":"sandy.soto","pass":"129","nombre":"Sandy Torres Soto","cargo":"Líder de Servicio","sede":"chinu","area":"servicio_cliente","rol":"administracion","activo":true},
-{"usuario":"adrian.velez","pass":"899","nombre":"Adrian Jose Machado Velez","cargo":"Aux. Cocina","sede":"monteria","area":"cocina","rol":"empleado","activo":true},
-{"usuario":"andy.ruiz","pass":"608","nombre":"Andy Yesid Hernandez Ruiz","cargo":"Servicio Cliente","sede":"monteria","area":"servicio_cliente","rol":"empleado","activo":true},
-{"usuario":"angelica.oliva","pass":"325","nombre":"Angelica Maria Rodriguez Oliva","cargo":"Sup. Serv. Cliente","sede":"monteria","area":"servicio_cliente","rol":"administracion","activo":true},
-{"usuario":"dagleisis.rojas","pass":"339","nombre":"Dagleisis Guerrero Rojas","cargo":"Steward","sede":"monteria","area":"cocina","rol":"empleado","activo":true},
-{"usuario":"daniel.argumedo","pass":"360","nombre":"Daniel Dario Negrete Argumedo","cargo":"Aux. Cocina","sede":"monteria","area":"cocina","rol":"empleado","activo":true},
-{"usuario":"david.cassab","pass":"177","nombre":"David Camilo Durango Cassab","cargo":"Líder Compras","sede":"monteria","area":"contabilidad","rol":"administracion","activo":true},
-{"usuario":"eduar.suarez","pass":"909","nombre":"Eduar Enrique Buelvas Suarez","cargo":"Aux. Cocina (retirado)","sede":"monteria","area":"cocina","rol":"empleado","activo":false},
-{"usuario":"elizabeth.correa","pass":"372","nombre":"Elizabeth Florez Correa","cargo":"Aux. Bar","sede":"monteria","area":"bar","rol":"empleado","activo":true},
-{"usuario":"harol.agresott","pass":"493","nombre":"Harol Javier Palacios Agresott","cargo":"Gerente","sede":"monteria","area":"todas","rol":"gerencia","activo":true},
-{"usuario":"hernando.padilla","pass":"965","nombre":"Hernando Jose Arrieta Padilla","cargo":"Aux. Cocina","sede":"monteria","area":"cocina","rol":"empleado","activo":true},
-{"usuario":"ivan.oquendo","pass":"426","nombre":"Ivan Alberto Oyola Oquendo","cargo":"Aux. Cocina","sede":"monteria","area":"cocina","rol":"empleado","activo":true},
-{"usuario":"ivana.hernandez","pass":"687","nombre":"Ivana Medina Hernandez","cargo":"Aux. Música","sede":"monteria","area":"servicio_cliente","rol":"empleado","activo":true},
-{"usuario":"jose.diaz","pass":"189","nombre":"Jose Armando Gonzalez Diaz","cargo":"Aux. Administrativo","sede":"monteria","area":"contabilidad","rol":"administracion","activo":true},
-{"usuario":"juan.rosa","pass":"947","nombre":"Juan Manuel Urango De La Rosa","cargo":"Vigilante","sede":"monteria","area":"inspecciones","rol":"empleado","activo":true},
-{"usuario":"lina.montoya","pass":"305","nombre":"Lina Marcela Alvarez Montoya","cargo":"Aux. Contable y Admon","sede":"monteria","area":"contabilidad","rol":"administracion","activo":true},
-{"usuario":"lina.diaz","pass":"313","nombre":"Lina Marcela Padilla Diaz","cargo":"Aux. Serv. Cliente","sede":"monteria","area":"servicio_cliente","rol":"empleado","activo":true},
-{"usuario":"maira.villamil","pass":"523","nombre":"Maira Alejandra Villalobos Villamil","cargo":"Líder Cocina","sede":"monteria","area":"cocina","rol":"administracion","activo":true},
-{"usuario":"mairon.pantoja","pass":"800","nombre":"Mairon Dario Osorio Pantoja","cargo":"Servicio Cliente","sede":"monteria","area":"servicio_cliente","rol":"empleado","activo":true},
-{"usuario":"maria.galeano","pass":"290","nombre":"Maria Carmela Soto Galeano","cargo":"Subgerente","sede":"monteria","area":"todas","rol":"gerencia","activo":true},
-{"usuario":"marielena.martinez","pass":"342","nombre":"Marielena Nieto Martinez","cargo":"Servicio Cliente","sede":"monteria","area":"servicio_cliente","rol":"empleado","activo":true},
-{"usuario":"michael.cordoba","pass":"616","nombre":"Michael Castillo Cordoba","cargo":"Líder Cocina","sede":"monteria","area":"cocina","rol":"administracion","activo":true},
-{"usuario":"miguel.guerrero","pass":"217","nombre":"Miguel Alberto Suarez Guerrero","cargo":"Aux. Cocina","sede":"monteria","area":"cocina","rol":"empleado","activo":true},
-{"usuario":"pedro.cantillo","pass":"668","nombre":"Pedro Luis Lopez Cantillo","cargo":"Aux. Serv. Cliente","sede":"monteria","area":"servicio_cliente","rol":"empleado","activo":true},
-{"usuario":"reinaldo.jimenez","pass":"377","nombre":"Reinaldo Jose Tapia Jimenez","cargo":"Servicio Cliente","sede":"monteria","area":"servicio_cliente","rol":"empleado","activo":true},
-{"usuario":"ysidoro.romero","pass":"471","nombre":"Ysidoro Alberto Prieto Romero","cargo":"Aux. Cocina","sede":"monteria","area":"cocina","rol":"empleado","activo":true},
-{"usuario":"yudis.galeano","pass":"091","nombre":"Yudis Maria Soto Galeano","cargo":"Líder Administrativo","sede":"monteria","area":"contabilidad","rol":"administracion","activo":true},
-{"usuario":"kiara.espitia","pass":"496","nombre":"Kiara Marcela Arias Espitia","cargo":"Aux. Contable","sede":"monteria","area":"contabilidad","rol":"administracion","activo":true},
-{"usuario":"misael.nunez","pass":"493","nombre":"Misael Alfonso Martinez Nuñez","cargo":"Aux. Bar","sede":"monteria","area":"bar","rol":"empleado","activo":true}
+{"usuario": "harol", "pass": "cordova", "nombre": "Harol (Propietario)", "cargo": "Propietario", "sede": "todas", "area": "todas", "rol": "gerencia", "activo": true, "rolPuesto": "", "itemsExtra": []},
+{"usuario": "deimer.villadiego", "pass": "562", "nombre": "Deimer Alfonso Zapata Villadiego", "cargo": "Vigilancia", "sede": "chinu", "area": "inspecciones", "rol": "empleado", "activo": true, "rolPuesto": "inspector", "itemsExtra": []},
+{"usuario": "leidis.vergara", "pass": "788", "nombre": "Leidis Ester Sarmiento Vergara", "cargo": "Líder General", "sede": "chinu", "area": "todas", "rol": "gerencia", "activo": true, "rolPuesto": "", "itemsExtra": []},
+{"usuario": "heriberto.urdaneta", "pass": "392", "nombre": "Heriberto De Jesus Sarmiento Urdaneta", "cargo": "Aux. Cocina", "sede": "chinu", "area": "cocina", "rol": "empleado", "activo": true, "rolPuesto": "cocina", "itemsExtra": []},
+{"usuario": "yoenys.bello", "pass": "251", "nombre": "Yoenys Yanith Humanez Bello", "cargo": "Servicio Cliente", "sede": "chinu", "area": "servicio_cliente", "rol": "empleado", "activo": true, "rolPuesto": "mesero", "itemsExtra": []},
+{"usuario": "luisana.bello", "pass": "168", "nombre": "Luisana Monterroza Bello", "cargo": "Servicio Cliente", "sede": "chinu", "area": "servicio_cliente", "rol": "empleado", "activo": true, "rolPuesto": "mesero", "itemsExtra": []},
+{"usuario": "julio.simanca", "pass": "954", "nombre": "Julio Eduardo Garcia Simanca", "cargo": "Aux. Bar", "sede": "chinu", "area": "bar", "rol": "empleado", "activo": true, "rolPuesto": "bar", "itemsExtra": []},
+{"usuario": "alberto.moteroza", "pass": "299", "nombre": "Alberto Lobo Moteroza", "cargo": "Aux. Cocina", "sede": "chinu", "area": "cocina", "rol": "empleado", "activo": true, "rolPuesto": "cocina", "itemsExtra": []},
+{"usuario": "beatriz.monterroza", "pass": "403", "nombre": "Beatriz Elena Sarmiento Monterroza", "cargo": "Aux. Cocina", "sede": "chinu", "area": "cocina", "rol": "empleado", "activo": true, "rolPuesto": "cocina", "itemsExtra": []},
+{"usuario": "juan.mendoza", "pass": "765", "nombre": "Juan Sebastian Perez Mendoza", "cargo": "Aux. Cocina", "sede": "chinu", "area": "cocina", "rol": "empleado", "activo": true, "rolPuesto": "cocina", "itemsExtra": []},
+{"usuario": "valentina.dias", "pass": "244", "nombre": "Valentina Alvarez Dias", "cargo": "Aux. Cocina", "sede": "chinu", "area": "cocina", "rol": "empleado", "activo": true, "rolPuesto": "cocina", "itemsExtra": []},
+{"usuario": "sandy.soto", "pass": "129", "nombre": "Sandy Torres Soto", "cargo": "Líder de Servicio", "sede": "chinu", "area": "servicio_cliente", "rol": "administracion", "activo": true, "rolPuesto": "lider_servicio_reservas", "itemsExtra": []},
+{"usuario": "adrian.velez", "pass": "899", "nombre": "Adrian Jose Machado Velez", "cargo": "Aux. Cocina", "sede": "monteria", "area": "cocina", "rol": "empleado", "activo": true, "rolPuesto": "cocina", "itemsExtra": []},
+{"usuario": "andy.ruiz", "pass": "608", "nombre": "Andy Yesid Hernandez Ruiz", "cargo": "Servicio Cliente", "sede": "monteria", "area": "servicio_cliente", "rol": "empleado", "activo": true, "rolPuesto": "mesero", "itemsExtra": []},
+{"usuario": "angelica.oliva", "pass": "325", "nombre": "Angelica Maria Rodriguez Oliva", "cargo": "Sup. Serv. Cliente", "sede": "monteria", "area": "servicio_cliente", "rol": "administracion", "activo": true, "rolPuesto": "lider_servicio_reservas", "itemsExtra": []},
+{"usuario": "dagleisis.rojas", "pass": "339", "nombre": "Dagleisis Guerrero Rojas", "cargo": "Steward", "sede": "monteria", "area": "cocina", "rol": "empleado", "activo": true, "rolPuesto": "steward", "itemsExtra": []},
+{"usuario": "daniel.argumedo", "pass": "360", "nombre": "Daniel Dario Negrete Argumedo", "cargo": "Aux. Cocina", "sede": "monteria", "area": "cocina", "rol": "empleado", "activo": true, "rolPuesto": "cocina", "itemsExtra": []},
+{"usuario": "david.cassab", "pass": "177", "nombre": "David Camilo Durango Cassab", "cargo": "Líder Compras", "sede": "monteria", "area": "contabilidad", "rol": "administracion", "activo": true, "rolPuesto": "aux_compras", "itemsExtra": []},
+{"usuario": "eduar.suarez", "pass": "909", "nombre": "Eduar Enrique Buelvas Suarez", "cargo": "Aux. Cocina (retirado)", "sede": "monteria", "area": "cocina", "rol": "empleado", "activo": false, "rolPuesto": "cocina", "itemsExtra": []},
+{"usuario": "elizabeth.correa", "pass": "372", "nombre": "Elizabeth Florez Correa", "cargo": "Aux. Bar", "sede": "monteria", "area": "bar", "rol": "empleado", "activo": true, "rolPuesto": "bar", "itemsExtra": []},
+{"usuario": "harol.agresott", "pass": "493", "nombre": "Harol Javier Palacios Agresott", "cargo": "Gerente", "sede": "monteria", "area": "todas", "rol": "gerencia", "activo": true, "rolPuesto": "", "itemsExtra": []},
+{"usuario": "hernando.padilla", "pass": "965", "nombre": "Hernando Jose Arrieta Padilla", "cargo": "Aux. Cocina", "sede": "monteria", "area": "cocina", "rol": "empleado", "activo": true, "rolPuesto": "cocina", "itemsExtra": []},
+{"usuario": "ivan.oquendo", "pass": "426", "nombre": "Ivan Alberto Oyola Oquendo", "cargo": "Aux. Cocina", "sede": "monteria", "area": "cocina", "rol": "empleado", "activo": true, "rolPuesto": "cocina", "itemsExtra": []},
+{"usuario": "ivana.hernandez", "pass": "687", "nombre": "Ivana Medina Hernandez", "cargo": "Aux. Música", "sede": "monteria", "area": "servicio_cliente", "rol": "empleado", "activo": true, "rolPuesto": "otros", "itemsExtra": []},
+{"usuario": "jose.diaz", "pass": "189", "nombre": "Jose Armando Gonzalez Diaz", "cargo": "Aux. Administrativo", "sede": "monteria", "area": "contabilidad", "rol": "administracion", "activo": true, "rolPuesto": "otros", "itemsExtra": []},
+{"usuario": "juan.rosa", "pass": "947", "nombre": "Juan Manuel Urango De La Rosa", "cargo": "Vigilante", "sede": "monteria", "area": "inspecciones", "rol": "empleado", "activo": true, "rolPuesto": "inspector", "itemsExtra": []},
+{"usuario": "lina.montoya", "pass": "305", "nombre": "Lina Marcela Alvarez Montoya", "cargo": "Aux. Contable y Admon", "sede": "monteria", "area": "contabilidad", "rol": "administracion", "activo": true, "rolPuesto": "otros", "itemsExtra": []},
+{"usuario": "lina.diaz", "pass": "313", "nombre": "Lina Marcela Padilla Diaz", "cargo": "Aux. Serv. Cliente", "sede": "monteria", "area": "servicio_cliente", "rol": "empleado", "activo": true, "rolPuesto": "mesero", "itemsExtra": []},
+{"usuario": "maira.villamil", "pass": "523", "nombre": "Maira Alejandra Villalobos Villamil", "cargo": "Líder Cocina", "sede": "monteria", "area": "cocina", "rol": "administracion", "activo": true, "rolPuesto": "lider_cocina", "itemsExtra": []},
+{"usuario": "mairon.pantoja", "pass": "800", "nombre": "Mairon Dario Osorio Pantoja", "cargo": "Servicio Cliente", "sede": "monteria", "area": "servicio_cliente", "rol": "empleado", "activo": true, "rolPuesto": "mesero", "itemsExtra": []},
+{"usuario": "maria.galeano", "pass": "290", "nombre": "Maria Carmela Soto Galeano", "cargo": "Subgerente", "sede": "monteria", "area": "todas", "rol": "gerencia", "activo": true, "rolPuesto": "", "itemsExtra": []},
+{"usuario": "marielena.martinez", "pass": "342", "nombre": "Marielena Nieto Martinez", "cargo": "Servicio Cliente", "sede": "monteria", "area": "servicio_cliente", "rol": "empleado", "activo": true, "rolPuesto": "mesero", "itemsExtra": []},
+{"usuario": "michael.cordoba", "pass": "616", "nombre": "Michael Castillo Cordoba", "cargo": "Líder Cocina", "sede": "monteria", "area": "cocina", "rol": "administracion", "activo": true, "rolPuesto": "lider_cocina", "itemsExtra": []},
+{"usuario": "miguel.guerrero", "pass": "217", "nombre": "Miguel Alberto Suarez Guerrero", "cargo": "Aux. Cocina", "sede": "monteria", "area": "cocina", "rol": "empleado", "activo": true, "rolPuesto": "cocina", "itemsExtra": []},
+{"usuario": "pedro.cantillo", "pass": "668", "nombre": "Pedro Luis Lopez Cantillo", "cargo": "Aux. Serv. Cliente", "sede": "monteria", "area": "servicio_cliente", "rol": "empleado", "activo": true, "rolPuesto": "mesero", "itemsExtra": []},
+{"usuario": "reinaldo.jimenez", "pass": "377", "nombre": "Reinaldo Jose Tapia Jimenez", "cargo": "Servicio Cliente", "sede": "monteria", "area": "servicio_cliente", "rol": "empleado", "activo": true, "rolPuesto": "mesero", "itemsExtra": []},
+{"usuario": "ysidoro.romero", "pass": "471", "nombre": "Ysidoro Alberto Prieto Romero", "cargo": "Aux. Cocina", "sede": "monteria", "area": "cocina", "rol": "empleado", "activo": true, "rolPuesto": "cocina", "itemsExtra": []},
+{"usuario": "yudis.galeano", "pass": "091", "nombre": "Yudis Maria Soto Galeano", "cargo": "Líder Administrativo", "sede": "monteria", "area": "contabilidad", "rol": "administracion", "activo": true, "rolPuesto": "otros", "itemsExtra": []},
+{"usuario": "kiara.espitia", "pass": "496", "nombre": "Kiara Marcela Arias Espitia", "cargo": "Aux. Contable", "sede": "monteria", "area": "contabilidad", "rol": "administracion", "activo": true, "rolPuesto": "otros", "itemsExtra": []},
+{"usuario": "misael.nunez", "pass": "493", "nombre": "Misael Alfonso Martinez Nuñez", "cargo": "Aux. Bar", "sede": "monteria", "area": "bar", "rol": "empleado", "activo": true, "rolPuesto": "bar", "itemsExtra": []}
 ];
 if(!DB.get('usuarios')){ DB.set('usuarios', USUARIOS_SEED); }
+
+// Migración suave: a los usuarios que ya estaban guardados en el
+// localStorage de un dispositivo (de antes de que existiera el rol de
+// puesto) les completamos rolPuesto/itemsExtra por defecto, para que el
+// resto del código nunca se encuentre con esos campos "undefined".
+(function migrarUsuariosRolPuesto(){
+  const usuarios = DB.get('usuarios', []);
+  let cambiado = false;
+  usuarios.forEach(u => {
+    if(u.rolPuesto === undefined){ u.rolPuesto = ''; cambiado = true; }
+    if(!Array.isArray(u.itemsExtra)){ u.itemsExtra = []; cambiado = true; }
+  });
+  if(cambiado) DB.set('usuarios', usuarios);
+})();
 
 if(!DB.get('sedes')){
   DB.set('sedes', [
@@ -935,6 +988,55 @@ if(!DB.get('sedes')){
 }
 if(!DB.get('nav_grupos_desactivados')){ DB.set('nav_grupos_desactivados', []); }
 if(!DB.get('nav_items_desactivados')){ DB.set('nav_items_desactivados', []); }
+
+/* ==================================================================
+   ROLES DE PUESTO — nivel de permiso fino, adicional a los 3 niveles
+   de siempre (empleado / administración / gerencia). El gerente le
+   asigna a cada ROL DE PUESTO qué pantallas puede ver (Configuración →
+   Roles y tareas) y luego le asigna ese rol a cada persona (Usuarios y
+   permisos), con la opción de sumarle tareas/áreas especiales sueltas
+   (itemsExtra) si ese usuario necesita algo puntual además de su rol.
+   Un usuario sin rolPuesto asignado no se restringe por esta capa (se
+   queda con el comportamiento de siempre, por nivel y área) — así no
+   se rompe nada mientras el gerente va migrando cuentas.
+   ================================================================== */
+const ROLES_PUESTO = [
+  { id:'caja',                    label:'Caja' },
+  { id:'mesero',                  label:'Mesero' },
+  { id:'cocina',                  label:'Cocina' },
+  { id:'steward',                 label:'Steward / Lavado de platos' },
+  { id:'bar',                     label:'Bar' },
+  { id:'produccion',              label:'Producción' },
+  { id:'lider_servicio_reservas', label:'Líder de servicio y reservas' },
+  { id:'lider_cocina',            label:'Líder de cocina' },
+  { id:'aux_compras',             label:'Auxiliar de compras' },
+  { id:'inspector',               label:'Inspector' },
+  { id:'gerente_operativa',       label:'Gerente operativa' },
+  { id:'gerente_financiera',      label:'Gerente financiera' },
+  { id:'otros',                   label:'Otros' }
+];
+function rolPuestoLabel(id){ const r = ROLES_PUESTO.find(x=>x.id===id); return r ? r.label : ''; }
+
+// Permisos por defecto de cada rol de puesto — el gerente los puede
+// ajustar libremente desde Configuración → Roles y tareas. Se seeden
+// solo una vez (si ya existen en DB, se respetan los cambios guardados).
+const ROLES_PERMISOS_SEED = {
+  caja: ['chk_alistamiento','chk_cierre_caja','cf_caja','sc_comprobantes','ast_chat'],
+  mesero: ['chk_briefing','chk_mise_servicio','chk_aseo_salon','chk_cierre_servicio','sc_comprobantes','sc_reservas','ast_chat'],
+  cocina: ['chk_briefing_cocina','chk_mise_cocina_parrilla','chk_mise_cocina_fritos','chk_mise_cocina_armado','chk_mise_cocina_corrientes','chk_mise_cocina_pastas','chk_higiene','chk_prueba_prep','chk_cierre_cocina','coc_comida_personal','coc_ordenes','coc_bajas','coc_mejora','ast_chat'],
+  steward: ['chk_alistamiento_steward','chk_cierre_steward','ast_chat'],
+  bar: ['chk_briefing_bar','chk_mise_bar','chk_aseo_bar','chk_cierre_bar','bar_inventario','bar_produccion','bar_insumos','bar_ventas','ast_chat'],
+  produccion: ['chk_aseo_cp','cp_inventario','cp_ordenes','cp_recibo','cp_despacho','ast_chat'],
+  lider_servicio_reservas: ['chk_briefing','chk_mise_servicio','chk_aseo_salon','chk_cierre_servicio','sc_comprobantes','sc_reservas','sc_encuesta','rep_indicadores','rep_incidencias','rep_sucesos_area','ast_chat'],
+  lider_cocina: ['chk_briefing_cocina','chk_mise_cocina_parrilla','chk_mise_cocina_fritos','chk_mise_cocina_armado','chk_mise_cocina_corrientes','chk_mise_cocina_pastas','chk_higiene','chk_prueba_prep','chk_alistamiento_steward','chk_cierre_cocina','chk_cierre_steward','coc_comida_personal','coc_ordenes','coc_bajas','coc_mejora','rep_indicadores','rep_incidencias','rep_sucesos_area','rep_analisis','ast_chat'],
+  aux_compras: ['cf_compras','cf_proveedores','cf_pagos','mant_proveedores','mant_contratacion','ast_chat'],
+  inspector: ['chk_alistamiento','chk_cierre_caja','chk_briefing','chk_mise_servicio','chk_aseo_salon','chk_cierre_servicio','chk_briefing_cocina','chk_mise_cocina_parrilla','chk_mise_cocina_fritos','chk_mise_cocina_armado','chk_mise_cocina_corrientes','chk_mise_cocina_pastas','chk_higiene','chk_prueba_prep','chk_alistamiento_steward','chk_cierre_cocina','chk_cierre_steward','chk_briefing_bar','chk_mise_bar','chk_aseo_bar','chk_cierre_bar','chk_aseo_cp','chk_aseo_periferica','chk_aseo_banos_internos','chk_aseo_banos_publicos','chk_aseo_traperos','rep_hallazgos','rep_ocurrencias','rep_incidencias','rep_sucesos_area','rep_historial','ast_chat'],
+  gerente_operativa: ['chk_alistamiento','chk_cierre_caja','chk_briefing','chk_mise_servicio','chk_aseo_salon','chk_cierre_servicio','chk_briefing_cocina','chk_mise_cocina_parrilla','chk_mise_cocina_fritos','chk_mise_cocina_armado','chk_mise_cocina_corrientes','chk_mise_cocina_pastas','chk_higiene','chk_prueba_prep','chk_alistamiento_steward','chk_cierre_cocina','chk_cierre_steward','chk_briefing_bar','chk_mise_bar','chk_aseo_bar','chk_cierre_bar','chk_aseo_cp','chk_aseo_periferica','chk_aseo_banos_internos','chk_aseo_banos_publicos','chk_aseo_traperos','cf_caja','cf_inventarios','sc_comprobantes','sc_reservas','sc_encuesta','coc_comida_personal','coc_ordenes','coc_bajas','coc_mejora','bar_inventario','bar_produccion','bar_insumos','bar_ventas','cp_inventario','cp_ordenes','cp_recibo','cp_despacho','mant_preventivo','mant_correctivo','mant_fallas','mant_solicitudes','mant_seguimiento','mant_historial','ger_reporte_ventas360','ger_kpis','ger_pendientes','ger_alertas','ger_cumplimiento','rep_indicadores','rep_bajas','rep_incidencias','rep_sucesos_area','rep_ventas_bar','rep_ocurrencias','rep_hallazgos','rep_historial','rep_analisis','rep_fotos','ast_chat'],
+  gerente_financiera: ['chk_alistamiento','chk_cierre_caja','cf_caja','cf_inventarios','cf_compras','cf_talento','cf_proveedores','cf_propina','cf_horarios','cf_prevision','cf_pagos','ger_reporte_caja','ger_reporte_inventario','rep_indicadores','rep_analisis','cfg_parametros','ast_chat'],
+  otros: []
+};
+if(!DB.get('roles_permisos')){ DB.set('roles_permisos', ROLES_PERMISOS_SEED); }
+function rolesPermisosGet(){ return DB.get('roles_permisos', ROLES_PERMISOS_SEED); }
 
 /* ==================================================================
    INVENTARIOS — catálogo real importado del archivo de inventario
@@ -1063,7 +1165,10 @@ const ICONS = {
   external: '<path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><path d="M15 3h6v6"/><path d="M10 14L21 3"/>',
   upload:   '<path d="M12 16V4"/><path d="M6 10l6-6 6 6"/><path d="M4 16v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/>',
   trend:    '<path d="M3 17l6-6 4 4 8-8"/><path d="M15 6h6v6"/>',
-  book:     '<path d="M3 5c3-1.5 6-1.5 9 0v14c-3-1.5-6-1.5-9 0V5z"/><path d="M21 5c-3-1.5-6-1.5-9 0v14c3-1.5 6-1.5 9 0V5z"/>'
+  book:     '<path d="M3 5c3-1.5 6-1.5 9 0v14c-3-1.5-6-1.5-9 0V5z"/><path d="M21 5c-3-1.5-6-1.5-9 0v14c3-1.5 6-1.5 9 0V5z"/>',
+  chat:     '<path d="M4 5h16v11H8l-4 4V5z"/><path d="M8 9h8"/><path d="M8 12.5h5"/>',
+  mic:      '<rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0"/><path d="M12 18v4"/><path d="M8 22h8"/>',
+  speaker:  '<path d="M4 9v6h4l5 4V5L8 9H4z"/><path d="M16.5 8a5 5 0 0 1 0 8"/><path d="M19 5.5a9 9 0 0 1 0 13"/>'
 };
 function ic(name, size){
   return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="'+(size||24)+'" height="'+(size||24)+'">'+(ICONS[name]||'')+'</svg>';
@@ -1218,7 +1323,6 @@ const NAV = [
         { id:'ger_reporte_caja', label:'Reporte de caja', icon:'cash', roles:['gerencia'], customRender:'renderReporteCajaGerencia' },
         { id:'ger_reporte_inventario', label:'Reporte de inventario', icon:'box', roles:['gerencia'], customRender:'renderReporteInventarioGerencia' },
         { id:'ger_reporte_ventas360', label:'Reporte de ventas 360', icon:'trend', roles:['gerencia'], customRender:'renderVentas360Module' },
-        { id:'ger_reporte_escuela', label:'Reporte de capacitación', icon:'book', roles:['gerencia'], customRender:'renderReporteEscuelaGerencia' },
         { id:'ger_kpis', label:'KPIs', icon:'target', roles:['gerencia'] },
         { id:'ger_pendientes', label:'Pendientes críticos', icon:'flag', roles:['gerencia'] },
         { id:'ger_alertas', label:'Alertas', icon:'bell', roles:['gerencia'] },
@@ -1237,21 +1341,19 @@ const NAV = [
         { id:'rep_fotos', label:'Fotos de los platos', icon:'camera', roles:['administracion','gerencia'] }
       ]},
       { id:'configuracion', label:'Configuración', matchArea:null, items:[
-        { id:'cfg_usuarios', label:'Usuarios y permisos', icon:'users', roles:['gerencia'] },
+        { id:'cfg_usuarios', label:'Usuarios y permisos', icon:'users', roles:['gerencia'], customRender:'renderUsuariosPermisosModule' },
+        { id:'cfg_roles', label:'Roles y tareas', icon:'shield', roles:['gerencia'], customRender:'renderRolesPermisosModule' },
         { id:'cfg_sedes', label:'Sedes', icon:'pin', roles:['administracion','gerencia'] },
         { id:'cfg_parametros', label:'Parámetros', icon:'sliders', roles:['administracion','gerencia'] },
-        { id:'cfg_areas_activas', label:'Áreas activas de la app', icon:'sliders', roles:['gerencia'], customRender:'renderConfigAreasActivas' }
+        { id:'cfg_areas_activas', label:'Áreas activas de la app', icon:'sliders', roles:['gerencia'], customRender:'renderConfigAreasActivas' },
+        { id:'cfg_faq_sonia', label:'Preguntas frecuentes de SonIA', icon:'chat', roles:['gerencia'], customRender:'renderFaqSoniaModule' }
       ]}
     ]},
-  { id:'escuela', label:'Escuela Córdova', icon:'book', color:'#6B4A8A',
-    desc:'Capacitación y material de estudio del equipo, organizado por área.',
-    // groups:[...] se completa más abajo (escuelaConstruirNav), una vez que
-    // ESCUELA_TEMAS está definido, para que los 18 temas queden como ítems
-    // reales de navegación (visibles directo en Inicio y en el menú), en
-    // vez de vivir solo dentro de un único módulo de listado.
+  { id:'asistente', label:'SonIA', icon:'chat', color:'#D9B54C',
+    desc:'Resuelve dudas de trabajo diario y de gestión de restaurantes, con IA.',
     groups:[
-      { id:'resumen', label:'Mi avance', matchArea:null, items:[
-        { id:'esc_resumen', label:'Ver todos los temas y mi avance', icon:'target', roles:['empleado','administracion','gerencia'], customRender:'renderEscuelaModule' }
+      { id:'chat', label:'Preguntas y respuestas', matchArea:null, items:[
+        { id:'ast_chat', label:'Hablar con SonIA', icon:'chat', roles:['empleado','administracion','gerencia'], customRender:'renderAsistenteModule' }
       ]}
     ]}
 ];
@@ -1281,7 +1383,7 @@ document.getElementById('loginForm').addEventListener('submit', function(e){
     errBox.innerHTML = '<div class="login-error">Este usuario está inactivo. Contacta a tu administrador.</div>';
     return;
   }
-  SESSION = { usuario: found.usuario, nombre: found.nombre, cargo: found.cargo, rol: found.rol, area: found.area, sede: found.sede, loginAt: new Date().toISOString() };
+  SESSION = { usuario: found.usuario, nombre: found.nombre, cargo: found.cargo, rol: found.rol, area: found.area, sede: found.sede, rolPuesto: found.rolPuesto || '', itemsExtra: found.itemsExtra || [], loginAt: new Date().toISOString() };
   DB.set('sesion_actual', SESSION);
   enterApp();
 });
@@ -1305,7 +1407,7 @@ function onGoogleSignedIn(email, nombreGoogle){
   if(usuarioCode){
     const found = usuarios.find(x => x.usuario === usuarioCode);
     if(found && found.activo !== false){
-      SESSION = { usuario: found.usuario, nombre: found.nombre, cargo: found.cargo, rol: found.rol, area: found.area, sede: found.sede, loginAt: new Date().toISOString(), googleEmail: email };
+      SESSION = { usuario: found.usuario, nombre: found.nombre, cargo: found.cargo, rol: found.rol, area: found.area, sede: found.sede, rolPuesto: found.rolPuesto || '', itemsExtra: found.itemsExtra || [], loginAt: new Date().toISOString(), googleEmail: email };
       DB.set('sesion_actual', SESSION);
       enterApp();
       return;
@@ -1339,7 +1441,7 @@ function vincularCuentaGoogle(){
   const enlaces = DB.get('google_link', {});
   enlaces[window.pendingGoogleLink.email] = found.usuario;
   DB.set('google_link', enlaces);
-  SESSION = { usuario: found.usuario, nombre: found.nombre, cargo: found.cargo, rol: found.rol, area: found.area, sede: found.sede, loginAt: new Date().toISOString(), googleEmail: window.pendingGoogleLink.email };
+  SESSION = { usuario: found.usuario, nombre: found.nombre, cargo: found.cargo, rol: found.rol, area: found.area, sede: found.sede, rolPuesto: found.rolPuesto || '', itemsExtra: found.itemsExtra || [], loginAt: new Date().toISOString(), googleEmail: window.pendingGoogleLink.email };
   DB.set('sesion_actual', SESSION);
   window.pendingGoogleLink = null;
   document.getElementById('googleLinkBox').classList.add('hidden');
@@ -1428,7 +1530,23 @@ function itemVisible(item){
   // Checklists usa items con .area (lista única) en vez de grupos por departamento;
   // un empleado solo ve los checklists de su propia área.
   if(SESSION.rol === 'empleado' && item.area && item.area !== SESSION.area) return false;
+  // Capa fina por rol de puesto (caja, mesero, cocina, steward, bar...):
+  // si el usuario tiene un rolPuesto asignado y ese rol ya tiene una lista
+  // de permisos configurada, el ítem debe estar en esa lista (o haberle
+  // sido asignado como tarea/área especial individual en itemsExtra).
+  // Si no tiene rolPuesto, o su rolPuesto todavía no fue configurado, se
+  // respeta el comportamiento de siempre (por nivel y área) sin restringir
+  // más — así ninguna cuenta pierde acceso mientras el gerente la migra.
+  if(!itemPermitidoPorRolPuesto(item)) return false;
   return true;
+}
+function itemPermitidoPorRolPuesto(item){
+  const rolPuesto = SESSION.rolPuesto;
+  if(!rolPuesto) return true;
+  const permisos = rolesPermisosGet()[rolPuesto];
+  if(!permisos) return true;
+  const extra = SESSION.itemsExtra || [];
+  return permisos.includes(item.id) || extra.includes(item.id);
 }
 function sectionVisible(sec){
   if(SESSION.rol === 'gerencia') return true;
@@ -1558,10 +1676,21 @@ function toggleSection(secId){
 /* ==================================================================
    RENDER: INICIO
    ================================================================== */
+// Solo estas 3 secciones aparecen como columnas en Inicio (Checklists,
+// Operación, Gerencia). El Asistente Córdova ya no es una cuarta columna:
+// vive embebido debajo, y sigue disponible aparte en el menú lateral.
+const HOME_COLUMNAS_IDS = ['checklists','operacion','gerencia'];
+// Qué columnas están desplegadas ahora mismo (persiste entre renders de
+// Inicio para que un envío de mensaje del asistente, por ejemplo, no las
+// vuelva a cerrar de golpe).
+let homeColsAbiertas = new Set();
+
 function goHome(){
   setActiveNav(null);
   document.getElementById('crumbLabel').innerHTML = '<b>Inicio</b>';
-  const sectionsWithContent = NAV.filter(sectionVisible)
+  asistenteVistaActual = 'home';
+  const sectionsWithContent = NAV.filter(sec => HOME_COLUMNAS_IDS.includes(sec.id))
+    .filter(sectionVisible)
     .map(sec => ({ sec, groups: visibleGroupsOf(sec) }))
     .filter(x => x.groups.length > 0);
   const sedes = DB.get('sedes', []);
@@ -1572,31 +1701,50 @@ function goHome(){
   html += '<p>Sesión iniciada como <b>'+SESSION.nombre+'</b> ('+(SESSION.cargo||'')+') · Sede '+sedeNombre+'</p>';
   html += '</div>';
 
-  // Las 3 categorías van una al lado de la otra (3 columnas). Cada columna
-  // trae, fijo justo debajo de su casilla (sin clic, siempre visible), el
-  // cuadro con sus subáreas en una sola columna.
+  // Las 3 categorías van una al lado de la otra (3 columnas). Cada casilla
+  // se puede tocar para desplegar/ocultar, debajo, el cuadro con sus
+  // subáreas — empiezan ocultas para que Inicio se vea limpio.
   html += '<div class="home-cols">';
   sectionsWithContent.forEach(({sec})=>{
+    const abierta = homeColsAbiertas.has(sec.id);
     html += `
     <div class="home-col">
-      <div class="module-card">
+      <div class="module-card" style="cursor:pointer;" onclick="homeToggleCol('${sec.id}')">
         <div class="icon-circle" style="background:${hexToRgba(sec.color,0.14)}; color:${sec.color};">${ic(sec.icon,24)}</div>
-        <h3>${sec.label}</h3>
+        <h3>${sec.label} <span id="home_arrow_${sec.id}" style="float:right;font-size:11px;opacity:.55;">${abierta?'▲':'▼'}</span></h3>
         <p>${sec.desc}</p>
       </div>
-      <div class="home-fixed-box">${homeSectionBodyHtml(sec)}</div>
+      <div class="home-fixed-box ${abierta?'':'hidden'}" id="home_box_${sec.id}">${homeSectionBodyHtml(sec)}</div>
     </div>`;
   });
   html += '</div>';
 
   const fecha = new Date().toLocaleDateString('es-CO', { day:'2-digit', month:'long', year:'numeric' });
-  html += `<div class="status-bar">
+  html += `<div class="status-bar" style="margin-bottom:22px;">
     <span>${ic('pin',15)} Sede activa: <b>${sedeNombre}</b></span>
     <span>${ic('clock',15)} Fecha: <b>${fecha}</b></span>
     <span>${ic('shield',15)} Datos guardados en este navegador (nivel medio) — listo para conectar a la nube</span>
   </div>`;
 
+  // El Asistente Córdova queda embebido debajo de las 3 columnas.
+  html += `<div class="panel">${asistenteWidgetHtml()}</div>`;
+
   document.getElementById('content').innerHTML = html;
+  const cont = document.getElementById('ast_mensajes');
+  if(cont) cont.scrollTop = cont.scrollHeight;
+}
+
+// Despliega/oculta, sin recargar toda la pantalla, el cuadro de subáreas
+// de una columna de Inicio — para no perder lo que se esté escribiendo en
+// el asistente si el usuario abre/cierra una columna mientras chatea.
+function homeToggleCol(secId){
+  const box = document.getElementById('home_box_'+secId);
+  if(!box) return;
+  box.classList.toggle('hidden');
+  const abierta = !box.classList.contains('hidden');
+  if(abierta) homeColsAbiertas.add(secId); else homeColsAbiertas.delete(secId);
+  const arrow = document.getElementById('home_arrow_'+secId);
+  if(arrow) arrow.textContent = abierta ? '▲' : '▼';
 }
 
 /* Contenido de subáreas de una categoría de Inicio: una sola columna con
@@ -1712,7 +1860,7 @@ function enterApp(){
   document.getElementById('loginScreen').classList.add('hidden');
   document.getElementById('mainApp').classList.remove('hidden');
   document.getElementById('userNameLabel').textContent = SESSION.nombre;
-  document.getElementById('userRoleLabel').textContent = ROL_LABEL[SESSION.rol] || SESSION.rol;
+  document.getElementById('userRoleLabel').textContent = (ROL_LABEL[SESSION.rol] || SESSION.rol) + (SESSION.rolPuesto ? ' · ' + rolPuestoLabel(SESSION.rolPuesto) : '');
   document.getElementById('userAvatar').textContent = SESSION.nombre.charAt(0).toUpperCase();
   renderSidebar();
   goHome();
@@ -3729,233 +3877,455 @@ function escuelaTodosLosTemas(){
   return out;
 }
 function escuelaTemaPorId(id){ return escuelaTodosLosTemas().find(t=>t.id===id) || null; }
-function escuelaCompletadosDe(usuario){
-  return DB.get('escuela_completados', []).filter(r=>r.usuario===usuario);
-}
-function escuelaEstaEstudiado(temaId, usuario){
-  return escuelaCompletadosDe(usuario).some(r=>r.temaId===temaId);
+// (Ya no se usa navegación por tema individual ni seguimiento de "estudiado":
+// ESCUELA_TEMAS ahora se usa como base de conocimiento interna que se le
+// pasa al Asistente Córdova — ver asistenteConocimientoCordova().)
+
+/* ==================================================================
+   ASISTENTE CÓRDOVA — chat de preguntas y respuestas, visible para
+   todos (mesero, cocina, bar, steward, líderes, gerencia...). Responde
+   con el conocimiento interno de la app (ESCUELA_TEMAS) más su propio
+   conocimiento general de gestión de restaurantes, y puede consultar
+   un puñado de datos en vivo NO confidenciales (por ahora: reseñas por
+   mesero). Nunca cifras de ventas/caja/financieras — esa regla vive en
+   el system prompt de la función de servidor (api/chat.js), no aquí,
+   para que ni siquiera alguien editando este HTML pueda saltársela.
+   El navegador nunca ve ni guarda la clave de la IA: solo llama a
+   /api/chat, que vive en Vercel y tiene la clave como variable de
+   entorno del lado del servidor.
+   ================================================================== */
+let asistenteLastRuta = 'SonIA';
+let asistenteEnviando = false;
+
+// Arma un texto compacto con el contenido de ESCUELA_TEMAS para dárselo
+// a la IA como conocimiento interno de Córdova (procedimientos, protocolos).
+function asistenteConocimientoCordova(){
+  return escuelaTodosLosTemas().map(t =>
+    `### ${t.titulo} (${t.area})\n${t.resumen}\n` + t.contenido.map(c => '- ' + c).join('\n')
+  ).join('\n\n');
 }
 
-// Convierte los temas de ESCUELA_TEMAS en ítems reales de navegación (uno
-// por tema), agrupados por área, y los agrega al grupo "Mi avance" que ya
-// trae la sección Escuela Córdova. Así los 18 temas quedan visibles como
-// enlaces directos en Inicio y en el menú lateral, no solo dentro del
-// listado interactivo del módulo.
-(function escuelaConstruirNav(){
-  const escSec = NAV.find(s=>s.id==='escuela');
-  if(!escSec) return;
-  const AREA_GRUPO_LABEL = {
-    general: 'General', contabilidad: 'Caja', servicio_cliente: 'Servicio al cliente',
-    cocina: 'Cocina', bar: 'Bar', centro_produccion: 'Centro de producción'
+// Datos en vivo NO confidenciales que el asistente puede usar para
+// responder preguntas de "interés general" (ej. reseñas por mesero).
+// Deliberadamente NO incluye nada de ventas, caja, pagos ni finanzas.
+function asistenteDatosPermitidos(){
+  const datos = { fecha: hoyStr(), hora: horaStr(), sede: SESSION.sede };
+  try {
+    const kpi = encuestaKpiPorMesero();
+    datos.reseñasPorMesero = kpi.filas.map(f => ({
+      mesero: f.mesero,
+      reseñasEstaSemana: f.semana, metaSemanal: f.metaSemanal,
+      reseñasEsteMes: f.mes, metaMensual: f.metaMensual,
+      cumpleMetaMensual: f.cumpleMensual
+    }));
+  } catch(e){ /* si la encuesta no está cargada todavía, seguimos sin ese dato */ }
+  return datos;
+}
+
+function asistenteHistorialKey(){ return 'asistente_chat_' + (SESSION ? SESSION.usuario : 'anon'); }
+function asistenteHistorial(){ return DB.get(asistenteHistorialKey(), []); }
+function asistenteGuardarHistorial(hist){ DB.set(asistenteHistorialKey(), hist.slice(-40)); }
+
+// 'home' cuando el widget vive embebido en Inicio, 'standalone' cuando se
+// abrió como pantalla completa desde el menú — así "Borrar conversación",
+// enviar un mensaje, etc. saben qué función deben usar para refrescarse.
+let asistenteVistaActual = 'standalone';
+function asistenteRefrescarVista(){
+  if(asistenteVistaActual === 'home') goHome(); else renderAsistenteBody();
+}
+
+function renderAsistenteModule(sec, group, item, ruta){
+  if(ruta) asistenteLastRuta = ruta;
+  asistenteVistaActual = 'standalone';
+  renderAsistenteBody();
+}
+
+const ASISTENTE_SUGERENCIAS = [
+  '¿Cuántas reseñas lleva esta semana cada mesero?',
+  '¿Qué se revisa en un cierre de área?',
+  '¿Cómo registro bien un comprobante de transferencia?',
+  'Dame 3 ideas para mejorar el servicio en hora pico',
+  '¿Qué es PEPS y por qué importa en el inventario?'
+];
+
+// "Sonia" con las dos últimas letras ("IA") resaltadas — el nombre lleva
+// adentro, a propósito, la sigla de Inteligencia Artificial.
+const SONIA_NOMBRE_HTML = 'Son<span style="color:var(--dorado);">IA</span>';
+
+// Emblema circular de SonIA: una chispa/estrella con tres puntos conectados,
+// usado en el avatar de cada burbuja de respuesta y en la cabecera "hero".
+const SONIA_EMBLEM_HTML = `<svg viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+  <path d="M24 6 L27 20 L41 24 L27 28 L24 42 L21 28 L7 24 L21 20 Z" stroke-linejoin="round" stroke-linecap="round"/>
+  <circle cx="24" cy="24" r="3.2"/>
+  <circle cx="24" cy="24" r="16" opacity="0.28"/>
+</svg>`;
+
+function asistenteBurbujaHtml(msg, idx){
+  const esUsuario = msg.rol === 'user';
+  const idBurbuja = 'ast_msg_' + (idx==null ? 'saludo' : idx);
+  const avatarHtml = !esUsuario
+    ? `<div class="sonia-avatar">${SONIA_EMBLEM_HTML}</div>`
+    : '';
+  const botonEscuchar = !esUsuario
+    ? `<button type="button" class="sonia-listen" onclick="asistenteHablarBurbuja('${idBurbuja}')" title="Escuchar">${ic('speaker',15)}</button>`
+    : '';
+  return `<div class="sonia-message-row ${esUsuario?'user':'assistant'}">
+    ${avatarHtml}
+    <div id="${idBurbuja}" class="sonia-bubble ${esUsuario?'user':'assistant'}">
+      ${(msg.texto||'').replace(/</g,'&lt;')}
+    </div>
+    ${botonEscuchar}
+  </div>`;
+}
+
+/* ---- Voz: escuchar la pregunta (SpeechRecognition) y hablar la
+   respuesta (speechSynthesis). Ambas son opcionales — si el navegador no
+   las soporta, el chat se sigue usando normal por texto, sin errores. ---- */
+let asistenteReconociendo = false;
+let asistenteRecognitionInstance = null;
+
+function asistenteMicSoportado(){
+  return !!(window.SpeechRecognition || window.webkitSpeechRecognition);
+}
+function asistenteActualizarBotonMic(){
+  const btn = document.getElementById('ast_mic_btn');
+  if(!btn) return;
+  btn.style.background = asistenteReconociendo ? 'var(--dorado)' : 'var(--white)';
+  btn.style.color = asistenteReconociendo ? '#fff' : 'var(--text)';
+  btn.title = asistenteReconociendo ? 'Escuchando… toca para detener' : 'Hablarle a SonIA';
+}
+function asistenteMicToggle(){
+  if(!asistenteMicSoportado()){
+    const estado = document.getElementById('ast_estado');
+    if(estado) estado.textContent = 'Este navegador no soporta dictado por voz. Puedes escribir tu pregunta normalmente.';
+    return;
+  }
+  if(asistenteReconociendo){
+    if(asistenteRecognitionInstance) asistenteRecognitionInstance.stop();
+    return;
+  }
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  const rec = new SR();
+  rec.lang = 'es-CO';
+  rec.interimResults = false;
+  rec.maxAlternatives = 1;
+  rec.onstart = function(){ asistenteReconociendo = true; asistenteActualizarBotonMic(); };
+  rec.onresult = function(e){
+    const texto = e.results && e.results[0] && e.results[0][0] ? e.results[0][0].transcript : '';
+    const input = document.getElementById('ast_input');
+    if(input) input.value = texto;
+    if(texto.trim()) asistenteEnviar();
   };
-  const gruposPorArea = Object.keys(ESCUELA_TEMAS).map(areaId => ({
-    id: 'esc_' + areaId,
-    label: AREA_GRUPO_LABEL[areaId] || areaId,
-    matchArea: null,
-    items: ESCUELA_TEMAS[areaId].map(t => ({
-      id: t.id, label: t.titulo, icon:'book',
-      roles:['empleado','administracion','gerencia'],
-      customRender:'renderEscuelaTemaStandalone'
-    }))
-  }));
-  escSec.groups = escSec.groups.concat(gruposPorArea);
-})();
-
-let escuelaLastRuta = 'Escuela Córdova';
-let escuelaFiltroArea = 'todas';
-let escuelaActiveTema = null;
-
-function renderEscuelaModule(sec, group, item, ruta){
-  if(ruta) escuelaLastRuta = ruta;
-  escuelaActiveTema = null;
-  renderEscuelaBody();
+  rec.onerror = function(){ asistenteReconociendo = false; asistenteActualizarBotonMic(); };
+  rec.onend = function(){ asistenteReconociendo = false; asistenteActualizarBotonMic(); };
+  asistenteRecognitionInstance = rec;
+  try { rec.start(); } catch(e){ asistenteReconociendo = false; }
 }
 
-// Punto de entrada cuando un tema se abre directo desde Inicio/el menú
-// (cada uno de los 18 temas es su propio ítem de navegación).
-function renderEscuelaTemaStandalone(sec, group, item, ruta){
-  if(ruta) escuelaLastRuta = ruta;
-  escuelaActiveTema = item.id;
-  renderEscuelaBody();
+function asistenteVozActiva(){ return DB.get('asistente_voz_activa', true); }
+function asistenteToggleVoz(){
+  DB.set('asistente_voz_activa', !asistenteVozActiva());
+  if(!asistenteVozActiva() && window.speechSynthesis) window.speechSynthesis.cancel();
+  asistenteRefrescarVista();
+}
+function asistenteHablar(texto){
+  if(!asistenteVozActiva() || !texto) return;
+  if(!window.speechSynthesis || typeof SpeechSynthesisUtterance === 'undefined') return;
+  try {
+    window.speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(texto);
+    u.lang = 'es-CO';
+    window.speechSynthesis.speak(u);
+  } catch(e){ /* si falla la síntesis de voz, no interrumpe el chat */ }
+}
+function asistenteHablarBurbuja(idBurbuja){
+  const el = document.getElementById(idBurbuja);
+  if(el) asistenteHablar(el.textContent || '');
 }
 
-function escuelaAbrirTema(temaId){
-  escuelaActiveTema = temaId;
-  renderEscuelaBody();
-}
-function escuelaVolver(){
-  escuelaActiveTema = null;
-  renderEscuelaBody();
-}
-function escuelaSetFiltro(area){
-  escuelaFiltroArea = area;
-  renderEscuelaBody();
+// Widget del asistente, compartido entre Inicio (embebido, debajo de las 3
+// columnas) y la pantalla completa "Hablar con Sonia" del menú — para que
+// la conversación se vea y se sienta igual en los dos lugares. opts.ruta
+// muestra la miguita de pan (solo tiene sentido en la pantalla completa).
+function asistenteWidgetHtml(opts){
+  opts = opts || {};
+  const hist = asistenteHistorial();
+  const primerNombre = (SESSION && SESSION.nombre) ? SESSION.nombre.split(' ')[0] : '';
+  const saludoInicial = { rol:'assistant', texto: `Hola${primerNombre ? ', ' + primerNombre : ''}. Estoy aquí para ayudarte a organizar tareas, analizar resultados y encontrar respuestas sobre la operación del restaurante. ¿Por dónde comenzamos?` };
+  const mensajesHtml = hist.length ? hist.map(asistenteBurbujaHtml).join('') : asistenteBurbujaHtml(saludoInicial);
+
+  return `
+    <div class="sonia-shell">
+      <div class="sonia-top-action">
+        <a href="#" class="sonia-new-chat" onclick="asistenteBorrarConversacion();return false;">+ Nueva conversación</a>
+      </div>
+      <div class="sonia-hero">
+        <div class="sonia-emblem">${SONIA_EMBLEM_HTML}</div>
+        <h2 class="sonia-title">Soy ${SONIA_NOMBRE_HTML}</h2>
+        <div class="sonia-subtitle">Tu asistente de IA</div>
+        <div class="sonia-status">Lista para ayudarte</div>
+      </div>
+      <div class="sonia-chat">
+        <div id="ast_mensajes" class="sonia-messages">
+          ${mensajesHtml}
+        </div>
+        <div class="sonia-learning">¿Sobre qué quieres aprender?</div>
+        <div class="sonia-composer">
+          <button type="button" id="ast_mic_btn" class="sonia-icon-btn" onclick="asistenteMicToggle()" title="Hablarle a SonIA">${ic('mic',18)}</button>
+          <textarea id="ast_input" rows="1" placeholder="Pregúntale a SonIA sobre la operación del restaurante…" onkeydown="asistenteTeclaInput(event)"></textarea>
+          <button type="button" class="sonia-send" onclick="asistenteEnviar()" ${asistenteEnviando?'disabled':''}>→</button>
+        </div>
+        <div id="ast_estado" class="sonia-state">${asistenteEnviando ? 'SonIA está escribiendo…' : 'Presiona Enter para enviar'}</div>
+        <div class="sonia-tools">
+          <a href="#" class="sonia-voice" onclick="asistenteToggleVoz();return false;">${ic('speaker',12)}${asistenteVozActiva() ? 'Voz activada' : 'Voz silenciada'}</a>
+        </div>
+      </div>
+    </div>
+  `;
 }
 
-function renderEscuelaBody(){
-  document.getElementById('content').innerHTML = escuelaActiveTema ? escuelaDetalleHtml(escuelaActiveTema) : escuelaListaHtml();
+function renderAsistenteBody(){
+  const html = `<div class="panel">${asistenteWidgetHtml({ ruta: asistenteLastRuta })}</div>`;
+  document.getElementById('content').innerHTML = html;
   if(window.innerWidth <= 820) document.getElementById('sidebar').classList.remove('open');
+  const cont = document.getElementById('ast_mensajes');
+  if(cont) cont.scrollTop = cont.scrollHeight;
 }
 
-function escuelaListaHtml(){
-  const meta = { label:'Escuela Córdova', color:'#6B4A8A' };
-  const todos = escuelaTodosLosTemas();
-  const misCompletados = escuelaCompletadosDe(SESSION.usuario);
-  const misTemasHechos = new Set(misCompletados.map(r=>r.temaId));
-  const pct = todos.length ? Math.round((misTemasHechos.size / todos.length) * 100) : 0;
+function asistenteTeclaInput(e){
+  if(e.key === 'Enter' && !e.shiftKey){
+    e.preventDefault();
+    asistenteEnviar();
+  }
+}
+function asistentePreguntaRapida(texto){
+  const input = document.getElementById('ast_input');
+  if(input) input.value = texto;
+  asistenteEnviar();
+}
+function asistenteBorrarConversacion(){
+  asistenteGuardarHistorial([]);
+  asistenteRefrescarVista();
+}
+
+/* ---- Preguntas frecuentes: cada pregunta que alguien le hace a Sonia
+   queda registrada (texto + normalizada + si se respondió con la IA real
+   o con el respaldo sin conexión), para que gerencia pueda revisar en
+   "Preguntas frecuentes de Sonia" cuáles se repiten y escribirles una
+   respuesta oficial ya perfeccionada. Esa respuesta oficial, guardada en
+   asistente_faq_oficial, se usa después con prioridad tanto en el modo
+   sin conexión como en el system prompt que recibe la IA real. ---- */
+function asistenteRegistrarPregunta(pregunta, viaConexion){
+  try {
+    DB.push('asistente_preguntas', {
+      pregunta, preguntaNormalizada: compraNormalizar(pregunta),
+      usuario: SESSION.usuario, nombre: SESSION.nombre, sede: sedeParaGuardar(),
+      fecha: hoyStr(), hora: horaStr(), viaConexion: !!viaConexion
+    });
+  } catch(e){ /* que un fallo al registrar nunca rompa la conversación */ }
+}
+
+function asistenteFaqOficialGet(){ return DB.get('asistente_faq_oficial', {}); }
+function asistenteFaqOficialGuardar(key, pregunta, respuesta){
+  const dict = asistenteFaqOficialGet();
+  if(!respuesta || !respuesta.trim()){
+    delete dict[key];
+  } else {
+    dict[key] = { pregunta, respuesta: respuesta.trim(), actualizadaEn: new Date().toISOString() };
+  }
+  DB.set('asistente_faq_oficial', dict);
+}
+// Busca, por coincidencia de palabras clave, la respuesta oficial curada
+// más parecida a lo que alguien preguntó. Se usa tanto en el respaldo sin
+// conexión como para mandarle a la IA real las respuestas ya validadas.
+function asistenteFaqOficialBuscar(pregunta){
+  const dict = asistenteFaqOficialGet();
+  const entradas = Object.values(dict);
+  if(!entradas.length) return null;
+  const q = compraNormalizar(pregunta);
+  const palabras = q.split(/\s+/).filter(w => w.length > 3);
+  if(!palabras.length) return null;
+  let mejor = null, mejorPuntaje = 0;
+  entradas.forEach(e => {
+    const texto = compraNormalizar(e.pregunta);
+    const puntaje = palabras.reduce((a,w) => a + (texto.includes(w) ? 1 : 0), 0);
+    if(puntaje > mejorPuntaje){ mejorPuntaje = puntaje; mejor = e; }
+  });
+  return (mejor && mejorPuntaje >= Math.ceil(palabras.length * 0.5)) ? mejor : null;
+}
+
+function asistenteEnviar(){
+  if(asistenteEnviando) return;
+  const input = document.getElementById('ast_input');
+  const texto = (input ? input.value : '').trim();
+  if(!texto) return;
+  if(input) input.value = '';
+
+  const hist = asistenteHistorial();
+  hist.push({ rol:'user', texto, ts: Date.now() });
+  asistenteGuardarHistorial(hist);
+  asistenteEnviando = true;
+  asistenteRefrescarVista();
+
+  const historialParaApi = hist.slice(-8).map(m => ({ role: m.rol === 'user' ? 'user' : 'assistant', content: m.texto }));
+  const faqOficial = Object.values(asistenteFaqOficialGet()).map(e => ({ pregunta: e.pregunta, respuesta: e.respuesta }));
+
+  fetch('/api/chat', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      mensaje: texto,
+      historial: historialParaApi.slice(0, -1), // el último ya va como "mensaje"
+      nombre: SESSION.nombre,
+      conocimiento: asistenteConocimientoCordova(),
+      contexto: asistenteDatosPermitidos(),
+      faqOficial
+    })
+  })
+    .then(r => { if(!r.ok) throw new Error('http_' + r.status); return r.json(); })
+    .then(data => {
+      const respuesta = data.respuesta || 'No obtuve una respuesta, intenta de nuevo.';
+      const h = asistenteHistorial();
+      h.push({ rol:'assistant', texto: respuesta, ts: Date.now() });
+      asistenteGuardarHistorial(h);
+      asistenteRegistrarPregunta(texto, true);
+      asistenteHablar(respuesta);
+    })
+    .catch(() => {
+      // Sin conexión al servidor (por ejemplo, archivo abierto directo desde
+      // el computador en vez de la versión publicada) — respuesta local de
+      // respaldo: primero busca en las respuestas oficiales ya curadas por
+      // gerencia, y si no encuentra nada, busca por palabras clave en el
+      // conocimiento de Córdova.
+      const respuesta = asistenteRespuestaLocalRespaldo(texto);
+      const h = asistenteHistorial();
+      h.push({ rol:'assistant', texto: respuesta, ts: Date.now() });
+      asistenteGuardarHistorial(h);
+      asistenteRegistrarPregunta(texto, false);
+      asistenteHablar(respuesta);
+    })
+    .finally(() => {
+      asistenteEnviando = false;
+      asistenteRefrescarVista();
+    });
+}
+
+// Respaldo sin IA (por si /api/chat no está disponible todavía, o la app
+// se abre localmente sin publicar): primero revisa las respuestas oficiales
+// que gerencia ya curó a partir de preguntas frecuentes reales; si no hay
+// ninguna que coincida, busca coincidencias de palabras en ESCUELA_TEMAS.
+function asistenteRespuestaLocalRespaldo(pregunta){
+  const oficial = asistenteFaqOficialBuscar(pregunta);
+  if(oficial) return oficial.respuesta;
+
+  const q = compraNormalizar(pregunta);
+  const palabras = q.split(/\s+/).filter(w => w.length > 3);
+  const temas = escuelaTodosLosTemas();
+  let mejor = null, mejorPuntaje = 0;
+  temas.forEach(t => {
+    const texto = compraNormalizar(t.titulo + ' ' + t.resumen + ' ' + t.contenido.join(' '));
+    const puntaje = palabras.reduce((a,w) => a + (texto.includes(w) ? 1 : 0), 0);
+    if(puntaje > mejorPuntaje){ mejorPuntaje = puntaje; mejor = t; }
+  });
+  if(mejor && mejorPuntaje > 0){
+    return `(Sonia en modo sin conexión) Esto puede servirte — "${mejor.titulo}":\n` + mejor.contenido.map(c=>'• '+c).join('\n');
+  }
+  return 'No pude conectarme con el asistente en este momento (esta función solo funciona en la versión publicada de la app, no al abrir el archivo directamente). Intenta de nuevo más tarde, o pregúntale a tu líder de área.';
+}
+
+/* ==================================================================
+   GERENCIA: Preguntas frecuentes de Sonia. Agrupa las preguntas ya
+   registradas (asistente_preguntas) por texto normalizado, ordenadas de
+   la más repetida a la menos repetida, y deja escribir/editar la
+   respuesta oficial de cada una (asistente_faq_oficial) — esa respuesta
+   queda disponible después tanto sin conexión como con prioridad para
+   la IA real. La clave de cada entrada de asistente_faq_oficial es la
+   pregunta normalizada del grupo, para que quede 1 a 1 con esta lista.
+   ================================================================== */
+let faqSoniaBusqueda = '';
+function faqSoniaSetBusqueda(q){ faqSoniaBusqueda = q; renderFaqSoniaModule(null,null,null,null); }
+
+function faqSoniaGrupos(){
+  const preguntas = DB.get('asistente_preguntas', []);
+  const mapa = new Map();
+  preguntas.forEach(p => {
+    const key = p.preguntaNormalizada || compraNormalizar(p.pregunta || '');
+    if(!key) return;
+    if(!mapa.has(key)) mapa.set(key, { key, ejemplo:p.pregunta, count:0, sinConexion:0, ultimaFecha:p.fecha });
+    const g = mapa.get(key);
+    g.count++;
+    if(p.viaConexion === false) g.sinConexion++;
+    if(!g.ultimaFecha || p.fecha > g.ultimaFecha){ g.ultimaFecha = p.fecha; g.ejemplo = p.pregunta; }
+  });
+  return [...mapa.values()].sort((a,b) => b.count - a.count);
+}
+
+let faqSoniaLastRuta = 'Preguntas frecuentes de Sonia';
+function renderFaqSoniaModule(sec, group, item, ruta){
+  if(ruta) faqSoniaLastRuta = ruta;
+  const oficial = asistenteFaqOficialGet();
+  const q = compraNormalizar(faqSoniaBusqueda||'').trim();
+  let grupos = faqSoniaGrupos();
+  if(q) grupos = grupos.filter(g => compraNormalizar(g.ejemplo).includes(q));
 
   const kpi = (color, iconName, valor, label) => `
     <div class="module-card" style="cursor:default;">
       <div class="icon-circle" style="background:${hexToRgba(color,0.14)}; color:${color};">${ic(iconName,22)}</div>
       <h3>${valor}</h3><p>${label}</p>
     </div>`;
+  const totalPreguntas = DB.get('asistente_preguntas', []).length;
+  const conRespuestaOficial = Object.keys(oficial).length;
+  const sinConexionTotal = DB.get('asistente_preguntas', []).filter(p=>p.viaConexion===false).length;
   const kpisHtml = `<div class="module-grid" style="margin-bottom:22px;">
-    ${kpi(meta.color,'book', todos.length, 'Temas disponibles')}
-    ${kpi('#2E7D32','check', misTemasHechos.size, 'Temas que ya estudiaste')}
-    ${kpi('#8A6D1F','target', pct+'%', 'Tu avance')}
+    ${kpi('#6B4A8A','chat', totalPreguntas, 'Preguntas registradas')}
+    ${kpi('#6B4A8A','target', faqSoniaGrupos().length, 'Preguntas distintas')}
+    ${kpi('#2E7D32','check', conRespuestaOficial, 'Con respuesta oficial')}
+    ${kpi('#8A6D1F','bell', sinConexionTotal, 'Respondidas sin conexión')}
   </div>`;
 
-  const areasFiltro = [
-    {id:'todas', label:'Todos'}, {id:'general', label:'General'},
-    {id:'contabilidad', label:'Caja'}, {id:'servicio_cliente', label:'Servicio al cliente'},
-    {id:'cocina', label:'Cocina'}, {id:'bar', label:'Bar'}, {id:'centro_produccion', label:'Centro de producción'}
-  ];
-  const filtroHtml = `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px;">
-    ${areasFiltro.map(a => `<button type="button" class="v360-gran-btn${escuelaFiltroArea===a.id?' active':''}" onclick="escuelaSetFiltro('${a.id}')">${a.label}</button>`).join('')}
-  </div>`;
-
-  const filtrados = escuelaFiltroArea==='todas' ? todos : todos.filter(t=>t.area===escuelaFiltroArea);
-  const cardsHtml = filtrados.length ? `<div class="module-grid">
-    ${filtrados.map(t => {
-      const am = AREA_META[t.area] || { label:'General', color: meta.color };
-      const hecho = misTemasHechos.has(t.id);
-      return `<div class="module-card" onclick="escuelaAbrirTema('${t.id}')">
-        <div class="icon-circle" style="background:${hexToRgba(am.color,0.14)}; color:${am.color};">${ic('book',22)}</div>
-        <h3 style="font-size:14px;">${t.titulo}</h3>
-        <p>${t.resumen}</p>
-        <div style="margin-top:8px;">${hecho ? '<span class="badge badge-verde">Estudiado</span>' : '<span class="badge badge-gris">Pendiente</span>'} <span class="badge badge-dorado">${am.label}</span></div>
-      </div>`;
-    }).join('')}
-  </div>` : `<p style="color:var(--text-light);font-size:13px;">No hay temas en esta categoría todavía.</p>`;
-
-  return `
-    <div class="panel">
-      <div class="panel-header">
-        <div class="icon-circle" style="background:${hexToRgba(meta.color,0.14)}; color:${meta.color};">${ic('book',21)}</div>
-        <div><h2>Escuela Córdova</h2><div class="path">${escuelaLastRuta}</div></div>
+  const filasHtml = grupos.map((g, i) => {
+    const curada = oficial[g.key];
+    const idTextarea = 'faq_resp_' + i;
+    return `
+    <div style="border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:12px;">
+      <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:8px;">
+        <div style="font-weight:600;font-size:13.5px;">${g.ejemplo}</div>
+        <div style="display:flex;gap:6px;flex-shrink:0;">
+          <span class="badge badge-dorado">${g.count} vez${g.count===1?'':'es'}</span>
+          ${g.sinConexion>0 ? `<span class="badge badge-rojo">${g.sinConexion} sin conexión</span>` : ''}
+          ${curada ? `<span class="badge badge-verde">Con respuesta oficial</span>` : ''}
+        </div>
       </div>
-      ${kpisHtml}
-      ${filtroHtml}
-      ${cardsHtml}
-    </div>`;
-}
-
-function escuelaDetalleHtml(temaId){
-  const t = escuelaTemaPorId(temaId);
-  if(!t) return escuelaListaHtml();
-  const am = AREA_META[t.area] || { label:'General', color:'#6B4A8A' };
-  const hecho = escuelaEstaEstudiado(t.id, SESSION.usuario);
-  const miUltimoRegistro = escuelaCompletadosDe(SESSION.usuario).filter(r=>r.temaId===t.id).slice(-1)[0];
-
-  const contenidoHtml = `<ul style="margin:0;padding-left:18px;line-height:1.8;font-size:13.5px;">
-    ${t.contenido.map(c=>`<li>${c}</li>`).join('')}
-  </ul>`;
-
-  const puedeVerHistorial = SESSION.rol !== 'empleado';
-  const todosLosRegistros = puedeVerHistorial ? DB.get('escuela_completados', []).filter(r=>r.temaId===t.id).slice().reverse() : [];
-  const historialHtml = puedeVerHistorial ? `
-    <h3 style="margin:24px 0 10px;font-size:15px;">Quién ha estudiado este tema</h3>
-    ${todosLosRegistros.length ? `<table class="mini-table">
-      <thead><tr><th>Nombre</th><th>Sede</th><th>Fecha</th></tr></thead>
-      <tbody>${todosLosRegistros.map(r=>`<tr><td>${r.nombre}</td><td>${sedeLabelGlobal(r.sede)}</td><td>${r.fecha} ${r.hora}</td></tr>`).join('')}</tbody>
-    </table>` : `<p style="color:var(--text-light);font-size:13px;">Todavía nadie lo ha marcado como estudiado.</p>`}
-  ` : '';
-
-  return `
-    <div class="panel">
-      <div class="panel-header">
-        <div class="icon-circle" style="background:${hexToRgba(am.color,0.14)}; color:${am.color};">${ic('book',21)}</div>
-        <div><h2>${t.titulo}</h2><div class="path">Escuela Córdova → ${am.label} → ${t.titulo}</div></div>
+      <textarea id="${idTextarea}" rows="3" placeholder="Escribe aquí la respuesta oficial perfeccionada para esta pregunta (quedará disponible con prioridad, incluso sin conexión)...">${curada ? curada.respuesta.replace(/</g,'&lt;') : ''}</textarea>
+      <div style="margin-top:8px;display:flex;align-items:center;gap:10px;">
+        <button class="btn-primary" style="width:auto;padding:8px 16px;" onclick="faqSoniaGuardarRespuesta('${g.key}', ${i})">Guardar respuesta oficial</button>
+        <span id="faq_msg_${i}"></span>
       </div>
-      <button type="button" class="v360-gran-btn" style="margin-bottom:16px;" onclick="escuelaVolver()">← Volver a Escuela Córdova</button>
-      <p style="color:var(--text-light);font-size:13.5px;margin-bottom:14px;">${t.resumen}</p>
-      ${contenidoHtml}
-      <div style="margin-top:20px;">
-        ${hecho
-          ? `<span class="badge badge-verde">Ya lo estudiaste el ${miUltimoRegistro ? miUltimoRegistro.fecha : ''}</span> <button class="btn-primary" style="width:auto;padding:9px 18px;margin-left:10px;" onclick="escuelaMarcarEstudiado('${t.id}')">Volver a marcar (repaso)</button>`
-          : `<button class="btn-primary" style="width:auto;padding:11px 22px;" onclick="escuelaMarcarEstudiado('${t.id}')">Marcar como estudiado</button>`}
-      </div>
-      <div id="esc_msg"></div>
-      ${historialHtml}
     </div>`;
-}
-
-function escuelaMarcarEstudiado(temaId){
-  const t = escuelaTemaPorId(temaId);
-  if(!t) return;
-  const registro = {
-    usuario: SESSION.usuario, nombre: SESSION.nombre, sede: sedeParaGuardar(),
-    temaId, area: t.area, fecha: hoyStr(), hora: horaStr()
-  };
-  DB.push('escuela_completados', registro);
-  showMsg('esc_msg','Registrado. ¡Buen trabajo!','verde');
-  renderEscuelaBody();
-}
-
-// ---- Gerencia: Reporte de capacitación (consolidado de Escuela Córdova) ----
-function renderReporteEscuelaGerencia(sec, group, item, ruta){
-  const todosTemas = escuelaTodosLosTemas();
-  const completados = filtrarPorSede(DB.get('escuela_completados', []));
-  const empleados = (DB.get('usuarios', USUARIOS_SEED) || []).filter(u => u.activo !== false && u.rol === 'empleado' && (sedeActivaFiltro() ? u.sede === sedeActivaFiltro() : true));
-
-  const kpi = (color, iconName, valor, label) => `
-    <div class="module-card" style="cursor:default;">
-      <div class="icon-circle" style="background:${hexToRgba(color,0.14)}; color:${color};">${ic(iconName,24)}</div>
-      <h3>${valor}</h3><p>${label}</p>
-    </div>`;
-  const empleadosConAlMenosUno = new Set(completados.map(r=>r.usuario)).size;
-  const kpisHtml = `<div class="module-grid" style="margin-bottom:22px;">
-    ${kpi('#6B4A8A','book', todosTemas.length, 'Temas disponibles')}
-    ${kpi('#3B6EA8','users', empleados.length, 'Empleados activos')}
-    ${kpi('#2E7D32','check', empleadosConAlMenosUno, 'Con al menos 1 tema estudiado')}
-    ${kpi('#8A6D1F','target', completados.length, 'Registros de estudio totales')}
-  </div>`;
-
-  const porEmpleado = empleados.map(u => {
-    const susCompletados = new Set(completados.filter(r=>r.usuario===u.usuario).map(r=>r.temaId));
-    const pct = todosTemas.length ? Math.round((susCompletados.size/todosTemas.length)*100) : 0;
-    return { nombre:u.nombre, cargo:u.cargo, sede:u.sede, hechos:susCompletados.size, pct };
-  }).sort((a,b)=>b.pct-a.pct);
-  const tablaEmpleados = porEmpleado.length ? `
-    <table class="mini-table">
-      <thead><tr><th>Empleado</th><th>Cargo</th><th>Sede</th><th>Temas estudiados</th><th>Avance</th></tr></thead>
-      <tbody>${porEmpleado.map(e=>`<tr><td>${e.nombre}</td><td>${e.cargo}</td><td>${sedeLabelGlobal(e.sede)}</td><td>${e.hechos} / ${todosTemas.length}</td><td>${e.pct>=100?'<span class="badge badge-verde">100%</span>':e.pct+'%'}</td></tr>`).join('')}</tbody>
-    </table>` : `<p style="color:var(--text-light);font-size:13px;">Sin datos todavía.</p>`;
-
-  const porTema = todosTemas.map(t => {
-    const cuantos = new Set(completados.filter(r=>r.temaId===t.id).map(r=>r.usuario)).size;
-    const am = AREA_META[t.area] || { label:'General' };
-    return { titulo:t.titulo, area:am.label, cuantos };
-  }).sort((a,b)=>a.cuantos-b.cuantos);
-  const tablaTemas = porTema.length ? `
-    <table class="mini-table">
-      <thead><tr><th>Tema</th><th>Área</th><th>Empleados que lo estudiaron</th></tr></thead>
-      <tbody>${porTema.map(t=>`<tr><td>${t.titulo}</td><td>${t.area}</td><td>${t.cuantos}</td></tr>`).join('')}</tbody>
-    </table>` : `<p style="color:var(--text-light);font-size:13px;">Sin datos todavía.</p>`;
+  }).join('');
 
   const html = `
     <div class="panel">
       <div class="panel-header">
-        <div class="icon-circle" style="background:${hexToRgba(sec.color,0.14)}; color:${sec.color};">${ic('book',21)}</div>
-        <div><h2>Reporte de capacitación</h2><div class="path">${ruta}</div></div>
+        <div class="icon-circle" style="background:${hexToRgba('#6B4A8A',0.14)}; color:#6B4A8A;">${ic('chat',21)}</div>
+        <div><h2>Preguntas frecuentes de Sonia</h2><div class="path">${faqSoniaLastRuta}</div></div>
       </div>
+      <p style="font-size:12.5px;color:var(--text-light);margin-bottom:14px;">
+        Aquí aparecen, de la más repetida a la menos repetida, las preguntas reales que el equipo le ha hecho a Sonia. Escríbele una respuesta oficial a las que más se repiten — esa respuesta queda disponible aunque no haya conexión, y la IA la usa con prioridad cuando le vuelvan a preguntar algo parecido.
+      </p>
       ${kpisHtml}
-      <h3 style="font-size:15px;margin-bottom:10px;">Avance por empleado</h3>
-      ${tablaEmpleados}
-      <h3 style="font-size:15px;margin:24px 0 10px;">Avance por tema</h3>
-      ${tablaTemas}
+      <input type="text" placeholder="Buscar entre las preguntas..." value="${faqSoniaBusqueda}" oninput="faqSoniaSetBusqueda(this.value)" style="margin-bottom:14px;">
+      ${filasHtml || '<p style="color:var(--text-light);font-size:13px;">Todavía no hay preguntas registradas.</p>'}
     </div>`;
   document.getElementById('content').innerHTML = html;
+}
+
+function faqSoniaGuardarRespuesta(key, idx){
+  const textarea = document.getElementById('faq_resp_' + idx);
+  const grupos = faqSoniaGrupos();
+  const g = grupos.find(x => x.key === key);
+  asistenteFaqOficialGuardar(key, g ? g.ejemplo : key, textarea ? textarea.value : '');
+  showMsg('faq_msg_' + idx, 'Guardado.', 'verde');
 }
 
 // ---- Gerencia: Reporte de caja (consolidado, columnas fieles al original) ----
@@ -5502,6 +5872,303 @@ function renderConfigAreasActivas(sec, group, item, ruta){
     </div>`;
   document.getElementById('content').innerHTML = html;
   if(window.innerWidth <= 820) document.getElementById('sidebar').classList.remove('open');
+}
+
+/* ==================================================================
+   ROLES Y TAREAS — el gerente le asigna a cada rol de puesto (caja,
+   mesero, cocina, steward, bar, producción, líder de servicio y
+   reservas, líder de cocina, auxiliar de compras, inspector, gerente
+   operativa, gerente financiera, otros) qué pantallas puede ver,
+   marcando checkboxes sobre el mismo listado de menú de la app.
+   Colección: roles_permisos → { [rolPuestoId]: [itemId, itemId, ...] }.
+   ================================================================== */
+let rolesPermisosLastRuta = 'Gerencia → Configuración → Roles y tareas';
+let rolesPermisosRolActivo = ROLES_PUESTO[0].id;
+
+function todosLosGruposConItems(){
+  const out = [];
+  NAV.forEach(s => {
+    (s.groups||[]).forEach(g => {
+      if((g.items||[]).length > 0) out.push({ sec:s, group:g });
+    });
+  });
+  return out;
+}
+
+function rolesPermisosSetRol(rolId){
+  rolesPermisosRolActivo = rolId;
+  renderRolesPermisosBody();
+}
+
+function rolesPermisosMarcarGrupo(contId, marcar){
+  document.querySelectorAll('#'+contId+' .rp-item-chk').forEach(c => { c.checked = marcar; });
+}
+
+function guardarRolesPermisos(){
+  const seleccion = Array.from(document.querySelectorAll('.rp-item-chk:checked')).map(c => c.value);
+  const permisos = rolesPermisosGet();
+  permisos[rolesPermisosRolActivo] = seleccion;
+  DB.set('roles_permisos', permisos);
+  showMsg('rp_msg', 'Permisos de "' + rolPuestoLabel(rolesPermisosRolActivo) + '" guardados: ' + seleccion.length + ' pantalla' + (seleccion.length===1?'':'s') + ' permitida' + (seleccion.length===1?'':'s') + '.', 'verde');
+}
+
+function renderRolesPermisosModule(sec, group, item, ruta){
+  if(ruta) rolesPermisosLastRuta = ruta;
+  renderRolesPermisosBody();
+}
+
+function renderRolesPermisosBody(){
+  const permisos = rolesPermisosGet();
+  const rolId = rolesPermisosRolActivo;
+  const seleccionados = new Set(permisos[rolId] || []);
+  const secColor = { checklists:'#B87333', operacion:'#3B6EA8', gerencia:'#8A6D1F', escuela:'#6B4A8A' };
+
+  const tabsHtml = `<div class="tabs" style="flex-wrap:wrap;margin-bottom:16px;">${ROLES_PUESTO.map(r =>
+    `<button class="tab-btn ${r.id===rolId?'active':''}" onclick="rolesPermisosSetRol('${r.id}')">${r.label}</button>`
+  ).join('')}</div>`;
+
+  let seccionActual = null;
+  const gruposHtml = todosLosGruposConItems().map(({sec:s, group:g}) => {
+    const contId = 'rp_grp_' + s.id + '_' + g.id;
+    const encabezadoSeccion = s.id !== seccionActual ? (seccionActual = s.id,
+      `<div class="form-section-title" style="display:flex;align-items:center;gap:8px;margin-top:22px;">
+        <span class="dot" style="background:${secColor[s.id]||s.color||'#8A7660'}"></span>${s.label}
+      </div>`) : '';
+    const itemsHtml = g.items.map(it => `
+      <label style="display:flex;gap:7px;align-items:flex-start;font-size:12.5px;padding:3px 0;">
+        <input type="checkbox" class="rp-item-chk" value="${it.id}" ${seleccionados.has(it.id)?'checked':''} style="margin-top:2px;">
+        <span>${it.label}</span>
+      </label>`).join('');
+    return `${encabezadoSeccion}
+      <div style="border:1px solid var(--border);border-radius:10px;padding:12px 16px;margin-bottom:12px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px;">
+          <b style="font-size:13px;">${g.label || 'General'}</b>
+          <span style="font-size:11.5px;">
+            <a href="#" onclick="rolesPermisosMarcarGrupo('${contId}',true);return false;" style="color:var(--dorado);text-decoration:none;">Marcar todo</a>
+            &nbsp;·&nbsp;
+            <a href="#" onclick="rolesPermisosMarcarGrupo('${contId}',false);return false;" style="color:var(--text-light);text-decoration:none;">Ninguno</a>
+          </span>
+        </div>
+        <div id="${contId}" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:2px 16px;">
+          ${itemsHtml}
+        </div>
+      </div>`;
+  }).join('');
+
+  const html = `
+    <div class="panel" id="rolesPermisosBox">
+      <div class="panel-header">
+        <div class="icon-circle" style="background:${hexToRgba('#8A6D1F',0.14)}; color:#8A6D1F;">${ic('shield',21)}</div>
+        <div><h2>Roles y tareas</h2><div class="path">${rolesPermisosLastRuta}</div></div>
+      </div>
+      <p style="font-size:12.5px;color:var(--text-light);margin-bottom:6px;">
+        Elige un rol de puesto arriba y marca qué pantallas puede ver alguien con ese rol. Cada persona ve solo lo que corresponde a su rol asignado (más lo que se le agregue individualmente en Usuarios y permisos).
+      </p>
+      ${tabsHtml}
+      ${gruposHtml}
+      <button class="btn-primary" style="width:auto;padding:11px 22px;margin-top:6px;" onclick="guardarRolesPermisos()">Guardar permisos de este rol</button>
+      <div id="rp_msg"></div>
+    </div>`;
+  document.getElementById('content').innerHTML = html;
+  if(window.innerWidth <= 820) document.getElementById('sidebar').classList.remove('open');
+}
+
+/* ==================================================================
+   USUARIOS Y PERMISOS — cada empleado tiene su propio usuario/clave
+   (ya existía) y ahora además: un nivel (empleado/administración/
+   gerencia, como siempre), un rol de puesto (caja, mesero, cocina...,
+   configurado en Roles y tareas) y, si hace falta, tareas o áreas
+   especiales sueltas (itemsExtra) solo para esa persona. Colección:
+   usuarios (ya existente, ahora con rolPuesto/itemsExtra).
+   ================================================================== */
+let usuariosPermisosLastRuta = 'Gerencia → Configuración → Usuarios y permisos';
+let usuariosPermisosVista = 'lista';
+let usuariosPermisosUsuarioActivo = null; // string (usuario) o null = nuevo
+let usuariosPermisosBusqueda = '';
+
+function renderUsuariosPermisosModule(sec, group, item, ruta){
+  if(ruta) usuariosPermisosLastRuta = ruta;
+  usuariosPermisosVista = 'lista';
+  usuariosPermisosUsuarioActivo = null;
+  renderUsuariosPermisosBody();
+}
+function usuariosPermisosVolver(){
+  usuariosPermisosVista = 'lista';
+  usuariosPermisosUsuarioActivo = null;
+  renderUsuariosPermisosBody();
+}
+function usuariosPermisosAbrir(usuarioId){
+  usuariosPermisosVista = 'detalle';
+  usuariosPermisosUsuarioActivo = usuarioId; // null => nuevo usuario
+  renderUsuariosPermisosBody();
+}
+function usuariosPermisosBuscarCambio(q){
+  usuariosPermisosBusqueda = q;
+  renderUsuariosPermisosBody();
+}
+
+function usuariosPermisosBody(){
+  return usuariosPermisosVista === 'detalle' ? usuariosPermisosDetalleHtml(usuariosPermisosUsuarioActivo) : usuariosPermisosListaHtml();
+}
+function renderUsuariosPermisosBody(){
+  const html = `
+    <div class="panel" id="usuariosPermisosBox">
+      <div class="panel-header">
+        <div class="icon-circle" style="background:${hexToRgba('#8A6D1F',0.14)}; color:#8A6D1F;">${ic('users',21)}</div>
+        <div><h2>Usuarios y permisos</h2><div class="path">${usuariosPermisosLastRuta}</div></div>
+      </div>
+      ${usuariosPermisosBody()}
+    </div>`;
+  document.getElementById('content').innerHTML = html;
+  if(window.innerWidth <= 820) document.getElementById('sidebar').classList.remove('open');
+}
+
+function usuariosPermisosListaHtml(){
+  const q = compraNormalizar(usuariosPermisosBusqueda||'').trim();
+  const usuarios = DB.get('usuarios', []).slice().sort((a,b)=>a.nombre.localeCompare(b.nombre,'es'));
+  const filtrados = !q ? usuarios : usuarios.filter(u =>
+    compraNormalizar(u.nombre).includes(q) || compraNormalizar(u.usuario).includes(q) || compraNormalizar(u.cargo||'').includes(q)
+  );
+  const filasHtml = filtrados.map(u => `
+    <div style="display:flex;align-items:center;gap:12px;padding:10px 14px;border-top:1px solid var(--border);cursor:pointer;${u.activo===false?'opacity:.55;':''}" onclick="usuariosPermisosAbrir('${u.usuario}')">
+      <div style="width:34px;height:34px;border-radius:50%;background:var(--tint-dorado);display:flex;align-items:center;justify-content:center;font-weight:700;color:var(--dorado);flex-shrink:0;">${(u.nombre||'?').charAt(0).toUpperCase()}</div>
+      <div style="flex:1;min-width:0;">
+        <div style="font-weight:600;font-size:13.5px;">${u.nombre}${u.activo===false ? ' <span style="font-size:10.5px;color:var(--rojo);font-weight:600;">(inactivo)</span>' : ''}</div>
+        <div style="font-size:11.5px;color:var(--text-light);">@${u.usuario} · ${u.cargo||'—'} · ${(DB.get('sedes',[]).find(s=>s.id===u.sede)||{}).nombre || (u.sede==='todas'?'Todas las sedes':u.sede)}</div>
+      </div>
+      <div style="text-align:right;font-size:11px;">
+        <div style="color:var(--text-light);">${ROL_LABEL[u.rol]||u.rol}</div>
+        <div style="font-weight:600;">${u.rolPuesto ? rolPuestoLabel(u.rolPuesto) : '<span style="color:var(--text-light);font-weight:400;">Sin rol de puesto</span>'}</div>
+      </div>
+    </div>`).join('');
+
+  return `
+    <div style="display:flex;gap:10px;align-items:center;margin-bottom:14px;flex-wrap:wrap;">
+      <input type="text" placeholder="Buscar por nombre, usuario o cargo..." value="${usuariosPermisosBusqueda}" oninput="usuariosPermisosBuscarCambio(this.value)" style="flex:1;min-width:220px;">
+      <button class="btn-primary" style="width:auto;padding:9px 18px;" onclick="usuariosPermisosAbrir(null)">+ Nuevo usuario</button>
+    </div>
+    <div style="font-size:12px;color:var(--text-light);margin-bottom:6px;">${filtrados.length} usuario${filtrados.length===1?'':'s'}</div>
+    <div style="border:1px solid var(--border);border-radius:10px;overflow:hidden;">${filasHtml || '<div style="padding:16px;color:var(--text-light);font-size:13px;">No se encontró ningún usuario.</div>'}</div>
+  `;
+}
+
+function usuariosPermisosDetalleHtml(usuarioId){
+  const esNuevo = !usuarioId;
+  const usuarios = DB.get('usuarios', []);
+  const u = esNuevo ? { usuario:'', pass:'', nombre:'', cargo:'', sede:(DB.get('sedes',[])[0]||{}).id||'chinu', area:'servicio_cliente', rol:'empleado', rolPuesto:'', itemsExtra:[], activo:true } : (usuarios.find(x=>x.usuario===usuarioId) || {});
+
+  const sedes = DB.get('sedes', []);
+  const sedeOptsFinal = `<option value="todas" ${u.sede==='todas'?'selected':''}>Todas las sedes</option>` + sedes.map(s => `<option value="${s.id}" ${u.sede===s.id?'selected':''}>${s.nombre}</option>`).join('');
+
+  const areaOpts = Object.keys(AREA_META).map(a => `<option value="${a}" ${u.area===a?'selected':''}>${AREA_META[a].label}</option>`).join('')
+    + `<option value="todas" ${u.area==='todas'?'selected':''}>Todas las áreas</option>`;
+
+  const rolOpts = Object.keys(ROL_LABEL).map(r => `<option value="${r}" ${u.rol===r?'selected':''}>${ROL_LABEL[r]}</option>`).join('');
+
+  const rolPuestoOpts = `<option value="" ${!u.rolPuesto?'selected':''}>— Sin rol de puesto (acceso por nivel/área, como antes) —</option>`
+    + ROLES_PUESTO.map(r => `<option value="${r.id}" ${u.rolPuesto===r.id?'selected':''}>${r.label}</option>`).join('');
+
+  const extraSeleccionados = new Set(u.itemsExtra||[]);
+  let seccionActual = null;
+  const extraGruposHtml = todosLosGruposConItems().map(({sec:s, group:g}) => {
+    const contId = 'up_extra_' + s.id + '_' + g.id;
+    const encabezadoSeccion = s.id !== seccionActual ? (seccionActual = s.id,
+      `<div style="font-weight:700;font-size:12px;margin-top:14px;margin-bottom:2px;color:var(--text-light);text-transform:uppercase;letter-spacing:.03em;">${s.label}</div>`) : '';
+    const itemsHtml = g.items.map(it => `
+      <label style="display:flex;gap:6px;align-items:flex-start;font-size:12px;padding:2px 0;">
+        <input type="checkbox" class="up-extra-chk" value="${it.id}" ${extraSeleccionados.has(it.id)?'checked':''} style="margin-top:2px;">
+        <span>${it.label}</span>
+      </label>`).join('');
+    return `${encabezadoSeccion}
+      <div style="margin-bottom:6px;">
+        <div style="font-size:11.5px;color:var(--text-light);margin-bottom:2px;">${g.label||'General'}</div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:0 14px;">${itemsHtml}</div>
+      </div>`;
+  }).join('');
+
+  return `
+    <div style="margin-bottom:14px;">
+      <a href="#" onclick="usuariosPermisosVolver();return false;" style="font-size:12.5px;color:var(--dorado);text-decoration:none;">&larr; Volver a la lista de usuarios</a>
+    </div>
+    <h3 style="margin:0 0 14px;font-size:16px;">${esNuevo ? 'Nuevo usuario' : u.nombre}</h3>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+      <div class="form-field"><label>Nombre completo</label><input type="text" id="up_nombre" value="${(u.nombre||'').replace(/"/g,'&quot;')}"></div>
+      <div class="form-field"><label>Cargo</label><input type="text" id="up_cargo" value="${(u.cargo||'').replace(/"/g,'&quot;')}"></div>
+      <div class="form-field"><label>Usuario (para entrar)</label><input type="text" id="up_usuario" value="${u.usuario||''}" autocapitalize="off"></div>
+      <div class="form-field"><label>Contraseña ${esNuevo?'':'(dejar vacío para no cambiarla)'}</label><input type="text" id="up_pass" placeholder="${esNuevo?'':'••••'}"></div>
+      <div class="form-field"><label>Sede</label><select id="up_sede">${sedeOptsFinal}</select></div>
+      <div class="form-field"><label>Área</label><select id="up_area">${areaOpts}</select></div>
+      <div class="form-field"><label>Nivel de acceso</label><select id="up_rol">${rolOpts}</select></div>
+      <div class="form-field"><label>Rol de puesto</label><select id="up_rolpuesto">${rolPuestoOpts}</select></div>
+    </div>
+    <div style="margin-top:10px;">
+      <label style="display:flex;align-items:center;gap:8px;font-size:13px;">
+        <input type="checkbox" id="up_activo" ${u.activo!==false?'checked':''}> Usuario activo (puede iniciar sesión)
+      </label>
+    </div>
+    <div class="form-section-title" style="margin-top:20px;">Tareas o áreas especiales para esta persona</div>
+    <p style="font-size:12px;color:var(--text-light);margin:2px 0 8px;">
+      Además de lo que ya le da su rol de puesto, esta persona también podrá ver lo que marques aquí.
+    </p>
+    <div style="border:1px solid var(--border);border-radius:10px;padding:10px 14px;max-height:340px;overflow:auto;">${extraGruposHtml}</div>
+    <div style="margin-top:16px;display:flex;gap:10px;align-items:center;">
+      <button class="btn-primary" style="width:auto;padding:11px 22px;" onclick="guardarUsuarioPermisos(${esNuevo ? 'null' : `'${usuarioId}'`})">Guardar usuario</button>
+      <div id="up_msg" style="flex:1;"></div>
+    </div>
+  `;
+}
+
+function guardarUsuarioPermisos(usuarioIdOriginal){
+  const nombre = document.getElementById('up_nombre').value.trim();
+  const cargo = document.getElementById('up_cargo').value.trim();
+  const usuarioNuevo = document.getElementById('up_usuario').value.trim().toLowerCase();
+  const pass = document.getElementById('up_pass').value.trim();
+  const sede = document.getElementById('up_sede').value;
+  const area = document.getElementById('up_area').value;
+  const rol = document.getElementById('up_rol').value;
+  const rolPuesto = document.getElementById('up_rolpuesto').value;
+  const activo = document.getElementById('up_activo').checked;
+  const itemsExtra = Array.from(document.querySelectorAll('.up-extra-chk:checked')).map(c=>c.value);
+
+  if(!nombre || !usuarioNuevo){
+    showMsg('up_msg', 'El nombre y el usuario son obligatorios.', 'rojo');
+    return;
+  }
+  const usuarios = DB.get('usuarios', []);
+  const duplicado = usuarios.find(x => x.usuario.toLowerCase() === usuarioNuevo && x.usuario !== usuarioIdOriginal);
+  if(duplicado){
+    showMsg('up_msg', 'Ya existe otro usuario con ese nombre de usuario.', 'rojo');
+    return;
+  }
+  if(!usuarioIdOriginal && !pass){
+    showMsg('up_msg', 'La contraseña es obligatoria para un usuario nuevo.', 'rojo');
+    return;
+  }
+
+  if(!usuarioIdOriginal){
+    usuarios.push({ usuario:usuarioNuevo, pass, nombre, cargo, sede, area, rol, rolPuesto, itemsExtra, activo });
+  } else {
+    const idx = usuarios.findIndex(x => x.usuario === usuarioIdOriginal);
+    if(idx === -1){ showMsg('up_msg', 'No se encontró el usuario original.', 'rojo'); return; }
+    const actual = usuarios[idx];
+    usuarios[idx] = { ...actual, usuario:usuarioNuevo, nombre, cargo, sede, area, rol, rolPuesto, itemsExtra, activo, pass: pass ? pass : actual.pass };
+  }
+  DB.set('usuarios', usuarios);
+
+  // Si el usuario editado es el que tiene la sesión abierta ahora mismo,
+  // refrescamos también SESSION para que los cambios apliquen sin relogin.
+  if(SESSION && (SESSION.usuario === usuarioIdOriginal || SESSION.usuario === usuarioNuevo)){
+    const actualizado = usuarios.find(x=>x.usuario===usuarioNuevo);
+    if(actualizado){
+      SESSION = { ...SESSION, usuario:actualizado.usuario, nombre:actualizado.nombre, cargo:actualizado.cargo, rol:actualizado.rol, area:actualizado.area, sede:actualizado.sede, rolPuesto:actualizado.rolPuesto||'', itemsExtra:actualizado.itemsExtra||[] };
+      DB.set('sesion_actual', SESSION);
+    }
+  }
+
+  usuariosPermisosVista = 'lista';
+  usuariosPermisosUsuarioActivo = null;
+  renderUsuariosPermisosBody();
+  renderSidebar();
 }
 
 /* ==================================================================
