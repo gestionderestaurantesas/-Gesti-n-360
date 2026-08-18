@@ -1136,7 +1136,7 @@ const NAV = [
       ]},
       { id:'cocina', label:'Cocina', icon:'chef', matchArea:'cocina', items:[
         { id:'chk_briefing_cocina', label:'Briefing de cocina', icon:'megaphone', area:'cocina', categoria:'briefing', roles:['empleado','administracion','gerencia'], customRender:'renderBriefingCocinaModule' },
-        { id:'chk_mise_cocina', label:'Mise en place de estaciones', icon:'chef', area:'cocina', categoria:'mise_en_place', roles:['empleado','administracion','gerencia'] },
+        { id:'chk_mise_cocina', label:'Mise en place de estaciones', icon:'chef', area:'cocina', categoria:'mise_en_place', roles:['empleado','administracion','gerencia'], customRender:'renderMiseCocinaModule' },
         { id:'chk_higiene', label:'Aseo de cocina', icon:'checklist', area:'cocina', categoria:'aseo', roles:['empleado','administracion','gerencia'] },
         { id:'chk_prueba_prep', label:'Prueba de preparaciones diarias', icon:'chef', area:'cocina', categoria:'prueba', roles:['empleado','administracion','gerencia'] },
         { id:'chk_alistamiento_steward', label:'Alistamiento de steward / lavado de platos', icon:'checklist', area:'cocina', categoria:'alistamiento', roles:['empleado','administracion','gerencia'], customRender:'renderAlistamientoAreaModule', contentKey:'steward' },
@@ -2814,6 +2814,268 @@ function guardarCierreArea(area){
   cierreAreaReady = null;
   showMsg('ca_msg','Cierre de área guardado correctamente.','verde');
   cierreAreaSetTab('checklist');
+}
+
+/* ==================================================================
+   MÓDULO MISE EN PLACE DE COCINA — checklist por estación (Parrilla,
+   Fritos, Armado/Cantador, Corrientes/Sopas/Mote, Pastas y Mariscos),
+   fiel al documento de checklists de estaciones de cocina de Córdova
+   Restaurante. Cada estación tiene sus propias secciones: Datos
+   generales, Tecnología, Insumos, Equipo y utensilios, Limpieza e
+   inocuidad y Cierre (con evidencia fotográfica). Colección: mise_cocina.
+   ================================================================== */
+const MISE_COCINA_PERSONAL = ['Michael','Maira','Iván','Isidoro','Hernando','Miguel','Adrián','Juan','David'];
+const MISE_COCINA_TURNOS = ['Mañana','Tarde','Noche'];
+const MISE_COCINA_TECNOLOGIA_COMUN = ['Conexión a internet estable y funcional en pantalla','Productos configurados en pantalla de la estación'];
+const MISE_COCINA_ESTACIONES = {
+  parrilla: {
+    label:'Parrilla',
+    tecnologia: MISE_COCINA_TECNOLOGIA_COMUN,
+    insumos: ['Disponibilidad de base del chef','Disponibilidad de salsa de carne','Disponibilidad de salsa BBQ','Disponibilidad de sal','Disponibilidad de sal gruesa','Disponibilidad de pimienta','Disponibilidad de tomillo'],
+    equipo: ['Disponibilidad de bandejas de apoyo','Disponibilidad de brocha','Disponibilidad de las 2 tablas requeridas','Disponibilidad de cuchillo','Disponibilidad de pinza de apoyo'],
+    limpieza: ['Estación limpia al iniciar','Parrilla limpia y lista para operar']
+  },
+  fritos: {
+    label:'Fritos',
+    tecnologia: MISE_COCINA_TECNOLOGIA_COMUN,
+    insumos: ['Disponibilidad de chicharrón','Disponibilidad de plátanos pelados','Disponibilidad de papas','Disponibilidad de tajadas para entrada','Disponibilidad de tajadas de yuca','Disponibilidad de aguacate','Disponibilidad de gastric','Disponibilidad de guacamole','Disponibilidad de ajo amarillo','Disponibilidad de ajo','Disponibilidad de galleta de parmesano','Disponibilidad de páprika'],
+    equipo: ['Disponibilidad de plato de entrada para chicharrón','Disponibilidad de plato de entrada para chorizo','Disponibilidad de plato para porciones','Disponibilidad de escurridores','Disponibilidad de cuchillo','Disponibilidad de utensilios de fritura'],
+    limpieza: ['Freidora lista y operativa','Freidora limpia y lista para operar','Estación limpia al iniciar','Superficies de trabajo limpias y desinfectadas','Estación ordenada y sin elementos ajenos']
+  },
+  armado: {
+    label:'Armado / Cantador',
+    tecnologia: MISE_COCINA_TECNOLOGIA_COMUN,
+    insumos: ['Disponibilidad de pechuga filete','Disponibilidad de medallón de cerdo','Disponibilidad de puré de papa','Disponibilidad de salsa de champiñones','Disponibilidad de salsa de maracuyá','Disponibilidad de salsa de tocineta','Disponibilidad de queso parmesano','Disponibilidad de decoración de tocineta','Disponibilidad de decoración de champiñones','Disponibilidad de decoración de maracuyá','Disponibilidad de romero','Disponibilidad de ajo para patacones'],
+    equipo: ['Disponibilidad de tablas','Disponibilidad de cuchillo','Disponibilidad de plato para porciones','Disponibilidad de platos para cerdos y pechugas','Disponibilidad de recipientes para puré','Disponibilidad de servilletas'],
+    limpieza: ['Samovares calientes listos para operar','Estación limpia al iniciar','Estación ordenada y sin elementos ajenos']
+  },
+  corrientes: {
+    label:'Corrientes / Sopas / Mote',
+    tecnologia: MISE_COCINA_TECNOLOGIA_COMUN,
+    insumos: ['Disponibilidad de sopas del día en samovar','Disponibilidad de arroz del día en samovar','Disponibilidad de mote de queso en samovar','Disponibilidad de yuca en samovar','Disponibilidad de tajadas para corriente y mote','Disponibilidad de queso frito','Disponibilidad de queso sin freír','Disponibilidad de berenjena frita','Disponibilidad de aguacate','Disponibilidad de cebolla encurtida','Disponibilidad de cebolla','Disponibilidad de piña','Disponibilidad de pepino encurtido','Disponibilidad de uvas pasas','Disponibilidad de lechuga','Disponibilidad de tocineta','Disponibilidad de filete de pechuga','Disponibilidad de limón'],
+    equipo: ['Disponibilidad de platos de corriente','Disponibilidad de platos de mote','Disponibilidad de plato de entrada para mote','Disponibilidad de bandeja de gratinada','Disponibilidad de recipientes para adicionales','Disponibilidad de pocillos porcionadores','Disponibilidad de cucharones','Disponibilidad de espátulas','Disponibilidad de cuchillo','Disponibilidad de tabla para picar'],
+    limpieza: ['Samovar caliente y listo para operar','Mesa de trabajo despejada','Estación limpia al iniciar']
+  },
+  pastas_mariscos: {
+    label:'Pastas y Mariscos',
+    tecnologia: MISE_COCINA_TECNOLOGIA_COMUN,
+    insumos: ['Disponibilidad de pastas','Disponibilidad de camarones','Disponibilidad de bisque','Disponibilidad de bechamel de coco','Disponibilidad de leche','Disponibilidad de crema de leche','Disponibilidad de queso mozzarella','Disponibilidad de parmesano','Disponibilidad de coco frito','Disponibilidad de coco blanco','Disponibilidad de vegetales para arroz de camarón','Disponibilidad de arroz blanco','Disponibilidad de pimentón','Disponibilidad de cebolla','Disponibilidad de cebolla en brunoise','Disponibilidad de ajo','Disponibilidad de guiso de la cazuela','Disponibilidad de guiso de lengua','Disponibilidad de agua de lengua','Disponibilidad de aguacate','Disponibilidad de pan','Disponibilidad de huevos','Disponibilidad de sal','Disponibilidad de pimienta'],
+    equipo: ['Disponibilidad de bandeja de filete','Disponibilidad de plato de cazuela','Disponibilidad de plato de arroz','Disponibilidad de plato de pasta','Disponibilidad de bandeja de lengua','Disponibilidad de cuchillo','Disponibilidad de tabla','Disponibilidad de bowl','Disponibilidad de batidor globo','Disponibilidad de espátulas','Disponibilidad de sartenes','Disponibilidad de cucharón para pastas'],
+    limpieza: ['Estación limpia al iniciar','Superficies de trabajo limpias y desinfectadas','Estación ordenada y sin elementos ajenos']
+  }
+};
+let miseCocinaLastRuta = '';
+let miseCocinaActiveEstacion = 'parrilla';
+let miseCocinaValues = {};
+let miseCocinaResponsable = '';
+let miseCocinaTurno = '';
+let miseCocinaInspector = '';
+let miseCocinaListo = null;
+let miseCocinaFotoData = null;
+
+function miseCocinaTotalItems(cfg){
+  return cfg.tecnologia.length + cfg.insumos.length + cfg.equipo.length + cfg.limpieza.length;
+}
+function renderMiseCocinaModule(sec, group, item, ruta){
+  if(ruta) miseCocinaLastRuta = ruta;
+  renderMiseCocinaBody();
+}
+function miseCocinaSetEstacion(estacion){
+  if(estacion !== miseCocinaActiveEstacion){
+    miseCocinaActiveEstacion = estacion;
+    miseCocinaValues = {};
+    miseCocinaResponsable = '';
+    miseCocinaTurno = '';
+    miseCocinaInspector = '';
+    miseCocinaListo = null;
+    miseCocinaFotoData = null;
+  }
+  renderMiseCocinaBody();
+}
+function miseCocinaSetValor(key, val, btnEl){
+  miseCocinaValues[key] = val;
+  const wrap = document.getElementById('mc_' + key);
+  if(wrap){
+    wrap.querySelectorAll('.yn-btn').forEach(b => b.classList.remove('active'));
+    if(btnEl) btnEl.classList.add('active');
+  }
+  miseCocinaUpdateProgress();
+}
+function miseCocinaSetListo(val){
+  miseCocinaListo = val;
+  const row = document.getElementById('mc_listoRow');
+  if(row) row.querySelectorAll('.yn-btn').forEach(b=>b.classList.remove('active'));
+  const btn = document.getElementById(val==='Sí' ? 'mc_listoYes' : 'mc_listoNo');
+  if(btn) btn.classList.add('active');
+}
+function miseCocinaUpdateProgress(){
+  const cfg = MISE_COCINA_ESTACIONES[miseCocinaActiveEstacion];
+  const total = miseCocinaTotalItems(cfg);
+  const answered = Object.keys(miseCocinaValues).length;
+  const pct = total ? Math.round((answered / total) * 100) : 0;
+  const circle = document.getElementById('mc_progressCircle');
+  if(circle) circle.style.background = `conic-gradient(var(--bronce) ${pct}%, var(--border) ${pct}%)`;
+  const txt = document.getElementById('mc_progressPct');
+  if(txt) txt.textContent = pct + '%';
+}
+function onFotoMiseCocinaChange(input){
+  miseCocinaFotoData = null;
+  const preview = document.getElementById('mc_fotoPreview');
+  const file = input.files && input.files[0];
+  if(!file){ if(preview) preview.innerHTML=''; return; }
+  if(preview) preview.innerHTML = '<span style="font-size:11px;color:var(--text-light);">Procesando foto...</span>';
+  const reader = new FileReader();
+  reader.onload = e => {
+    const img = new Image();
+    img.onload = () => {
+      const maxW = 480;
+      const scale = Math.min(1, maxW / img.width);
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.max(1, Math.round(img.width * scale));
+      canvas.height = Math.max(1, Math.round(img.height * scale));
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      miseCocinaFotoData = canvas.toDataURL('image/jpeg', 0.6);
+      if(preview) preview.innerHTML = '<img src="'+miseCocinaFotoData+'" style="max-width:110px;border-radius:6px;border:1px solid var(--border);display:block;">';
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+function miseCocinaSeccionHtml(titulo, items, prefijo, si, no){
+  const filas = items.map((label, idx) => {
+    const key = prefijo + '_' + idx;
+    return `<div class="check-row3">
+      <span>${label}</span>
+      <div class="toggle-yn" id="mc_${key}">
+        <button type="button" class="yn-btn yes" onclick="miseCocinaSetValor('${key}','${si}',this)">${si}</button>
+        <button type="button" class="yn-btn no" onclick="miseCocinaSetValor('${key}','${no}',this)">${no}</button>
+      </div>
+    </div>`;
+  }).join('');
+  return `<div class="form-section-title">${titulo}</div>${filas}`;
+}
+function miseCocinaDatosGeneralesHtml(){
+  const personalOptions = MISE_COCINA_PERSONAL.map(p=>`<option value="${p}" ${miseCocinaResponsable===p?'selected':''}>${p}</option>`).join('');
+  const turnoOptions = MISE_COCINA_TURNOS.map(t=>`<option value="${t}" ${miseCocinaTurno===t?'selected':''}>${t}</option>`).join('');
+  return `
+    <div class="form-section-title" style="margin-top:0;">📋 Datos generales</div>
+    <div class="form-field"><label>Responsable de la estación <span class="req-star">*</span></label>
+      <select id="mc_responsable" onchange="miseCocinaResponsable=this.value;">
+        <option value="">Selecciona...</option>${personalOptions}
+      </select>
+    </div>
+    <div class="form-field"><label>Turno <span class="req-star">*</span></label>
+      <select id="mc_turno" onchange="miseCocinaTurno=this.value;">
+        <option value="">Selecciona...</option>${turnoOptions}
+      </select>
+    </div>
+    <div class="form-field"><label>Inspector / quien hace la inspección</label>
+      <input id="mc_inspector" value="${miseCocinaInspector || SESSION.nombre}" oninput="miseCocinaInspector=this.value;">
+    </div>
+  `;
+}
+function renderMiseCocinaBody(){
+  const sec = NAV.find(s=>s.id==='checklists');
+  const cfg = MISE_COCINA_ESTACIONES[miseCocinaActiveEstacion];
+  const estacionesTabs = Object.keys(MISE_COCINA_ESTACIONES).map(k=>
+    `<button class="tab-btn ${k===miseCocinaActiveEstacion?'active':''}" onclick="miseCocinaSetEstacion('${k}')">${ic('chef',14)}${MISE_COCINA_ESTACIONES[k].label}</button>`
+  ).join('');
+
+  const tecHtml = miseCocinaSeccionHtml('📡 Tecnología', cfg.tecnologia, 'tec', 'Sí', 'No');
+  const insHtml = miseCocinaSeccionHtml('🧂 Insumos', cfg.insumos, 'ins', 'Sí', 'No');
+  const eqHtml = miseCocinaSeccionHtml('🔧 Equipo y utensilios', cfg.equipo, 'eq', 'Sí', 'No');
+  const limHtml = miseCocinaSeccionHtml('🧼 Limpieza e inocuidad', cfg.limpieza, 'lim', 'Cumple', 'No cumple');
+
+  const historial = filtrarPorSede(DB.get('mise_cocina', [])).filter(h => h.estacion === miseCocinaActiveEstacion).slice(-8).reverse();
+  const historialHtml = historial.length ? `
+    <table class="mini-table">
+      <thead><tr><th>Fecha</th><th>Turno</th><th>Responsable</th><th>Inspector</th><th>Ítems ok</th><th>Lista</th></tr></thead>
+      <tbody>${historial.map(h => `<tr>
+        <td>${h.fecha} ${h.hora}</td><td>${h.turno||'-'}</td><td>${h.responsable||'-'}</td><td>${h.inspector||'-'}</td>
+        <td>${h.itemsOk}/${h.itemsTotal}</td>
+        <td>${h.listo ? '<span class="badge badge-verde">Sí</span>' : '<span class="badge badge-rojo">No</span>'}</td>
+      </tr>`).join('')}</tbody>
+    </table>` : `<p style="color:var(--text-light);font-size:13px;">Todavía no hay checklists registrados en esta estación.</p>`;
+
+  const html = `
+    <div class="panel">
+      <div class="panel-header">
+        <div class="icon-circle" style="background:${hexToRgba(sec.color,0.14)}; color:${sec.color};">${ic('chef',21)}</div>
+        <div><h2>Mise en place de cocina</h2><div class="path">${miseCocinaLastRuta}</div></div>
+      </div>
+      <div class="tabs" style="margin-bottom:18px;">${estacionesTabs}</div>
+      <div class="compact-form">
+        <div class="progress-box2">
+          <div class="progress-circle" id="mc_progressCircle" style="background:conic-gradient(var(--bronce) 0%, var(--border) 0%);"><span id="mc_progressPct">0%</span></div>
+          <div class="progress-legend">Progreso del checklist — ${cfg.label}<br>Responde los ${miseCocinaTotalItems(cfg)} puntos para llegar al 100%.</div>
+        </div>
+        ${miseCocinaDatosGeneralesHtml()}
+        ${tecHtml}
+        ${insHtml}
+        ${eqHtml}
+        ${limHtml}
+        <div class="form-section-title">✅ Cierre</div>
+        <div class="form-field">
+          <label>Estado del check — ¿Estación lista para operar? <span class="req-star">*</span></label>
+          <div class="toggle-yn" id="mc_listoRow" style="margin-top:5px;">
+            <button type="button" class="yn-btn yes" id="mc_listoYes" onclick="miseCocinaSetListo('Sí')">Sí</button>
+            <button type="button" class="yn-btn no" id="mc_listoNo" onclick="miseCocinaSetListo('No')">No</button>
+          </div>
+        </div>
+        <div class="form-field" style="margin-top:8px;">
+          <label>Observaciones</label>
+          <textarea id="mc_observaciones" rows="2" maxlength="500" placeholder="Opcional"></textarea>
+        </div>
+        <div class="form-field" style="margin-top:8px;">
+          <label>Evidencia fotográfica</label>
+          <input type="file" id="mc_foto" accept="image/*" onchange="onFotoMiseCocinaChange(this)">
+          <div id="mc_fotoPreview" style="margin-top:6px;"></div>
+        </div>
+      </div>
+      <button class="btn-primary" style="width:auto;padding:11px 22px;margin-top:14px;" onclick="guardarMiseCocina()">Completar checklist</button>
+      <div id="mc_msg"></div>
+      <h3 style="margin:24px 0 10px;font-size:15px;">Historial — ${cfg.label}</h3>
+      ${historialHtml}
+    </div>`;
+  document.getElementById('content').innerHTML = html;
+  if(window.innerWidth <= 820) document.getElementById('sidebar').classList.remove('open');
+}
+function guardarMiseCocina(){
+  const cfg = MISE_COCINA_ESTACIONES[miseCocinaActiveEstacion];
+  const responsable = document.getElementById('mc_responsable').value;
+  const turno = document.getElementById('mc_turno').value;
+  const inspector = document.getElementById('mc_inspector').value.trim();
+  const observaciones = document.getElementById('mc_observaciones').value.trim();
+
+  if(!responsable){ showMsg('mc_msg','Selecciona el responsable de la estación.','rojo'); return; }
+  if(!turno){ showMsg('mc_msg','Selecciona el turno.','rojo'); return; }
+  if(!miseCocinaListo){ showMsg('mc_msg','Indica si la estación queda lista para operar.','rojo'); return; }
+
+  const armarItems = (arr, prefijo) => arr.map((label, idx) => ({ label, val: miseCocinaValues[prefijo + '_' + idx] || null }));
+  const tecnologia = armarItems(cfg.tecnologia, 'tec');
+  const insumos = armarItems(cfg.insumos, 'ins');
+  const equipo = armarItems(cfg.equipo, 'eq');
+  const limpieza = armarItems(cfg.limpieza, 'lim');
+  const todosItems = [...tecnologia, ...insumos, ...equipo, ...limpieza];
+  const itemsOk = todosItems.filter(i => i.val === 'Sí' || i.val === 'Cumple').length;
+
+  const registro = {
+    estacion: miseCocinaActiveEstacion, estacionLabel: cfg.label,
+    sede: sedeParaGuardar(), usuario: SESSION.usuario, nombre: SESSION.nombre,
+    fecha: hoyStr(), hora: horaStr(),
+    responsable, turno, inspector,
+    tecnologia, insumos, equipo, limpieza,
+    itemsOk, itemsTotal: todosItems.length,
+    listo: miseCocinaListo === 'Sí',
+    observaciones,
+    foto: miseCocinaFotoData
+  };
+  DB.push('mise_cocina', registro);
+  miseCocinaValues = {};
+  miseCocinaResponsable = ''; miseCocinaTurno = ''; miseCocinaInspector = ''; miseCocinaListo = null; miseCocinaFotoData = null;
+  showMsg('mc_msg','Checklist guardado correctamente.','verde');
+  renderMiseCocinaBody();
 }
 
 /* ==================================================================
