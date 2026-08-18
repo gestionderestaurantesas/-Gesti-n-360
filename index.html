@@ -1031,7 +1031,7 @@ const ROLES_PERMISOS_SEED = {
   lider_cocina: ['chk_briefing_cocina','chk_mise_cocina_parrilla','chk_mise_cocina_fritos','chk_mise_cocina_armado','chk_mise_cocina_corrientes','chk_mise_cocina_pastas','chk_higiene','chk_prueba_prep','chk_alistamiento_steward','chk_cierre_cocina','chk_cierre_steward','coc_comida_personal','coc_ordenes','coc_bajas','coc_mejora','rep_indicadores','rep_incidencias','rep_sucesos_area','rep_analisis','ast_chat'],
   aux_compras: ['cf_compras','cf_proveedores','cf_pagos','mant_proveedores','mant_contratacion','ast_chat'],
   inspector: ['chk_alistamiento','chk_cierre_caja','chk_briefing','chk_mise_servicio','chk_aseo_salon','chk_cierre_servicio','chk_briefing_cocina','chk_mise_cocina_parrilla','chk_mise_cocina_fritos','chk_mise_cocina_armado','chk_mise_cocina_corrientes','chk_mise_cocina_pastas','chk_higiene','chk_prueba_prep','chk_alistamiento_steward','chk_cierre_cocina','chk_cierre_steward','chk_briefing_bar','chk_mise_bar','chk_aseo_bar','chk_cierre_bar','chk_aseo_cp','chk_aseo_periferica','chk_aseo_banos_internos','chk_aseo_banos_publicos','chk_aseo_traperos','rep_hallazgos','rep_ocurrencias','rep_incidencias','rep_sucesos_area','rep_historial','ast_chat'],
-  gerente_operativa: ['chk_alistamiento','chk_cierre_caja','chk_briefing','chk_mise_servicio','chk_aseo_salon','chk_cierre_servicio','chk_briefing_cocina','chk_mise_cocina_parrilla','chk_mise_cocina_fritos','chk_mise_cocina_armado','chk_mise_cocina_corrientes','chk_mise_cocina_pastas','chk_higiene','chk_prueba_prep','chk_alistamiento_steward','chk_cierre_cocina','chk_cierre_steward','chk_briefing_bar','chk_mise_bar','chk_aseo_bar','chk_cierre_bar','chk_aseo_cp','chk_aseo_periferica','chk_aseo_banos_internos','chk_aseo_banos_publicos','chk_aseo_traperos','cf_caja','cf_inventarios','sc_comprobantes','sc_reservas','sc_encuesta','coc_comida_personal','coc_ordenes','coc_bajas','coc_mejora','bar_inventario','bar_produccion','bar_insumos','bar_ventas','cp_inventario','cp_ordenes','cp_recibo','cp_despacho','mant_preventivo','mant_correctivo','mant_fallas','mant_solicitudes','mant_seguimiento','mant_historial','ger_reporte_ventas360','ger_kpis','ger_pendientes','ger_alertas','ger_cumplimiento','rep_indicadores','rep_bajas','rep_incidencias','rep_sucesos_area','rep_ventas_bar','rep_ocurrencias','rep_hallazgos','rep_historial','rep_analisis','rep_fotos','ast_chat'],
+  gerente_operativa: ['chk_alistamiento','chk_cierre_caja','chk_briefing','chk_mise_servicio','chk_aseo_salon','chk_cierre_servicio','chk_briefing_cocina','chk_mise_cocina_parrilla','chk_mise_cocina_fritos','chk_mise_cocina_armado','chk_mise_cocina_corrientes','chk_mise_cocina_pastas','chk_higiene','chk_prueba_prep','chk_alistamiento_steward','chk_cierre_cocina','chk_cierre_steward','chk_briefing_bar','chk_mise_bar','chk_aseo_bar','chk_cierre_bar','chk_aseo_cp','chk_aseo_periferica','chk_aseo_banos_internos','chk_aseo_banos_publicos','chk_aseo_traperos','cf_caja','cf_inventarios','sc_comprobantes','sc_reservas','sc_encuesta','coc_comida_personal','coc_ordenes','coc_bajas','coc_mejora','bar_inventario','bar_produccion','bar_insumos','bar_ventas','cp_inventario','cp_ordenes','cp_recibo','cp_despacho','mant_preventivo','mant_correctivo','mant_fallas','mant_solicitudes','mant_seguimiento','mant_historial','ger_reporte_ventas360','ger_kpis','ger_pendientes','ger_alertas','ger_cumplimiento','rep_indicadores','rep_bajas','rep_incidencias','rep_sucesos_area','rep_ventas_bar','rep_ocurrencias','rep_hallazgos','rep_historial','rep_analisis','rep_fotos','ast_chat','ger_incumplimientos'],
   gerente_financiera: ['chk_alistamiento','chk_cierre_caja','cf_caja','cf_inventarios','cf_compras','cf_talento','cf_proveedores','cf_propina','cf_horarios','cf_prevision','cf_pagos','ger_reporte_caja','ger_reporte_inventario','rep_indicadores','rep_analisis','cfg_parametros','ast_chat'],
   otros: []
 };
@@ -1326,7 +1326,8 @@ const NAV = [
         { id:'ger_kpis', label:'KPIs', icon:'target', roles:['gerencia'] },
         { id:'ger_pendientes', label:'Pendientes críticos', icon:'flag', roles:['gerencia'] },
         { id:'ger_alertas', label:'Alertas', icon:'bell', roles:['gerencia'] },
-        { id:'ger_cumplimiento', label:'Cumplimiento por área', icon:'check', roles:['gerencia'] }
+        { id:'ger_cumplimiento', label:'Cumplimiento por área', icon:'check', roles:['gerencia'] },
+        { id:'ger_incumplimientos', label:'Incumplimientos y sanciones', icon:'shield', roles:['gerencia'], customRender:'renderIncumplimientosModule' }
       ]},
       { id:'reportes', label:'Reportes', matchArea:null, items:[
         { id:'rep_indicadores', label:'Indicadores generales', icon:'chart', roles:['administracion','gerencia'] },
@@ -3978,6 +3979,267 @@ function renderAsistenteModule(sec, group, item, ruta){
   if(ruta) asistenteLastRuta = ruta;
   asistenteVistaActual = 'standalone';
   renderAsistenteBody();
+}
+
+/* ============================================================
+   INCUMPLIMIENTOS Y ESCRITOS DE SANCIÓN (solo Gerencia)
+   ------------------------------------------------------------
+   Cruza los checklists que ya existen en la app (apertura de
+   caja, cierres de área, alistamientos de área, briefings y
+   mise en place de cocina) contra una fecha elegida, para
+   detectar cuáles no se completaron. Gerencia revisa la lista y
+   decide, caso por caso, si genera un escrito — nada se genera
+   ni se envía de forma automática: la app solo ayuda a redactar
+   y a dejar constancia, la decisión y la firma son de una
+   persona, respetando el debido proceso.
+   ============================================================ */
+
+const INCUMPLIMIENTOS_DEFINICIONES = [
+  { id:'apertura_caja', label:'Apertura de caja', tipo:'area_listo', coleccion:'caja_apertura', area:null,
+    motivoFaltante:'No se registró la apertura de caja ese día.' },
+  { id:'cierre_contabilidad', label:'Cierre de área — Caja / Contabilidad', tipo:'area_listo', coleccion:'cierres_area', area:'contabilidad',
+    motivoFaltante:'No se registró el cierre de caja / contabilidad ese día.' },
+  { id:'cierre_servicio', label:'Cierre de área — Servicio al cliente', tipo:'area_listo', coleccion:'cierres_area', area:'servicio_cliente',
+    motivoFaltante:'No se registró el cierre de servicio al cliente ese día.' },
+  { id:'cierre_cocina', label:'Cierre de área — Cocina', tipo:'area_listo', coleccion:'cierres_area', area:'cocina',
+    motivoFaltante:'No se registró el cierre de cocina ese día.' },
+  { id:'cierre_bar', label:'Cierre de área — Bar', tipo:'area_listo', coleccion:'cierres_area', area:'bar',
+    motivoFaltante:'No se registró el cierre de bar ese día.' },
+  { id:'cierre_steward', label:'Cierre de área — Steward', tipo:'area_listo', coleccion:'cierres_area', area:'steward',
+    motivoFaltante:'No se registró el cierre de steward ese día.' },
+  { id:'alistamiento_servicio', label:'Alistamiento — Servicio al cliente', tipo:'area_listo', coleccion:'alistamientos_area', area:'servicio_cliente',
+    motivoFaltante:'No se registró el alistamiento de servicio al cliente ese día.' },
+  { id:'alistamiento_bar', label:'Alistamiento — Bar', tipo:'area_listo', coleccion:'alistamientos_area', area:'bar',
+    motivoFaltante:'No se registró el alistamiento de bar ese día.' },
+  { id:'alistamiento_steward', label:'Alistamiento — Steward', tipo:'area_listo', coleccion:'alistamientos_area', area:'steward',
+    motivoFaltante:'No se registró el alistamiento de steward ese día.' },
+  { id:'briefing_cocina', label:'Briefing de cocina', tipo:'existencia', coleccion:'briefing_cocina',
+    motivoFaltante:'No se registró el briefing de cocina ese día.' },
+  { id:'briefing_servicio', label:'Briefing de servicio al cliente', tipo:'existencia', coleccion:'briefing_servicio',
+    motivoFaltante:'No se registró el briefing de servicio al cliente ese día.' },
+  // Mise en place de cocina: una definición por estación y por checkpoint
+  // (11:30 a.m. y 6:00 p.m.), reutilizando MISE_COCINA_ESTACIONES y
+  // MISE_COCINA_ALARMA_HORARIOS que ya usa la alarma en vivo del módulo.
+  ...Object.keys(MISE_COCINA_ESTACIONES).flatMap(estKey =>
+    MISE_COCINA_ALARMA_HORARIOS.map((horario, idx) => ({
+      id: 'mise_' + estKey + '_' + idx,
+      label: 'Mise en place — ' + MISE_COCINA_ESTACIONES[estKey].label + ' (checkpoint ' + horario.label + ')',
+      tipo: 'mise_cocina', estacion: estKey, checkpointMin: horario.minutos, checkpointLabel: horario.label,
+      motivoFaltante: 'No se registró la mise en place de ' + MISE_COCINA_ESTACIONES[estKey].label + ' antes del checkpoint de las ' + horario.label + '.'
+    }))
+  )
+];
+
+// Busca, dentro de una colección, el último registro de esa fecha (y de
+// la sede actual, cuando el registro trae sede) que además cumpla un
+// filtro opcional. "Último" se decide por creadoEn (el timestamp real
+// que agrega DB.push), no por el campo "hora" (que es solo un texto).
+function incumplimientosUltimoRegistro(coleccion, fecha, filtro){
+  const sede = sedeParaGuardar();
+  const arr = DB.get(coleccion, []).filter(r =>
+    r && r.fecha === fecha && (!sede || !r.sede || r.sede === sede) && (!filtro || filtro(r))
+  );
+  if(!arr.length) return null;
+  arr.sort((a,b) => String(a.creadoEn||'').localeCompare(String(b.creadoEn||'')));
+  return arr[arr.length - 1];
+}
+
+// Evalúa las INCUMPLIMIENTOS_DEFINICIONES para una fecha puntual y
+// regresa un arreglo con el resultado de cada una: si se cumplió, quién
+// aparece como responsable (cuando el registro lo trae) y el motivo del
+// incumplimiento cuando aplica.
+function incumplimientosDetectarDia(fecha){
+  return INCUMPLIMIENTOS_DEFINICIONES.map(def => {
+    if(def.tipo === 'mise_cocina'){
+      const registros = DB.get('mise_cocina', []).filter(r => r && r.estacion === def.estacion && r.fecha === fecha);
+      const desdeMin = Math.max(0, def.checkpointMin - 240);
+      const reg = registros.find(r => r.horaMinutos == null || (r.horaMinutos >= desdeMin && r.horaMinutos <= def.checkpointMin));
+      return {
+        defId: def.id, label: def.label, cumplido: !!reg,
+        responsable: reg ? (reg.responsable || reg.nombre || '') : '',
+        hora: reg ? reg.hora : '',
+        motivo: reg ? '' : def.motivoFaltante
+      };
+    }
+    if(def.tipo === 'existencia'){
+      const reg = incumplimientosUltimoRegistro(def.coleccion, fecha, null);
+      return {
+        defId: def.id, label: def.label, cumplido: !!reg,
+        responsable: reg ? (reg.creadoPor || '') : '',
+        hora: reg && reg.creadoEn ? new Date(reg.creadoEn).toLocaleTimeString('es-CO', {hour:'2-digit', minute:'2-digit'}) : '',
+        motivo: reg ? '' : def.motivoFaltante
+      };
+    }
+    // area_listo (apertura de caja, cierres de área, alistamientos de área)
+    const reg = incumplimientosUltimoRegistro(def.coleccion, fecha, r => !def.area || r.area === def.area);
+    const cumplido = !!(reg && (reg.listo === true || reg.listo === 'Sí' || reg.listo === 'Cumple'));
+    return {
+      defId: def.id, label: def.label, cumplido,
+      responsable: reg ? (reg.responsable || reg.nombre || reg.usuario || '') : '',
+      hora: reg ? reg.hora : '',
+      motivo: !reg ? def.motivoFaltante : (cumplido ? '' : 'Se registró, pero quedó sin marcar como completado ("listo").')
+    };
+  });
+}
+
+let incumplimientosFecha = hoyStr();
+let incumplimientosLastRuta = 'Incumplimientos y sanciones';
+let incumplimientosCartaActual = null; // {defId, label, motivo, fecha, empleado, cargo, texto}
+
+function incumplimientosSetFecha(v){
+  incumplimientosFecha = v || hoyStr();
+  incumplimientosCartaActual = null;
+  renderIncumplimientosModule(null, null, null, incumplimientosLastRuta);
+}
+
+function incumplimientosAbrirCarta(defId){
+  const resultados = incumplimientosDetectarDia(incumplimientosFecha);
+  const r = resultados.find(x => x.defId === defId);
+  if(!r) return;
+  incumplimientosCartaActual = {
+    defId: r.defId, label: r.label, motivo: r.motivo, fecha: incumplimientosFecha,
+    empleado: r.responsable || '', cargo: '',
+    texto: incumplimientosTextoBase(r)
+  };
+  renderIncumplimientosModule(null, null, null, incumplimientosLastRuta);
+}
+
+function incumplimientosCerrarCarta(){
+  incumplimientosCartaActual = null;
+  renderIncumplimientosModule(null, null, null, incumplimientosLastRuta);
+}
+
+// Arma el texto inicial del llamado de atención — gerencia puede editarlo
+// libremente antes de imprimirlo, así que esto es solo un punto de
+// partida, no un documento final generado sin revisión.
+function incumplimientosTextoBase(r){
+  return `Por medio del presente escrito se deja constancia de que el día ${incumplimientosFecha}, en la sede ${SESSION.sede || ''}, no se dio cumplimiento a: ${r.label}.
+
+${r.motivo}
+
+Esta tarea hace parte de los protocolos internos de operación de Restaurante Córdova. Se hace un llamado de atención formal al respecto y se solicita tomar las medidas necesarias para que la situación no se repita. La reincidencia en el incumplimiento de los protocolos de la empresa podrá dar lugar a las medidas contempladas en el Reglamento Interno de Trabajo.`;
+}
+
+function incumplimientosActualizarCampo(campo, valor){
+  if(!incumplimientosCartaActual) return;
+  incumplimientosCartaActual[campo] = valor;
+}
+
+function incumplimientosGuardarSancion(){
+  if(!incumplimientosCartaActual) return;
+  const texto = (document.getElementById('incump_texto') || {}).value || incumplimientosCartaActual.texto;
+  const empleado = (document.getElementById('incump_empleado') || {}).value || incumplimientosCartaActual.empleado;
+  const cargo = (document.getElementById('incump_cargo') || {}).value || incumplimientosCartaActual.cargo;
+  incumplimientosCartaActual.texto = texto;
+  incumplimientosCartaActual.empleado = empleado;
+  incumplimientosCartaActual.cargo = cargo;
+  DB.push('sanciones_generadas', {
+    defId: incumplimientosCartaActual.defId, label: incumplimientosCartaActual.label,
+    fechaIncumplimiento: incumplimientosCartaActual.fecha, sede: SESSION.sede,
+    empleado, cargo, texto,
+    generadoPor: SESSION.nombre, generadoPorUsuario: SESSION.usuario
+  });
+  const msg = document.getElementById('incump_msg');
+  if(msg) msg.textContent = 'Escrito guardado en el historial. Ya puedes imprimirlo.';
+}
+
+function renderIncumplimientosModule(sec, group, item, ruta){
+  if(ruta) incumplimientosLastRuta = ruta;
+  renderIncumplimientosBody();
+}
+
+function incumplimientosBadgeHtml(r){
+  return r.cumplido
+    ? `<span style="display:inline-block;padding:3px 10px;border-radius:999px;background:#DFF3E3;color:#1E7B3C;font-size:11px;font-weight:600;">Cumplido</span>`
+    : `<span style="display:inline-block;padding:3px 10px;border-radius:999px;background:#FBE3E1;color:#B7423A;font-size:11px;font-weight:600;">Incumplido</span>`;
+}
+
+function incumplimientosListaHtml(){
+  const resultados = incumplimientosDetectarDia(incumplimientosFecha);
+  const faltantes = resultados.filter(r => !r.cumplido);
+  const filas = resultados.map(r => `
+    <tr>
+      <td>${r.label}</td>
+      <td>${incumplimientosBadgeHtml(r)}</td>
+      <td>${(r.responsable || '—')}</td>
+      <td>${(r.hora || '—')}</td>
+      <td>${!r.cumplido ? `<button type="button" style="padding:5px 12px;font-size:12px;border-radius:8px;border:1px solid var(--border);background:var(--white);color:var(--text);cursor:pointer;" onclick="incumplimientosAbrirCarta('${r.defId}')">Generar escrito</button>` : ''}</td>
+    </tr>
+  `).join('');
+
+  return `
+    <div style="display:flex;align-items:flex-end;gap:14px;flex-wrap:wrap;margin-bottom:14px;">
+      <div class="form-field" style="max-width:200px;">
+        <label>Fecha a revisar</label>
+        <input type="date" value="${incumplimientosFecha}" onchange="incumplimientosSetFecha(this.value)">
+      </div>
+      <div style="font-size:12.5px;color:var(--text-light);">
+        ${faltantes.length ? `${faltantes.length} checklist(s) sin completar ese día.` : 'Todos los checklists de este día quedaron completos. ✓'}
+      </div>
+    </div>
+    <table class="mini-table" style="width:100%;">
+      <thead><tr><th>Checklist</th><th>Estado</th><th>Responsable</th><th>Hora</th><th></th></tr></thead>
+      <tbody>${filas}</tbody>
+    </table>
+    <p style="font-size:11.5px;color:var(--text-light);margin-top:14px;">
+      Este panel compara la fecha elegida contra los registros ya guardados de apertura de caja, cierres de área, alistamientos, briefings y mise en place de cocina. No genera ni envía nada automáticamente — cada escrito se genera solo cuando gerencia lo decide y lo revisa.
+    </p>
+  `;
+}
+
+function incumplimientosCartaHtml(){
+  const c = incumplimientosCartaActual;
+  if(!c) return '';
+  return `
+    <div id="incump_carta_area" style="margin-top:22px;border-top:1px solid var(--border);padding-top:18px;">
+      <div class="no-print" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:10px;">
+        <h3 style="margin:0;">Escrito: ${c.label}</h3>
+        <div style="display:flex;gap:8px;">
+          <button type="button" style="padding:7px 14px;font-size:12px;border-radius:8px;border:1px solid var(--border);background:var(--white);color:var(--text);cursor:pointer;" onclick="incumplimientosCerrarCarta()">Cerrar sin guardar</button>
+          <button type="button" class="btn-primary" style="width:auto;padding:7px 16px;font-size:12px;" onclick="incumplimientosGuardarSancion()">Guardar en historial</button>
+          <button type="button" class="btn-primary" style="width:auto;padding:7px 16px;font-size:12px;" onclick="window.print()">🖨 Imprimir</button>
+        </div>
+      </div>
+      <div class="no-print form-grid" style="margin-bottom:10px;">
+        <div class="form-field"><label>Empleado responsable</label><input id="incump_empleado" type="text" value="${(c.empleado||'').replace(/"/g,'&quot;')}" placeholder="Nombre del empleado" oninput="incumplimientosActualizarCampo('empleado', this.value); document.getElementById('incump_para_preview').textContent = this.value + (document.getElementById('incump_cargo').value ? ' — ' + document.getElementById('incump_cargo').value : '');"></div>
+        <div class="form-field"><label>Cargo</label><input id="incump_cargo" type="text" value="${(c.cargo||'').replace(/"/g,'&quot;')}" placeholder="Ej: Mesero, Cocinero..." oninput="incumplimientosActualizarCampo('cargo', this.value); document.getElementById('incump_para_preview').textContent = document.getElementById('incump_empleado').value + (this.value ? ' — ' + this.value : '');"></div>
+      </div>
+      <div style="border:1px solid var(--border);border-radius:10px;padding:20px;background:var(--white);">
+        <p style="text-align:right;font-size:12px;color:var(--text-light);margin-top:0;">Sede ${SESSION.sede || ''} — ${c.fecha}</p>
+        <h2 style="text-align:center;font-size:16px;letter-spacing:.5px;margin-bottom:18px;">LLAMADO DE ATENCIÓN ESCRITO</h2>
+        <p style="font-size:12.5px;"><strong>Para:</strong> <span id="incump_para_preview">${(c.empleado || '________________________')}${c.cargo ? ' — ' + c.cargo : ''}</span></p>
+        <p style="font-size:12.5px;"><strong>De:</strong> ${SESSION.nombre || 'Gerencia'} — Gerencia Restaurante Córdova</p>
+        <p style="font-size:12.5px;margin-bottom:14px;"><strong>Asunto:</strong> ${c.label}</p>
+        <div class="form-field" style="margin-bottom:0;">
+          <textarea id="incump_texto" rows="10" style="width:100%;font-size:12.5px;line-height:1.55;" oninput="incumplimientosActualizarCampo('texto', this.value)">${c.texto}</textarea>
+        </div>
+        <div style="display:flex;justify-content:space-between;margin-top:50px;">
+          <div style="text-align:center;width:45%;border-top:1px solid #999;padding-top:6px;font-size:11.5px;">Firma del empleado</div>
+          <div style="text-align:center;width:45%;border-top:1px solid #999;padding-top:6px;font-size:11.5px;">Firma de Gerencia</div>
+        </div>
+      </div>
+      <p class="no-print" style="font-size:11px;color:var(--text-light);margin-top:12px;">
+        Este es un formato interno de llamado de atención, pensado como punto de partida editable. Para sanciones con efecto legal (suspensión, descuento, terminación del contrato) verifica que el procedimiento cumpla con el Reglamento Interno de Trabajo y la legislación laboral colombiana vigente — este texto no reemplaza asesoría legal.
+      </p>
+      <div id="incump_msg" class="no-print" style="font-size:12px;color:#1E7B3C;margin-top:6px;"></div>
+    </div>
+  `;
+}
+
+function renderIncumplimientosBody(){
+  const html = `<div class="panel">
+    <div class="panel-header">
+      <div class="icon-circle" style="background:${hexToRgba('#8A6D1F',0.14)};color:#8A6D1F;">${ic('shield',21)}</div>
+      <div>
+        <h2>Incumplimientos y sanciones</h2>
+        ${incumplimientosLastRuta ? `<div class="path">${incumplimientosLastRuta}</div>` : ''}
+      </div>
+    </div>
+    <div class="no-print">${incumplimientosListaHtml()}</div>
+    ${incumplimientosCartaHtml()}
+  </div>`;
+  document.getElementById('content').innerHTML = html;
+  if(window.innerWidth <= 820) document.getElementById('sidebar').classList.remove('open');
 }
 
 const ASISTENTE_SUGERENCIAS = [
