@@ -7089,6 +7089,53 @@ function pagosClaveAutoItem(it, loteTitulo){
   return 'b:' + compraNormalizar(it.proveedor) + '|' + compraNormalizar(loteTitulo || '') + '|' + (it.valorTotal || 0);
 }
 
+// Extrae la fecha "hasta" (fin del rango) de un título de bloque como
+// "PAGOS PENDIENTES A PROVEEDORES DEL 11 AL 17 DE MAYO 2026 ..." — el
+// número que sigue a "AL" siempre cae en el mes/año que dice el título,
+// incluso cuando el primer número (el de "DEL") pertenece al mes anterior
+// (ej. "31 AL 04 DE ENERO" empieza en diciembre pero termina en enero).
+// Se usa para poder marcar en lote como pagados los pagos de semanas
+// anteriores a una fecha de corte.
+const PAGOS_MESES = { enero:1, febrero:2, marzo:3, abril:4, mayo:5, junio:6, julio:7, agosto:8, septiembre:9, setiembre:9, octubre:10, noviembre:11, diciembre:12 };
+function pagosExtraerFechaHasta(titulo){
+  const t = pagosNormalizarTexto(titulo);
+  const m = t.match(/al\s+(\d{1,2})\s+de\s+([a-záéíóúñ]+)\s+(?:de\s+)?(\d{4})/i);
+  if(!m) return null;
+  const dia = m[1].padStart(2, '0');
+  const mesTxt = compraNormalizar(m[2]);
+  const mes = PAGOS_MESES[mesTxt];
+  if(!mes) return null;
+  return `${m[3]}-${mes.toString().padStart(2,'0')}-${dia}`;
+}
+
+// Marca en lote como "pagado" todos los pagos pendientes cuyo bloque
+// (semana) termine ANTES de la fecha de corte elegida — pensado para
+// limpiar el historial acumulado (ej. todo lo de enero-abril) sin tocar
+// los pagos de la semana actual, que deben seguir pendientes. Los ítems
+// cuya fecha no se pudo leer del título NO se tocan, para no marcar algo
+// como pagado por error — se informa cuántos quedaron así para revisión manual.
+function pagosMarcarPagadosAntesDe(){
+  const inputEl = document.getElementById('pagos_corteFecha');
+  const fechaCorte = inputEl ? inputEl.value : '';
+  if(!fechaCorte){ showMsg('pagos_msg', 'Elige una fecha de corte primero.', 'rojo'); return; }
+  const items = DB.get('pagos_items', []);
+  let marcados = 0, sinFecha = 0;
+  items.forEach(it => {
+    if(it.estado === 'pagado') return;
+    const hasta = pagosExtraerFechaHasta(it.loteTitulo);
+    if(!hasta){ sinFecha++; return; }
+    if(hasta < fechaCorte){
+      it.estado = 'pagado';
+      it.fechaPago = it.fechaPago || fechaCorte;
+      it.notaPago = (it.notaPago ? it.notaPago + ' — ' : '') + 'Marcado en lote como pagado (semana anterior a ' + fechaCorte + ').';
+      marcados++;
+    }
+  });
+  DB.set('pagos_items', items);
+  showMsg('pagos_msg', 'Se marcaron ' + marcados + ' pago(s) como pagados.' + (sinFecha ? ' ' + sinFecha + ' no se tocaron por no poder leer su fecha desde el título de la carga — revísalos a mano.' : ''), 'verde');
+  renderPagosModule(NAV.find(s=>s.id==='operacion'), null, null, pagosLastRuta);
+}
+
 // Carga automática desde Google Sheets: reutiliza el mismo parser de
 // bloques (pagosParsearHoja) que usa la carga manual de Excel, solo que
 // las filas vienen de un CSV descargado en vivo en vez de un archivo
@@ -7213,6 +7260,13 @@ function renderPagosModule(sec, group, item, ruta){
       </div>
 
       ${pagosSyncBannerHtml()}
+
+      <div class="form-section-title" style="margin-top:0;">Marcar pagos anteriores como pagados</div>
+      <p style="font-size:11.5px;color:var(--text-light);margin-bottom:8px;">Marca como pagados todos los pagos pendientes cuya semana termine antes de la fecha que elijas. Los pagos de semanas iguales o posteriores no se tocan — quedan como estén.</p>
+      <div style="display:flex;align-items:flex-end;gap:10px;flex-wrap:wrap;margin-bottom:16px;">
+        <div class="form-field" style="max-width:200px;"><label>Fecha de corte</label><input type="date" id="pagos_corteFecha" value="2026-05-01"></div>
+        <button class="btn-primary" style="width:auto;padding:9px 16px;" onclick="pagosMarcarPagadosAntesDe()">Marcar como pagados</button>
+      </div>
 
       <div class="form-section-title" style="margin-top:0;">Subir archivo de pagos (opcional)</div>
       <p style="font-size:11.5px;color:var(--text-light);margin-bottom:8px;">Sube el Excel de pagos pendientes a proveedores (.xlsx). La app arma la lista automáticamente, separando cada lista por quién está a cargo (por ejemplo C&H o María Consuelo) y señalando lo pagado y lo pendiente.</p>
