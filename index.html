@@ -1145,7 +1145,7 @@ const NAV = [
       ]},
       { id:'bar', label:'Bar', icon:'glass', matchArea:'bar', items:[
         { id:'chk_briefing_bar', label:'Briefing de bar', icon:'megaphone', area:'bar', categoria:'briefing', roles:['empleado','administracion','gerencia'] },
-        { id:'chk_mise_bar', label:'Mise en place de bar', icon:'glass', area:'bar', categoria:'mise_en_place', roles:['empleado','administracion','gerencia'] },
+        { id:'chk_mise_bar', label:'Mise en place de bar', icon:'glass', area:'bar', categoria:'mise_en_place', roles:['empleado','administracion','gerencia'], customRender:'renderAlistamientoAreaModule' },
         { id:'chk_aseo_bar', label:'Aseo del bar', icon:'checklist', area:'bar', categoria:'aseo', roles:['empleado','administracion','gerencia'] },
         { id:'chk_cierre_bar', label:'Cierre de área', icon:'checklist', area:'bar', categoria:'cierre', roles:['empleado','administracion','gerencia'], customRender:'renderCierreAreaModule' }
       ]},
@@ -1712,6 +1712,96 @@ function enterApp(){
   document.getElementById('userAvatar').textContent = SESSION.nombre.charAt(0).toUpperCase();
   renderSidebar();
   goHome();
+  alarmaMiseServicioIniciar();
+}
+
+/* ==================================================================
+   ALARMA DE VOZ — Mise en place de servicio. Mientras la app esté
+   abierta en el navegador, a la hora configurada dice en voz alta
+   "Es hora del checklist de servicio al cliente" (Web Speech API) y
+   además muestra un aviso visual, por si el dispositivo está sin
+   sonido. Suena una sola vez por día, dentro de una ventana de 60
+   minutos después de la hora configurada (para no sonar horas después
+   si el equipo se prendió tarde, ni quedar mudo si el chequeo cae unos
+   segundos después de la hora exacta).
+   ================================================================== */
+function alarmaMiseServicioConfig(){
+  return DB.get('alarma_mise_servicio', { hora:'11:00', activa:true });
+}
+function alarmaMiseServicioGuardar(hora, activa){
+  DB.set('alarma_mise_servicio', { hora, activa });
+}
+function alarmaMiseServicioHoraCambio(hora){
+  const cfg = alarmaMiseServicioConfig();
+  alarmaMiseServicioGuardar(hora, cfg.activa);
+  if(typeof alistamientoAreaRefresh === 'function') alistamientoAreaRefresh();
+}
+function alarmaMiseServicioGuardarDesdeUI(activa){
+  const cfg = alarmaMiseServicioConfig();
+  alarmaMiseServicioGuardar(cfg.hora, activa);
+  if(typeof alistamientoAreaRefresh === 'function') alistamientoAreaRefresh();
+}
+function alarmaMiseServicioMostrarBanner(msg){
+  const existente = document.getElementById('alarmaMiseServicioBanner');
+  if(existente) existente.remove();
+  const div = document.createElement('div');
+  div.id = 'alarmaMiseServicioBanner';
+  div.style.cssText = 'position:fixed;top:16px;right:16px;z-index:9999;background:var(--bronce);color:#fff;padding:14px 18px;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.25);font-size:13.5px;font-weight:600;max-width:320px;display:flex;align-items:center;gap:10px;';
+  div.innerHTML = '<span style="font-size:18px;">⏰</span><span>' + msg + '</span><button onclick="this.parentElement.remove()" style="margin-left:auto;background:none;border:none;color:#fff;font-size:16px;cursor:pointer;">&times;</button>';
+  document.body.appendChild(div);
+  setTimeout(()=>{ const el = document.getElementById('alarmaMiseServicioBanner'); if(el) el.remove(); }, 20000);
+}
+function alarmaMiseServicioDecirMensaje(){
+  const msg = 'Es hora del checklist de servicio al cliente';
+  try{
+    if('speechSynthesis' in window){
+      const u = new SpeechSynthesisUtterance(msg);
+      u.lang = 'es-CO';
+      u.rate = 0.95;
+      window.speechSynthesis.cancel();
+      window.speechSynthesis.speak(u);
+    }
+  }catch(e){ /* si el navegador no soporta voz, se ve igual el aviso visual */ }
+  alarmaMiseServicioMostrarBanner(msg);
+}
+function alarmaMiseServicioCheck(){
+  const cfg = alarmaMiseServicioConfig();
+  if(!cfg.activa || !cfg.hora) return;
+  const hoy = hoyStr();
+  if(DB.get('alarma_mise_servicio_disparada_fecha', null) === hoy) return;
+  const partes = cfg.hora.split(':');
+  const hh = Number(partes[0]), mm = Number(partes[1]);
+  if(isNaN(hh) || isNaN(mm)) return;
+  const ahora = new Date();
+  const objetivo = new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate(), hh, mm, 0);
+  const diffMin = (ahora - objetivo) / 60000;
+  if(diffMin >= 0 && diffMin <= 60){
+    DB.set('alarma_mise_servicio_disparada_fecha', hoy);
+    alarmaMiseServicioDecirMensaje();
+  }
+}
+let alarmaMiseServicioInterval = null;
+function alarmaMiseServicioIniciar(){
+  if(alarmaMiseServicioInterval) return;
+  alarmaMiseServicioCheck();
+  alarmaMiseServicioInterval = setInterval(alarmaMiseServicioCheck, 20000);
+}
+function alarmaMiseServicioConfigHtml(){
+  const cfg = alarmaMiseServicioConfig();
+  return `
+    <div style="background:var(--tint-dorado);border:1px solid var(--border);border-radius:8px;padding:12px 14px;margin-bottom:16px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
+      <div style="font-size:20px;">⏰</div>
+      <div style="flex:1;min-width:220px;">
+        <b style="font-size:13px;color:var(--text);">Alarma de voz del checklist</b>
+        <p style="font-size:11.5px;color:var(--text-light);margin-top:2px;">A esta hora, mientras la app esté abierta en esta pantalla, dice en voz alta "Es hora del checklist de servicio al cliente".</p>
+      </div>
+      <input type="time" id="alarma_hora" value="${cfg.hora}" onchange="alarmaMiseServicioHoraCambio(this.value)" style="padding:6px 9px;border:1px solid var(--border);border-radius:8px;font-size:13px;">
+      <div class="toggle-yn">
+        <button type="button" class="yn-btn yes ${cfg.activa?'active':''}" onclick="alarmaMiseServicioGuardarDesdeUI(true)">Activa</button>
+        <button type="button" class="yn-btn no ${!cfg.activa?'active':''}" onclick="alarmaMiseServicioGuardarDesdeUI(false)">Inactiva</button>
+      </div>
+      <button type="button" class="tab-btn" onclick="alarmaMiseServicioDecirMensaje()">Probar ahora</button>
+    </div>`;
 }
 
 /* ==================================================================
@@ -2821,6 +2911,95 @@ const ALISTAMIENTO_AREA_ITEMS = {
     { id:'al_sv_64', seccion:'8. Equipos de servicio y comunicación', label:'Radios de comunicación cargados, encendidos y activos' },
     { id:'al_sv_65', seccion:'8. Equipos de servicio y comunicación', label:'Relojes o localizadores cargados, identificados y funcionando' },
     { id:'al_sv_66', seccion:'8. Equipos de servicio y comunicación', label:'Localizadores ubicados en las mesas o estaciones asignadas' }
+  ],
+  bar: [
+    { id:'al_bar_1', seccion:'1. Cristalería y vajilla', label:'Copas para limonada natural limpias y disponibles' },
+    { id:'al_bar_2', seccion:'1. Cristalería y vajilla', label:'Copas para jugos y sodas saborizadas limpias y disponibles' },
+    { id:'al_bar_3', seccion:'1. Cristalería y vajilla', label:'Copas para limonada de coco limpias y disponibles' },
+    { id:'al_bar_4', seccion:'1. Cristalería y vajilla', label:'Vasos para mojitos limpios y disponibles' },
+    { id:'al_bar_5', seccion:'1. Cristalería y vajilla', label:'Vasos roqueros limpios y disponibles' },
+    { id:'al_bar_6', seccion:'1. Cristalería y vajilla', label:'Vasos mezcladores para cocteles limpios y disponibles' },
+    { id:'al_bar_7', seccion:'1. Cristalería y vajilla', label:'Vasos para shots limpios y disponibles' },
+    { id:'al_bar_8', seccion:'1. Cristalería y vajilla', label:'Platos para postres limpios y disponibles' },
+    { id:'al_bar_9', seccion:'1. Cristalería y vajilla', label:'Cristalería y vajilla suficientes para el servicio proyectado' },
+
+    { id:'al_bar_10', seccion:'2. Utensilios de preparación', label:'Cucharas para helado limpias y disponibles' },
+    { id:'al_bar_11', seccion:'2. Utensilios de preparación', label:'Cuchillos limpios, afilados y en buen estado' },
+    { id:'al_bar_12', seccion:'2. Utensilios de preparación', label:'Tabla para picar limpia y desinfectada' },
+    { id:'al_bar_13', seccion:'2. Utensilios de preparación', label:'Cucharas mezcladoras limpias y disponibles' },
+    { id:'al_bar_14', seccion:'2. Utensilios de preparación', label:'Macerador limpio y disponible' },
+    { id:'al_bar_15', seccion:'2. Utensilios de preparación', label:'Coladera limpia y disponible' },
+    { id:'al_bar_16', seccion:'2. Utensilios de preparación', label:'Cucharón limpio y disponible' },
+    { id:'al_bar_17', seccion:'2. Utensilios de preparación', label:'Pala para hielo limpia y ubicada en su lugar' },
+    { id:'al_bar_18', seccion:'2. Utensilios de preparación', label:'Utensilios organizados y listos para usar' },
+
+    { id:'al_bar_19', seccion:'3. Frutas, hierbas y productos frescos', label:'Naranjas frescas y suficientes' },
+    { id:'al_bar_20', seccion:'3. Frutas, hierbas y productos frescos', label:'Manzanas frescas y suficientes' },
+    { id:'al_bar_21', seccion:'3. Frutas, hierbas y productos frescos', label:'Limones frescos y suficientes' },
+    { id:'al_bar_22', seccion:'3. Frutas, hierbas y productos frescos', label:'Jengibre fresco y disponible' },
+    { id:'al_bar_23', seccion:'3. Frutas, hierbas y productos frescos', label:'Hierbabuena fresca, limpia y suficiente' },
+    { id:'al_bar_24', seccion:'3. Frutas, hierbas y productos frescos', label:'Frutas lavadas, organizadas y listas para cortar' },
+
+    { id:'al_bar_25', seccion:'4. Frutas y decoraciones deshidratadas', label:'Piña deshidratada disponible' },
+    { id:'al_bar_26', seccion:'4. Frutas y decoraciones deshidratadas', label:'Limón deshidratado disponible' },
+    { id:'al_bar_27', seccion:'4. Frutas y decoraciones deshidratadas', label:'Manzana deshidratada disponible' },
+    { id:'al_bar_28', seccion:'4. Frutas y decoraciones deshidratadas', label:'Coco deshidratado disponible' },
+    { id:'al_bar_29', seccion:'4. Frutas y decoraciones deshidratadas', label:'Flor de Jamaica disponible y en buen estado' },
+    { id:'al_bar_30', seccion:'4. Frutas y decoraciones deshidratadas', label:'Cerezas en almíbar disponibles y en buen estado' },
+    { id:'al_bar_31', seccion:'4. Frutas y decoraciones deshidratadas', label:'Sombrillas decorativas disponibles' },
+    { id:'al_bar_32', seccion:'4. Frutas y decoraciones deshidratadas', label:'Pitillos disponibles y organizados' },
+
+    { id:'al_bar_33', seccion:'5. Condimentos y complementos', label:'Tajín disponible y suficiente' },
+    { id:'al_bar_34', seccion:'5. Condimentos y complementos', label:'Sal disponible y organizada' },
+    { id:'al_bar_35', seccion:'5. Condimentos y complementos', label:'Azúcar normal disponible' },
+    { id:'al_bar_36', seccion:'5. Condimentos y complementos', label:'Leche en polvo disponible y en buen estado' },
+
+    { id:'al_bar_37', seccion:'6. Siropes y jarabes', label:'Sirope de lychee disponible y en buen estado' },
+    { id:'al_bar_38', seccion:'6. Siropes y jarabes', label:'Sirope de manzana disponible y en buen estado' },
+    { id:'al_bar_39', seccion:'6. Siropes y jarabes', label:'Sirope de Jamaica disponible y en buen estado' },
+    { id:'al_bar_40', seccion:'6. Siropes y jarabes', label:'Sirope de frutos amarillos disponible y en buen estado' },
+    { id:'al_bar_41', seccion:'6. Siropes y jarabes', label:'Sirope de corozo disponible y en buen estado' },
+    { id:'al_bar_42', seccion:'6. Siropes y jarabes', label:'Sirope de menta disponible y en buen estado' },
+    { id:'al_bar_43', seccion:'6. Siropes y jarabes', label:'Sirope de jengibre disponible y en buen estado' },
+    { id:'al_bar_44', seccion:'6. Siropes y jarabes', label:'Sirope de hierbabuena disponible y en buen estado' },
+    { id:'al_bar_45', seccion:'6. Siropes y jarabes', label:'Jarabe de azúcar disponible y suficiente' },
+    { id:'al_bar_46', seccion:'6. Siropes y jarabes', label:'Siropes y jarabes almacenados en recipientes limpios, cerrados, identificados y fechados' },
+
+    { id:'al_bar_47', seccion:'7. Pulpas, jugos y producciones', label:'Pulpa de coco disponible en cantidad suficiente' },
+    { id:'al_bar_48', seccion:'7. Pulpas, jugos y producciones', label:'Jugo de maracuyá disponible y en buen estado' },
+    { id:'al_bar_49', seccion:'7. Pulpas, jugos y producciones', label:'Jugo de corozo disponible y en buen estado' },
+    { id:'al_bar_50', seccion:'7. Pulpas, jugos y producciones', label:'Zumo de limón fresco y en cantidad suficiente' },
+    { id:'al_bar_51', seccion:'7. Pulpas, jugos y producciones', label:'Guarapo de panela preparado y disponible antes del mediodía' },
+    { id:'al_bar_52', seccion:'7. Pulpas, jugos y producciones', label:'Producciones almacenadas correctamente, identificadas y fechadas' },
+    { id:'al_bar_53', seccion:'7. Pulpas, jugos y producciones', label:'Cantidades suficientes de acuerdo con el servicio proyectado' },
+
+    { id:'al_bar_54', seccion:'8. Postres y acompañamientos', label:'Helado disponible, bien conservado y suficiente' },
+    { id:'al_bar_55', seccion:'8. Postres y acompañamientos', label:'Galletas de coco disponibles, frescas y en buen estado' },
+    { id:'al_bar_56', seccion:'8. Postres y acompañamientos', label:'Dulce de arroz disponible y en buen estado' },
+    { id:'al_bar_57', seccion:'8. Postres y acompañamientos', label:'Dulce de coco disponible y en buen estado' },
+    { id:'al_bar_58', seccion:'8. Postres y acompañamientos', label:'Postres correctamente almacenados, identificados y listos para servir' },
+
+    { id:'al_bar_59', seccion:'9. Hielo y productos refrigerados', label:'Hielo limpio y en cantidad suficiente' },
+    { id:'al_bar_60', seccion:'9. Hielo y productos refrigerados', label:'Congelador limpio, organizado y funcionando' },
+    { id:'al_bar_61', seccion:'9. Hielo y productos refrigerados', label:'Vinos refrigerados y organizados' },
+    { id:'al_bar_62', seccion:'9. Hielo y productos refrigerados', label:'Sodas disponibles y refrigeradas' },
+    { id:'al_bar_63', seccion:'9. Hielo y productos refrigerados', label:'Productos fríos abastecidos en cantidad suficiente' },
+    { id:'al_bar_64', seccion:'9. Hielo y productos refrigerados', label:'No hay productos vencidos, contaminados o en mal estado' },
+
+    { id:'al_bar_65', seccion:'10. Equipos', label:'Licuadoras limpias, armadas y funcionando' },
+    { id:'al_bar_66', seccion:'10. Equipos', label:'Pantalla encendida y funcionando' },
+    { id:'al_bar_67', seccion:'10. Equipos', label:'Radio de comunicación cargado, encendido y activo' },
+    { id:'al_bar_68', seccion:'10. Equipos', label:'Lámparas limpias y funcionando' },
+    { id:'al_bar_69', seccion:'10. Equipos', label:'Equipos conectados y listos para el servicio' },
+
+    { id:'al_bar_70', seccion:'11. Limpieza y organización del bar', label:'Mesones limpios y desinfectados' },
+    { id:'al_bar_71', seccion:'11. Limpieza y organización del bar', label:'Superficies despejadas y organizadas' },
+    { id:'al_bar_72', seccion:'11. Limpieza y organización del bar', label:'Botellas de licores limpias y correctamente ubicadas' },
+    { id:'al_bar_73', seccion:'11. Limpieza y organización del bar', label:'Estantes de licores limpios y organizados' },
+    { id:'al_bar_74', seccion:'11. Limpieza y organización del bar', label:'Utensilios guardados en los lugares asignados' },
+    { id:'al_bar_75', seccion:'11. Limpieza y organización del bar', label:'Pisos limpios, secos y sin obstáculos' },
+    { id:'al_bar_76', seccion:'11. Limpieza y organización del bar', label:'Área de trabajo libre de residuos' },
+    { id:'al_bar_77', seccion:'11. Limpieza y organización del bar', label:'Caneca limpia, con bolsa y desocupada' }
   ]
 };
 // Texto de contexto (objetivo del checklist y qué hacer ante un
@@ -2831,6 +3010,10 @@ const ALISTAMIENTO_AREA_INTRO = {
   servicio_cliente: {
     objetivo: 'Garantizar que el salón, las estaciones de servicio, los baños y los equipos estén limpios, abastecidos, organizados y listos antes de recibir a los clientes.',
     incumplimiento: 'Registrar la novedad y corregirla antes de abrir el servicio.'
+  },
+  bar: {
+    objetivo: 'Garantizar que la cristalería, los utensilios, las frutas, los insumos, las producciones, los postres, los equipos y las áreas del bar estén limpios, abastecidos, organizados y listos antes de iniciar el servicio.',
+    incumplimiento: 'Registrar la novedad, corregirla o reportarla al líder del área antes de habilitar el bar.'
   }
 };
 
@@ -2938,10 +3121,12 @@ function alistamientoAreaChecklistHtml(area){
       <p><b style="color:var(--text);">Objetivo:</b> ${intro.objetivo}</p>
       <p style="margin-top:4px;"><b style="color:var(--text);">En caso de incumplimiento:</b> ${intro.incumplimiento}</p>
     </div>` : '';
+  const alarmaHtml = area === 'servicio_cliente' ? alarmaMiseServicioConfigHtml() : '';
 
   return `
     <div class="compact-form">
     ${introHtml}
+    ${alarmaHtml}
     <div class="progress-box2">
       <div class="progress-circle" id="al_progressCircle" style="background:conic-gradient(var(--bronce) 0%, var(--border) 0%);"><span id="al_progressPct">0%</span></div>
       <div class="progress-legend">Progreso del alistamiento<br>Responde los ${items.length} puntos para llegar al 100%.</div>
