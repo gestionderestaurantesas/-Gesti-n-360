@@ -70,7 +70,7 @@ module.exports = async function handler(req, res){
         model_id: MODELO_ELEVENLABS,
         // speed > 1.0 = un poco más rápida que el ritmo natural de la voz
         // clonada (rango permitido por ElevenLabs: 0.7 a 1.2).
-        voice_settings: { stability: 0.5, similarity_boost: 0.75, speed: 1.12 }
+        voice_settings: { stability: 0.5, similarity_boost: 0.75, speed: 1.1 }
       })
     });
 
