@@ -3868,6 +3868,49 @@ const ESCUELA_TEMAS = {
       'Revisar fecha de vencimiento y estado del producto (cadena de frío, empaque).',
       'Rechazar y dejar constancia de lo que no cumple, no recibirlo "para no generar problema".'
     ]}
+  ],
+  identidad_marca: [
+    { id:'esc_id_historia', titulo:'Historia y origen de Córdova', resumen:'De dónde viene el restaurante y por qué existe.', contenido:[
+      'Córdova nació en Chinú y luego llegó a Montería, a orillas del río Sinú. No es solo un restaurante: es un portal a la esencia del departamento de Córdoba, donde la gastronomía se une con la cultura y la historia.',
+      'Fue fundado por Harol Palacios y Carmelita Soto — esposos y socios, cofundadores del restaurante — inspirados profundamente por las enseñanzas de su madre, quien fue la inspiración detrás de este proyecto.',
+      'El menú homenajea la riqueza culinaria de la región: mote de queso, sancocho de gallina, carnero y pescado fresco del Sinú, preparados con autenticidad.',
+      'Hoy Córdova tiene dos sedes (Chinú y Montería) y sigue creciendo, siempre fiel a contar la historia de Córdoba a través de la comida.'
+    ]},
+    { id:'esc_id_nombre', titulo:'Por qué "Córdova" y no "Córdoba"', resumen:'El significado detrás de la "v" en el nombre.', contenido:[
+      'El nombre lleva una "v" en homenaje a José María Córdova, quien cambió la "b" por la "v" en su apellido como símbolo de su lucha y triunfo.',
+      'Esa "v" representa espíritu de victoria y resiliencia: la determinación de triunfar contra toda adversidad, el mismo espíritu con el que el restaurante ha enfrentado sus propios retos a lo largo de los años.'
+    ]},
+    { id:'esc_id_fundadores', titulo:'Fundadores: Harol y Carmelita', resumen:'Quiénes están detrás de Córdova.', contenido:[
+      'Harol Palacios y Carmelita Soto son los fundadores de Restaurante Córdova: son esposos, socios de negocio y cofundadores por igual.',
+      'Carmelita Soto es cofundadora del restaurante, y su rol como socia y esposa de Harol es parte central de la historia y la identidad de la marca.',
+      'Si alguien pregunta quién es Carmelita, respóndele con cariño y precisión: es cofundadora de Córdova, esposa y socia de Harol.'
+    ]},
+    { id:'esc_id_mision', titulo:'Razón de ser: "Servimos con amor"', resumen:'La misión que guía cada decisión del restaurante.', contenido:[
+      'La razón de ser de Córdova es "Servimos con amor": no solo comida, también cariño, dedicación y aprecio por la cultura y los clientes.',
+      'Cada plato lleva una historia y una tradición que merece contarse con pasión — desde la selección de ingredientes hasta cómo se trata a cada cliente.',
+      'La meta es que cada visita sea memorable, y que los clientes se lleven consigo el calor y el amor que Córdova ofrece.'
+    ]},
+    { id:'esc_id_valores', titulo:'Valores de la marca', resumen:'El código que guía las decisiones internas y el trato con clientes.', contenido:[
+      'Don de servicio: calidez y calidad humana, ir más allá de la simple transacción.',
+      'Honestidad: transparencia total con clientes y compañeros.',
+      'Empatía: entender y adaptarse a las necesidades de clientes y del equipo, sobre todo en momentos difíciles.',
+      'Inclusión: un ambiente acogedor para todos, sin importar origen, identidad o capacidades.',
+      'Sostenibilidad: prácticas que respetan el medio ambiente y la comunidad local.',
+      'Pasión: vivir el trabajo con entusiasmo y dedicación constante.',
+      'Diferenciación: buscar siempre formas de destacar y ofrecer algo único.',
+      'Resiliencia: enfrentar los retos sin perder de vista los valores y la misión.',
+      'Liderazgo comprometido: firmeza en las decisiones combinada con respeto y empatía hacia el equipo.'
+    ]},
+    { id:'esc_id_personalidad', titulo:'Personalidad y tono de la marca', resumen:'Cómo "suena" Córdova cuando habla.', contenido:[
+      'Córdova es como ese amigo sabio y aventurero, auténtico y acogedor, con espíritu rebelde que desafía lo convencional — mezcla tradición y modernidad.',
+      'Tono cálido y acogedor: cada mensaje debe envolver como un abrazo, transmitiendo calidez y calidad humana.',
+      'Tono inspirador, apasionado y con chispa: refleja entusiasmo genuino por la cocina, la cultura de Córdoba y el servicio, sin perder la cercanía ni la claridad.',
+      'Comunicación genuina: honestidad y transparencia, dejando que la autenticidad de Córdova hable por sí sola.'
+    ]},
+    { id:'esc_id_vision', titulo:'Visión de Córdova', resumen:'Hacia dónde va la marca.', contenido:[
+      'Ser el faro de la cultura cordobesa: el destino culinario por excelencia de Montería y el emblema gastronómico de Córdoba.',
+      'Aspira a expandirse a otras ciudades, llevando la esencia de Córdoba a cada nueva sede, y a ser reconocida por su sostenibilidad, innovación y compromiso social — incluyendo ser el mejor lugar para trabajar en la industria.'
+    ]}
   ]
 };
 function escuelaTodosLosTemas(){
@@ -5630,7 +5673,7 @@ function asistenteHablarConVozNavegador(limpio){
     const voz = asistenteObtenerVoz();
     if(voz) u.voice = voz;
     u.pitch = 1.08; // un poco más agudo, para un timbre más femenino
-    u.rate = 0.98;  // ritmo natural, ni acelerado ni robótico
+    u.rate = 1.1;   // un poco más rápida que el ritmo natural, sin sonar robótica
     window.speechSynthesis.speak(u);
   } catch(e){ /* si falla la síntesis de voz, no interrumpe el chat */ }
 }
