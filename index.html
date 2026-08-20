@@ -986,8 +986,32 @@ if(!DB.get('sedes')){
     { id:'monteria', nombre:'Montería', activa:true }
   ]);
 }
-if(!DB.get('nav_grupos_desactivados')){ DB.set('nav_grupos_desactivados', []); }
-if(!DB.get('nav_items_desactivados')){ DB.set('nav_items_desactivados', []); }
+// Alcance de la "primera edición": estos grupos/ítems de Operación quedan
+// desactivados por defecto (ocultos del menú) hasta que se reactiven a mano
+// desde Gerencia → Configuración → Áreas activas de la app, cuando se
+// trabajen en la "segunda edición". El código y los datos siguen intactos,
+// solo se ocultan del menú.
+const NAV_GRUPOS_DESACTIVADOS_SEED = [
+  'operacion::centro_produccion'
+];
+const NAV_ITEMS_DESACTIVADOS_SEED = [
+  'operacion::administracion::cf_inventarios',
+  'operacion::administracion::cf_compras',
+  'operacion::administracion::cf_talento',
+  'operacion::administracion::cf_proveedores',
+  'operacion::administracion::cf_propina',
+  'operacion::administracion::cf_prevision',
+  'operacion::administracion::cf_pagos',
+  'operacion::servicio_cliente::sc_comprobantes',
+  'operacion::cocina::coc_ordenes',
+  'operacion::bar::bar_produccion',
+  'operacion::bar::bar_insumos',
+  'operacion::bar::bar_ventas',
+  'operacion::mantenimiento::mant_fallas',
+  'operacion::mantenimiento::mant_seguimiento'
+];
+if(!DB.get('nav_grupos_desactivados')){ DB.set('nav_grupos_desactivados', NAV_GRUPOS_DESACTIVADOS_SEED); }
+if(!DB.get('nav_items_desactivados')){ DB.set('nav_items_desactivados', NAV_ITEMS_DESACTIVADOS_SEED); }
 
 /* ==================================================================
    ROLES DE PUESTO — nivel de permiso fino, adicional a los 3 niveles
@@ -1330,14 +1354,14 @@ const NAV = [
     groups:[
       { id:'general', label:'Gerencia', matchArea:null, items:[
         { id:'ger_reporte_ventas360', label:'Reporte de ventas 360', icon:'trend', roles:['gerencia'], customRender:'renderVentas360Module' },
-        { id:'ger_reporte_inventario', label:'Reporte general de inventario', icon:'box', roles:['gerencia'], customRender:'renderReporteInventarioGerencia' },
-        { id:'ger_reporte_caja', label:'Reporte de área de caja', icon:'cash', roles:['gerencia'], customRender:'renderReporteCajaGerencia' },
-        { id:'ger_reporte_bajas', label:'Reporte de bajas', icon:'down', roles:['gerencia'], customRender:'renderReporteBajasGerencia' },
-        { id:'ger_sucesos_area', label:'Reporte de sucesos por área', icon:'bell', roles:['gerencia'], customRender:'renderReporteSucesosAreaGerencia' },
-        { id:'ger_hallazgos_inspeccion', label:'Hallazgos de inspección', icon:'search', roles:['gerencia'], customRender:'renderReporteHallazgosGerencia' },
+        { id:'ger_reporte_inventario', label:'Reporte de inventario 360', icon:'box', roles:['gerencia'], customRender:'renderReporteInventarioGerencia' },
+        { id:'ger_reporte_caja', label:'Reporte de caja 360', icon:'cash', roles:['gerencia'], customRender:'renderReporteCajaGerencia' },
+        { id:'ger_reporte_bajas', label:'Reporte de bajas 360', icon:'down', roles:['gerencia'], customRender:'renderReporteBajasGerencia' },
+        { id:'ger_sucesos_area', label:'Reporte de sucesos por área 360', icon:'bell', roles:['gerencia'], customRender:'renderReporteSucesosAreaGerencia' },
+        { id:'ger_hallazgos_inspeccion', label:'Reporte de hallazgos de inspección 360', icon:'search', roles:['gerencia'], customRender:'renderReporteHallazgosGerencia' },
         { id:'ger_checklist360', label:'Reporte de checklist 360', icon:'checklist', roles:['gerencia'], customRender:'renderChecklist360Module' },
-        { id:'ger_reporte_servicio360', label:'Reporte 360 de servicio al cliente', icon:'star', roles:['gerencia'], customRender:'renderReporteServicio360Gerencia' },
-        { id:'ger_incumplimientos', label:'Incumplimientos y sanciones', icon:'shield', roles:['gerencia'], customRender:'renderIncumplimientosModule' }
+        { id:'ger_reporte_servicio360', label:'Reporte de servicio al cliente 360', icon:'star', roles:['gerencia'], customRender:'renderReporteServicio360Gerencia' },
+        { id:'ger_incumplimientos', label:'Reporte de incumplimientos y sanciones 360', icon:'shield', roles:['gerencia'], customRender:'renderIncumplimientosModule' }
       ]},
       { id:'configuracion', label:'Configuración', matchArea:null, items:[
         { id:'cfg_usuarios', label:'Usuarios y permisos', icon:'users', roles:['gerencia'], customRender:'renderUsuariosPermisosModule' },
@@ -4124,7 +4148,7 @@ function incumplimientosDetectarDia(fecha){
 }
 
 let incumplimientosFecha = hoyStr();
-let incumplimientosLastRuta = 'Incumplimientos y sanciones';
+let incumplimientosLastRuta = 'Reporte de incumplimientos y sanciones 360';
 let incumplimientosCartaActual = null; // {defId, label, motivo, fecha, empleado, cargo, texto}
 
 function incumplimientosSetFecha(v){
@@ -4779,7 +4803,7 @@ function renderReporteBajasGerencia(sec, group, item, ruta){
     <div class="panel">
       <div class="panel-header">
         <div class="icon-circle" style="background:${hexToRgba(sec.color,0.14)}; color:${sec.color};">${ic('down',21)}</div>
-        <div><h2>Reporte de bajas</h2><div class="path">${ruta}</div></div>
+        <div><h2>Reporte de bajas 360</h2><div class="path">${ruta}</div></div>
       </div>
       ${kpisHtml}
       <h3 style="font-size:15px;margin-bottom:10px;">Bajas por área</h3>
@@ -4836,7 +4860,7 @@ function renderReporteSucesosAreaGerencia(sec, group, item, ruta){
     <div class="panel">
       <div class="panel-header">
         <div class="icon-circle" style="background:${hexToRgba(sec.color,0.14)}; color:${sec.color};">${ic('bell',21)}</div>
-        <div><h2>Reporte de sucesos por área</h2><div class="path">${ruta}</div></div>
+        <div><h2>Reporte de sucesos por área 360</h2><div class="path">${ruta}</div></div>
       </div>
       ${kpisHtml}
       <h3 style="font-size:15px;margin-bottom:10px;">Sucesos por área</h3>
@@ -4899,7 +4923,7 @@ function renderReporteHallazgosGerencia(sec, group, item, ruta){
     <div class="panel">
       <div class="panel-header">
         <div class="icon-circle" style="background:${hexToRgba(sec.color,0.14)}; color:${sec.color};">${ic('search',21)}</div>
-        <div><h2>Hallazgos de inspección</h2><div class="path">${ruta}</div></div>
+        <div><h2>Reporte de hallazgos de inspección 360</h2><div class="path">${ruta}</div></div>
       </div>
       ${kpisHtml}
       <h3 style="font-size:15px;margin-bottom:10px;">Hallazgos sueltos (todas las áreas)</h3>
@@ -5109,7 +5133,7 @@ function checklist360RenderBody(sec){
    ================================================================== */
 let servicio360Desde = '';
 let servicio360Hasta = '';
-let servicio360LastRuta = 'Gerencia → Reporte 360 de servicio al cliente';
+let servicio360LastRuta = 'Gerencia → Reporte de servicio al cliente 360';
 
 function servicio360RangoDefault(){
   const hasta = hoyStr();
@@ -5262,7 +5286,7 @@ function servicio360RenderBody(sec){
     <div class="panel">
       <div class="panel-header">
         <div class="icon-circle" style="background:${hexToRgba(secGerencia.color,0.14)}; color:${secGerencia.color};">${ic('star',21)}</div>
-        <div><h2>Reporte 360 de servicio al cliente</h2><div class="path">${servicio360LastRuta}</div></div>
+        <div><h2>Reporte de servicio al cliente 360</h2><div class="path">${servicio360LastRuta}</div></div>
       </div>
       <div class="form-grid" style="margin-bottom:18px;">
         <div class="form-field"><label>Desde</label><input type="date" id="s360_desde" value="${desde}"></div>
@@ -5507,7 +5531,7 @@ function renderIncumplimientosBody(){
     <div class="panel-header">
       <div class="icon-circle" style="background:${hexToRgba('#8A6D1F',0.14)};color:#8A6D1F;">${ic('shield',21)}</div>
       <div>
-        <h2>Incumplimientos y sanciones</h2>
+        <h2>Reporte de incumplimientos y sanciones 360</h2>
         ${incumplimientosLastRuta ? `<div class="path">${incumplimientosLastRuta}</div>` : ''}
       </div>
     </div>
@@ -6042,7 +6066,7 @@ function renderReporteCajaGerencia(sec, group, item, ruta){
     <div class="panel">
       <div class="panel-header">
         <div class="icon-circle" style="background:${hexToRgba(sec.color,0.14)}; color:${sec.color};">${ic('cash',21)}</div>
-        <div><h2>Reporte de caja</h2><div class="path">${ruta}</div></div>
+        <div><h2>Reporte de caja 360</h2><div class="path">${ruta}</div></div>
       </div>
       ${kpisHtml}
       <h3 style="font-size:15px;margin-bottom:10px;">Cierres con diferencias o novedades</h3>
@@ -6357,7 +6381,7 @@ function renderReporteInventarioGerencia(sec, group, item, ruta){
     <div class="panel">
       <div class="panel-header">
         <div class="icon-circle" style="background:${hexToRgba(sec.color,0.14)}; color:${sec.color};">${ic('box',21)}</div>
-        <div><h2>Reporte de inventario</h2><div class="path">${ruta}</div></div>
+        <div><h2>Reporte de inventario 360</h2><div class="path">${ruta}</div></div>
       </div>
       ${inventarioTotalHtml}
       ${kpisHtml}
