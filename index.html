@@ -1031,8 +1031,8 @@ const ROLES_PERMISOS_SEED = {
   lider_cocina: ['chk_briefing_cocina','chk_mise_cocina_parrilla','chk_mise_cocina_fritos','chk_mise_cocina_armado','chk_mise_cocina_corrientes','chk_mise_cocina_pastas','chk_higiene','chk_prueba_prep','chk_alistamiento_steward','chk_cierre_cocina','chk_cierre_steward','coc_comida_personal','coc_ordenes','coc_bajas','coc_mejora','coc_inventario','coc_fotos_platos','ast_chat'],
   aux_compras: ['cf_compras','cf_proveedores','cf_pagos','mant_proveedores','mant_contratacion','ast_chat'],
   inspector: ['chk_alistamiento','chk_cierre_caja','chk_briefing','chk_mise_servicio','chk_aseo_salon','chk_cierre_servicio','chk_briefing_cocina','chk_mise_cocina_parrilla','chk_mise_cocina_fritos','chk_mise_cocina_armado','chk_mise_cocina_corrientes','chk_mise_cocina_pastas','chk_higiene','chk_prueba_prep','chk_alistamiento_steward','chk_cierre_cocina','chk_cierre_steward','chk_briefing_bar','chk_mise_bar','chk_aseo_bar','chk_cierre_bar','chk_aseo_cp','chk_aseo_periferica','chk_aseo_banos_internos','chk_aseo_banos_publicos','chk_aseo_traperos','coc_inspeccion','sc_inspeccion','bar_inspeccion','cf_inspeccion_caja','ast_chat'],
-  gerente_operativa: ['chk_alistamiento','chk_cierre_caja','chk_briefing','chk_mise_servicio','chk_aseo_salon','chk_cierre_servicio','chk_briefing_cocina','chk_mise_cocina_parrilla','chk_mise_cocina_fritos','chk_mise_cocina_armado','chk_mise_cocina_corrientes','chk_mise_cocina_pastas','chk_higiene','chk_prueba_prep','chk_alistamiento_steward','chk_cierre_cocina','chk_cierre_steward','chk_briefing_bar','chk_mise_bar','chk_aseo_bar','chk_cierre_bar','chk_aseo_cp','chk_aseo_periferica','chk_aseo_banos_internos','chk_aseo_banos_publicos','chk_aseo_traperos','cf_caja','cf_inventarios','cf_inspeccion_caja','sc_comprobantes','sc_reservas','sc_encuesta','sc_inspeccion','coc_comida_personal','coc_ordenes','coc_bajas','coc_mejora','coc_inventario','coc_fotos_platos','coc_inspeccion','bar_inventario','bar_produccion','bar_insumos','bar_ventas','bar_inspeccion','cp_inventario','cp_ordenes','cp_recibo','cp_despacho','mant_preventivo','mant_correctivo','mant_fallas','mant_solicitudes','mant_seguimiento','mant_historial','ger_reporte_ventas360','ger_reporte_inventario','ger_reporte_caja','ger_reporte_bajas','ger_sucesos_area','ger_hallazgos_inspeccion','ast_chat','ger_incumplimientos'],
-  gerente_financiera: ['chk_alistamiento','chk_cierre_caja','cf_caja','cf_inventarios','cf_compras','cf_talento','cf_proveedores','cf_propina','cf_horarios','cf_prevision','cf_pagos','ger_reporte_caja','ger_reporte_inventario','ger_reporte_bajas','cfg_parametros','ast_chat'],
+  gerente_operativa: ['chk_alistamiento','chk_cierre_caja','chk_briefing','chk_mise_servicio','chk_aseo_salon','chk_cierre_servicio','chk_briefing_cocina','chk_mise_cocina_parrilla','chk_mise_cocina_fritos','chk_mise_cocina_armado','chk_mise_cocina_corrientes','chk_mise_cocina_pastas','chk_higiene','chk_prueba_prep','chk_alistamiento_steward','chk_cierre_cocina','chk_cierre_steward','chk_briefing_bar','chk_mise_bar','chk_aseo_bar','chk_cierre_bar','chk_aseo_cp','chk_aseo_periferica','chk_aseo_banos_internos','chk_aseo_banos_publicos','chk_aseo_traperos','cf_caja','cf_inventarios','cf_inspeccion_caja','sc_comprobantes','sc_reservas','sc_encuesta','sc_inspeccion','coc_comida_personal','coc_ordenes','coc_bajas','coc_mejora','coc_inventario','coc_fotos_platos','coc_inspeccion','bar_inventario','bar_produccion','bar_insumos','bar_ventas','bar_inspeccion','cp_inventario','cp_ordenes','cp_recibo','cp_despacho','mant_preventivo','mant_correctivo','mant_fallas','mant_solicitudes','mant_seguimiento','mant_historial','ger_reporte_ventas360','ger_reporte_inventario','ger_reporte_caja','ger_reporte_bajas','ger_sucesos_area','ger_hallazgos_inspeccion','ger_checklist360','ger_reporte_servicio360','ast_chat','ger_incumplimientos'],
+  gerente_financiera: ['chk_alistamiento','chk_cierre_caja','cf_caja','cf_inventarios','cf_compras','cf_talento','cf_proveedores','cf_propina','cf_horarios','cf_prevision','cf_pagos','ger_reporte_caja','ger_reporte_inventario','ger_reporte_bajas','ger_reporte_servicio360','cfg_parametros','ast_chat'],
   otros: []
 };
 if(!DB.get('roles_permisos')){ DB.set('roles_permisos', ROLES_PERMISOS_SEED); }
@@ -1280,30 +1280,32 @@ const NAV = [
         { id:'cf_propina', label:'Propina', icon:'cash', roles:['administracion','gerencia'] },
         { id:'cf_horarios', label:'Horarios', icon:'clock', roles:['administracion','gerencia'], customRender:'renderHorariosModule' },
         { id:'cf_prevision', label:'Previsión y planificación', icon:'target', roles:['administracion','gerencia'], customRender:'renderPrevisionModule' },
-        { id:'cf_pagos', label:'Pagos a proveedores', icon:'upload', roles:['administracion','gerencia'], customRender:'renderPagosModule' },
-        { id:'cf_inspeccion_caja', label:'Inspección de caja', icon:'search', roles:['empleado','administracion','gerencia'], area:'contabilidad', customRender:'renderInspeccionAreaModule' }
+        { id:'cf_pagos', label:'Pagos a proveedores', icon:'upload', roles:['administracion','gerencia'], customRender:'renderPagosModule' }
       ]},
       { id:'servicio_cliente', label:'Servicio al cliente', icon:'user', matchArea:'servicio_cliente', items:[
         { id:'sc_comprobantes', label:'Comprobantes de transferencias', icon:'camera', roles:['empleado','administracion','gerencia'], customRender:'renderComprobantesStandalone' },
         { id:'sc_reservas', label:'Reservas', icon:'calendar', roles:['empleado','administracion','gerencia'], customRender:'renderReservasModule' },
-        { id:'sc_encuesta', label:'Encuesta de satisfacción', icon:'star', roles:['administracion','gerencia'], customRender:'renderEncuestaModule' },
-        { id:'sc_inspeccion', label:'Inspección de servicio al cliente', icon:'search', roles:['empleado','administracion','gerencia'], area:'servicio_cliente', customRender:'renderInspeccionAreaModule' }
+        { id:'sc_encuesta', label:'Encuesta de satisfacción', icon:'star', roles:['administracion','gerencia'], customRender:'renderEncuestaModule' }
       ]},
       { id:'cocina', label:'Cocina', icon:'chef', matchArea:'cocina', items:[
         { id:'coc_comida_personal', label:'Comida del personal', icon:'chef', roles:['empleado','administracion','gerencia'] },
         { id:'coc_ordenes', label:'Órdenes de producción', icon:'checklist', roles:['empleado','administracion','gerencia'] },
-        { id:'coc_bajas', label:'Reporte de bajas', icon:'down', roles:['empleado','administracion','gerencia'], area:'cocina', customRender:'renderBajasModule' },
+        { id:'coc_bajas', label:'Reporte de bajas', icon:'down', roles:['empleado','administracion','gerencia'], customRender:'renderBajasModule' },
         { id:'coc_mejora', label:'Prueba, desarrollo y mejora constante', icon:'target', roles:['empleado','administracion','gerencia'] },
         { id:'coc_inventario', label:'Inventario de cocina', icon:'box', roles:['empleado','administracion','gerencia'], customRender:'renderInventarioCocinaModule' },
-        { id:'coc_fotos_platos', label:'Fotos de platos', icon:'camera', roles:['empleado','administracion','gerencia'], customRender:'renderFotosPlatosModule' },
-        { id:'coc_inspeccion', label:'Inspección de cocina', icon:'search', roles:['empleado','administracion','gerencia'], area:'cocina', customRender:'renderInspeccionAreaModule' }
+        { id:'coc_fotos_platos', label:'Fotos de platos', icon:'camera', roles:['empleado','administracion','gerencia'], customRender:'renderFotosPlatosModule' }
       ]},
       { id:'bar', label:'Bar', icon:'glass', matchArea:'bar', items:[
         { id:'bar_inventario', label:'Inventario de bar', icon:'box', roles:['empleado','administracion','gerencia'] },
         { id:'bar_produccion', label:'Producción de bebidas', icon:'glass', roles:['empleado','administracion','gerencia'] },
         { id:'bar_insumos', label:'Control de insumos', icon:'checklist', roles:['empleado','administracion','gerencia'] },
-        { id:'bar_ventas', label:'Reporte de ventas de bar', icon:'chart', roles:['empleado','administracion','gerencia'] },
-        { id:'bar_inspeccion', label:'Inspección de bar', icon:'search', roles:['empleado','administracion','gerencia'], area:'bar', customRender:'renderInspeccionAreaModule' }
+        { id:'bar_ventas', label:'Reporte de ventas de bar', icon:'chart', roles:['empleado','administracion','gerencia'] }
+      ]},
+      { id:'inspeccion', label:'Inspección', icon:'search', matchArea:'inspecciones', items:[
+        { id:'coc_inspeccion', label:'Inspección de cocina', icon:'search', roles:['empleado','administracion','gerencia'], areaObjetivo:'cocina', customRender:'renderInspeccionAreaModule' },
+        { id:'sc_inspeccion', label:'Inspección de servicio al cliente', icon:'search', roles:['empleado','administracion','gerencia'], areaObjetivo:'servicio_cliente', customRender:'renderInspeccionAreaModule' },
+        { id:'bar_inspeccion', label:'Inspección de bar', icon:'search', roles:['empleado','administracion','gerencia'], areaObjetivo:'bar', customRender:'renderInspeccionAreaModule' },
+        { id:'cf_inspeccion_caja', label:'Inspección de caja', icon:'search', roles:['empleado','administracion','gerencia'], areaObjetivo:'contabilidad', customRender:'renderInspeccionAreaModule' }
       ]},
       { id:'centro_produccion', label:'Centro de producción', icon:'factory', matchArea:'centro_produccion', items:[
         { id:'cp_inventario', label:'Inventario centro de producción', icon:'box', roles:['empleado','administracion','gerencia'] },
@@ -1332,6 +1334,8 @@ const NAV = [
         { id:'ger_reporte_bajas', label:'Reporte de bajas', icon:'down', roles:['gerencia'], customRender:'renderReporteBajasGerencia' },
         { id:'ger_sucesos_area', label:'Reporte de sucesos por área', icon:'bell', roles:['gerencia'], customRender:'renderReporteSucesosAreaGerencia' },
         { id:'ger_hallazgos_inspeccion', label:'Hallazgos de inspección', icon:'search', roles:['gerencia'], customRender:'renderReporteHallazgosGerencia' },
+        { id:'ger_checklist360', label:'Reporte de checklist 360', icon:'checklist', roles:['gerencia'], customRender:'renderChecklist360Module' },
+        { id:'ger_reporte_servicio360', label:'Reporte 360 de servicio al cliente', icon:'star', roles:['gerencia'], customRender:'renderReporteServicio360Gerencia' },
         { id:'ger_incumplimientos', label:'Incumplimientos y sanciones', icon:'shield', roles:['gerencia'], customRender:'renderIncumplimientosModule' }
       ]},
       { id:'configuracion', label:'Configuración', matchArea:null, items:[
@@ -4494,7 +4498,7 @@ function inspeccionAreaSetCheck(id, val, btnEl){
 
 function renderInspeccionAreaModule(sec, group, item, ruta){
   if(ruta) inspeccionAreaLastRuta = ruta;
-  const area = (item && item.area) || (group && group.matchArea);
+  const area = (item && item.areaObjetivo) || (group && group.matchArea);
   if(area !== inspeccionAreaLastArea){
     inspeccionAreaActiveTab = 'checklist';
     inspeccionAreaValues = {};
@@ -4858,6 +4862,351 @@ function renderReporteHallazgosGerencia(sec, group, item, ruta){
       ${hallazgosHtml}
       <h3 style="font-size:15px;margin:24px 0 10px;">Puntos "No cumple" en checklists de inspección</h3>
       ${noCumpleHtml}
+    </div>`;
+  document.getElementById('content').innerHTML = html;
+}
+
+/* ==================================================================
+   REPORTE DE CHECKLIST 360 (GERENCIA) — junta TODOS los checklists
+   (apertura de caja, cierres de área, alistamientos, briefings, mise
+   en place) para ver si se hicieron o no, quién queda como
+   responsable de lo que falta, y estadísticas de cumplimiento por
+   área y por trabajador. Reutiliza INCUMPLIMIENTOS_DEFINICIONES /
+   incumplimientosDetectarDia, que ya evalúan cada checklist para un
+   día puntual — aquí solo se recorre un rango de fechas y se suman
+   los resultados.
+   ================================================================== */
+const CHECKLIST360_SIN_SEGUIMIENTO = [
+  { label:'Aseo del salón', area:'servicio_cliente' },
+  { label:'Aseo de cocina', area:'cocina' },
+  { label:'Prueba de preparaciones diarias', area:'cocina' },
+  { label:'Briefing de bar', area:'bar' },
+  { label:'Aseo del bar', area:'bar' },
+  { label:'Aseo de centro de producción', area:'centro_produccion' },
+  { label:'Aseo del área periférica', area:null },
+  { label:'Aseo de baños internos', area:null },
+  { label:'Aseo de baños públicos', area:null },
+  { label:'Aseo de zona de traperos', area:null }
+];
+
+function checklist360AreaDeDef(def){
+  if(def.area) return def.area;
+  if(def.id === 'apertura_caja') return 'contabilidad';
+  if(def.id === 'briefing_cocina') return 'cocina';
+  if(def.id === 'briefing_servicio') return 'servicio_cliente';
+  if(def.tipo === 'mise_cocina') return 'cocina';
+  return null;
+}
+
+function checklist360RangoFechas(desde, hasta){
+  const out = [];
+  let d = new Date(desde+'T00:00:00');
+  const fin = new Date(hasta+'T00:00:00');
+  let guard = 0;
+  while(d <= fin && guard < 366){
+    out.push(d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'));
+    d.setDate(d.getDate()+1);
+    guard++;
+  }
+  return out;
+}
+
+let checklist360Desde = '';
+let checklist360Hasta = '';
+let checklist360LastRuta = 'Gerencia → Reporte de checklist 360';
+
+function checklist360RangoDefault(){
+  const hasta = hoyStr();
+  const d = new Date(hasta+'T00:00:00'); d.setDate(d.getDate()-6);
+  const desde = d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+  return { desde, hasta };
+}
+
+function renderChecklist360Module(sec, group, item, ruta){
+  if(ruta) checklist360LastRuta = ruta;
+  if(!checklist360Desde || !checklist360Hasta){
+    const def = checklist360RangoDefault();
+    checklist360Desde = def.desde; checklist360Hasta = def.hasta;
+  }
+  checklist360RenderBody(sec);
+}
+
+function checklist360AplicarRango(sec){
+  const desde = document.getElementById('c360_desde').value;
+  const hasta = document.getElementById('c360_hasta').value;
+  if(desde) checklist360Desde = desde;
+  if(hasta) checklist360Hasta = hasta;
+  checklist360RenderBody(sec);
+}
+
+function checklist360RenderBody(sec){
+  const secGerencia = sec || NAV.find(s=>s.id==='gerencia');
+  const fechas = checklist360RangoFechas(checklist360Desde, checklist360Hasta);
+  const porArea = {};
+  const porTrabajador = {};
+  const porDefinicion = {};
+  let totalCumplidos = 0, totalEvaluados = 0;
+
+  fechas.forEach(fecha => {
+    const resultados = incumplimientosDetectarDia(fecha);
+    resultados.forEach(r => {
+      const def = INCUMPLIMIENTOS_DEFINICIONES.find(d=>d.id===r.defId);
+      const area = def ? checklist360AreaDeDef(def) : null;
+      totalEvaluados++;
+      if(r.cumplido) totalCumplidos++;
+
+      if(area){
+        if(!porArea[area]) porArea[area] = { cumplidos:0, total:0 };
+        porArea[area].total++;
+        if(r.cumplido) porArea[area].cumplidos++;
+      }
+
+      if(!porDefinicion[r.defId]) porDefinicion[r.defId] = { label:r.label, area, cumplidos:0, total:0 };
+      porDefinicion[r.defId].total++;
+      if(r.cumplido) porDefinicion[r.defId].cumplidos++;
+
+      if(r.responsable){
+        if(!porTrabajador[r.responsable]) porTrabajador[r.responsable] = { cumplidos:0, incumplidos:0 };
+        if(r.cumplido) porTrabajador[r.responsable].cumplidos++;
+        else porTrabajador[r.responsable].incumplidos++;
+      }
+    });
+  });
+
+  const kpi = (color, iconName, valor, label) => `
+    <div class="module-card" style="cursor:default;">
+      <div class="icon-circle" style="background:${hexToRgba(color,0.14)}; color:${color};">${ic(iconName,24)}</div>
+      <h3>${valor}</h3><p>${label}</p>
+    </div>`;
+  const pctGlobal = totalEvaluados ? Math.round((totalCumplidos/totalEvaluados)*100) : 0;
+  const kpisHtml = `<div class="module-grid" style="margin-bottom:22px;">
+    ${kpi(pctGlobal>=80?'#2E7D32':'#C0392B','checklist', pctGlobal+'%', 'Cumplimiento global')}
+    ${kpi('#3B6EA8','checklist', totalCumplidos+'/'+totalEvaluados, 'Checklists completados')}
+    ${kpi('#8A6D1F','clock', fechas.length, 'Días evaluados')}
+  </div>`;
+
+  const badgeColor = pct => pct>=80?'verde':(pct>=50?'dorado':'rojo');
+
+  const areaOrderConLabel = AREA_ORDER.filter(a=>porArea[a]);
+  const areaHtml = areaOrderConLabel.length ? `
+    <table class="mini-table">
+      <thead><tr><th>Área</th><th>Completados</th><th>Total evaluados</th><th>% Cumplimiento</th></tr></thead>
+      <tbody>${areaOrderConLabel.map(a => {
+        const o = porArea[a]; const pct = o.total ? Math.round((o.cumplidos/o.total)*100) : 0;
+        return `<tr><td>${(AREA_META[a]||{label:a}).label}</td><td>${o.cumplidos}</td><td>${o.total}</td>
+          <td><span class="badge badge-${badgeColor(pct)}">${pct}%</span></td></tr>`;
+      }).join('')}</tbody>
+    </table>` : `<p style="color:var(--text-light);font-size:13px;">Sin datos todavía.</p>`;
+
+  const trabajadores = Object.keys(porTrabajador).sort((a,b) => {
+    const pa = porTrabajador[a], pb = porTrabajador[b];
+    const pctA = (pa.cumplidos+pa.incumplidos) ? pa.cumplidos/(pa.cumplidos+pa.incumplidos) : 0;
+    const pctB = (pb.cumplidos+pb.incumplidos) ? pb.cumplidos/(pb.cumplidos+pb.incumplidos) : 0;
+    return pctB - pctA;
+  });
+  const trabajadorHtml = trabajadores.length ? `
+    <table class="mini-table">
+      <thead><tr><th>Trabajador</th><th>Checklists completados</th><th>Registrados sin marcar listo</th><th>% Cumplimiento</th></tr></thead>
+      <tbody>${trabajadores.map(nombre => {
+        const o = porTrabajador[nombre]; const total = o.cumplidos+o.incumplidos;
+        const pct = total ? Math.round((o.cumplidos/total)*100) : 0;
+        return `<tr><td>${nombre}</td><td>${o.cumplidos}</td><td>${o.incumplidos}</td>
+          <td><span class="badge badge-${badgeColor(pct)}">${pct}%</span></td></tr>`;
+      }).join('')}</tbody>
+    </table>` : `<p style="color:var(--text-light);font-size:13px;">Todavía no hay registros con responsable identificado en el rango.</p>`;
+
+  const defsHtml = Object.keys(porDefinicion).length ? `
+    <table class="mini-table">
+      <thead><tr><th>Checklist</th><th>Área</th><th>Completados</th><th>Total evaluados</th><th>% Cumplimiento</th></tr></thead>
+      <tbody>${Object.values(porDefinicion).sort((a,b)=> (a.total?a.cumplidos/a.total:1) - (b.total?b.cumplidos/b.total:1)).map(d => {
+        const pct = d.total ? Math.round((d.cumplidos/d.total)*100) : 0;
+        return `<tr><td>${d.label}</td><td>${d.area ? (AREA_META[d.area]||{label:d.area}).label : '-'}</td><td>${d.cumplidos}</td><td>${d.total}</td>
+          <td><span class="badge badge-${badgeColor(pct)}">${pct}%</span></td></tr>`;
+      }).join('')}</tbody>
+    </table>` : `<p style="color:var(--text-light);font-size:13px;">Sin datos todavía.</p>`;
+
+  const sinSeguimientoHtml = `
+    <table class="mini-table">
+      <thead><tr><th>Checklist</th><th>Área</th></tr></thead>
+      <tbody>${CHECKLIST360_SIN_SEGUIMIENTO.map(x => `<tr><td>${x.label}</td><td>${x.area ? (AREA_META[x.area]||{label:x.area}).label : 'Áreas comunes'}</td></tr>`).join('')}</tbody>
+    </table>`;
+
+  const html = `
+    <div class="panel">
+      <div class="panel-header">
+        <div class="icon-circle" style="background:${hexToRgba(secGerencia.color,0.14)}; color:${secGerencia.color};">${ic('checklist',21)}</div>
+        <div><h2>Reporte de checklist 360</h2><div class="path">${checklist360LastRuta}</div></div>
+      </div>
+      <div class="form-grid" style="margin-bottom:18px;">
+        <div class="form-field"><label>Desde</label><input type="date" id="c360_desde" value="${checklist360Desde}"></div>
+        <div class="form-field"><label>Hasta</label><input type="date" id="c360_hasta" value="${checklist360Hasta}"></div>
+        <div class="form-field" style="align-self:flex-end;"><button class="btn-primary" style="width:auto;padding:10px 18px;" onclick="checklist360AplicarRango(null)">Aplicar</button></div>
+      </div>
+      ${kpisHtml}
+      <h3 style="font-size:15px;margin-bottom:10px;">Cumplimiento por área</h3>
+      ${areaHtml}
+      <h3 style="font-size:15px;margin:24px 0 10px;">Cumplimiento por trabajador</h3>
+      <p style="color:var(--text-light);font-size:12px;margin-bottom:8px;">Solo se cuentan los checklists donde quedó identificado un responsable. Cuando nadie registra nada ese día, el faltante queda reflejado en el cumplimiento por área, no se le puede atribuir a una persona específica.</p>
+      ${trabajadorHtml}
+      <h3 style="font-size:15px;margin:24px 0 10px;">Cumplimiento por checklist</h3>
+      ${defsHtml}
+      <h3 style="font-size:15px;margin:24px 0 10px;">Checklists sin seguimiento automático todavía</h3>
+      <p style="color:var(--text-light);font-size:12px;margin-bottom:8px;">Estos checklists existen en el menú pero todavía no guardan un registro al completarse, así que no aparecen en las estadísticas de arriba.</p>
+      ${sinSeguimientoHtml}
+    </div>`;
+  document.getElementById('content').innerHTML = html;
+}
+
+/* ==================================================================
+   REPORTE 360 DE SERVICIO AL CLIENTE (GERENCIA) — junta, por mesero,
+   las calificaciones y reseñas de la Encuesta de satisfacción con las
+   ventas, ticket promedio y propina promedio del Reporte de ventas
+   360, para calificar el desempeño de cada uno.
+   ================================================================== */
+let servicio360Desde = '';
+let servicio360Hasta = '';
+let servicio360LastRuta = 'Gerencia → Reporte 360 de servicio al cliente';
+
+function servicio360RangoDefault(){
+  const hasta = hoyStr();
+  const d = new Date(hasta+'T00:00:00');
+  d.setDate(d.getDate()-29);
+  const desde = d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+  return { desde, hasta };
+}
+
+function servicio360VentasPorMesero(desde, hasta){
+  const dias = v360Historico().filter(d => d.fecha>=desde && d.fecha<=hasta);
+  const map = new Map();
+  dias.forEach(d => (d.meseros||[]).forEach(m => {
+    const key = encuestaMeseroCanonico(m.nombre) || m.nombre;
+    if(!map.has(key)) map.set(key, { mesero:key, monto:0, ordenes:0, personas:0 });
+    const o = map.get(key);
+    o.monto += m.monto||0; o.ordenes += m.ordenes||0; o.personas += m.personas||0;
+  }));
+  return map;
+}
+
+function servicio360PropinasPorMesero(desde, hasta){
+  const detalles = v360Detalles() || {};
+  const map = new Map();
+  Object.keys(detalles).forEach(fecha => {
+    if(fecha < desde || fecha > hasta) return;
+    const det = detalles[fecha];
+    const lista = det && det.propinas && det.propinas.detalle ? det.propinas.detalle : [];
+    lista.forEach(p => {
+      if(!p.camarero) return;
+      const key = encuestaMeseroCanonico(p.camarero) || p.camarero;
+      if(!map.has(key)) map.set(key, { sumaPct:0, n:0 });
+      const o = map.get(key);
+      o.sumaPct += p.pct||0; o.n++;
+    });
+  });
+  const out = new Map();
+  map.forEach((v,k)=> out.set(k, v.n ? Math.round((v.sumaPct/v.n)*10)/10 : 0));
+  return out;
+}
+
+function renderReporteServicio360Gerencia(sec, group, item, ruta){
+  if(ruta) servicio360LastRuta = ruta;
+  if(!servicio360Desde || !servicio360Hasta){
+    const def = servicio360RangoDefault();
+    servicio360Desde = def.desde; servicio360Hasta = def.hasta;
+  }
+  servicio360RenderBody(sec);
+}
+
+function servicio360AplicarRango(sec){
+  const desde = document.getElementById('s360_desde').value;
+  const hasta = document.getElementById('s360_hasta').value;
+  if(desde) servicio360Desde = desde;
+  if(hasta) servicio360Hasta = hasta;
+  servicio360RenderBody(sec);
+}
+
+function servicio360RenderBody(sec){
+  const secGerencia = sec || NAV.find(s=>s.id==='gerencia');
+  const desde = servicio360Desde, hasta = servicio360Hasta;
+
+  const encuestaStats = encuestaStatsPorMesero(desde, hasta);
+  const ventasMap = servicio360VentasPorMesero(desde, hasta);
+  const propinasMap = servicio360PropinasPorMesero(desde, hasta);
+
+  const todasEncuesta = filtrarPorSede(DB.get('encuesta_satisfaccion', [])).filter(r => r.fecha>=desde && r.fecha<=hasta);
+  const negativas = todasEncuesta.filter(r => Number(r.calificacion) < 3).slice().reverse();
+
+  const nombres = new Set();
+  encuestaStats.forEach(e=>nombres.add(e.mesero));
+  ventasMap.forEach((v,k)=>nombres.add(k));
+
+  const filas = [...nombres].map(nombre => {
+    const enc = encuestaStats.find(e=>e.mesero===nombre) || { respuestas:0, promedio:0, bajas:0 };
+    const ven = ventasMap.get(nombre) || { monto:0, ordenes:0, personas:0 };
+    const negCount = todasEncuesta.filter(r => encuestaMeseroCanonico(r.mesero)===nombre && Number(r.calificacion)<3).length;
+    return {
+      nombre, respuestas: enc.respuestas, promedio: enc.promedio, negativas: negCount,
+      monto: ven.monto, ordenes: ven.ordenes, personas: ven.personas,
+      ticketPromedio: ven.ordenes ? ven.monto/ven.ordenes : 0,
+      propinaPromedio: propinasMap.get(nombre) || 0
+    };
+  }).sort((a,b) => b.monto - a.monto || b.promedio - a.promedio);
+
+  const kpi = (color, iconName, valor, label) => `
+    <div class="module-card" style="cursor:default;">
+      <div class="icon-circle" style="background:${hexToRgba(color,0.14)}; color:${color};">${ic(iconName,24)}</div>
+      <h3>${valor}</h3><p>${label}</p>
+    </div>`;
+  const totalResenas = filas.reduce((a,f)=>a+f.respuestas,0);
+  const totalNegativas = filas.reduce((a,f)=>a+f.negativas,0);
+  const promedioGeneral = totalResenas ? Math.round((filas.reduce((a,f)=>a+f.promedio*f.respuestas,0)/totalResenas)*10)/10 : 0;
+  const mejorTicket = filas.filter(f=>f.ordenes>=2).sort((a,b)=>b.ticketPromedio-a.ticketPromedio)[0];
+
+  const kpisHtml = `<div class="module-grid" style="margin-bottom:22px;">
+    ${kpi('#3B6EA8','star', totalResenas, 'Reseñas en el rango')}
+    ${kpi('#2E7D32','star', promedioGeneral || '-', 'Calificación promedio general')}
+    ${kpi('#C0392B','bell', totalNegativas, 'Reseñas negativas (menos de 3)')}
+    ${kpi('#8A6D1F','trend', mejorTicket ? `${mejorTicket.nombre} (${fmtMoney(mejorTicket.ticketPromedio)})` : '-', 'Mejor ticket promedio')}
+  </div>`;
+
+  const tablaHtml = filas.length ? `
+    <table class="mini-table">
+      <thead><tr><th>Mesero</th><th>Reseñas</th><th>Calificación prom.</th><th>Reseñas negativas</th><th>Ventas</th><th>Órdenes</th><th>Ticket promedio</th><th>Propina prom.</th></tr></thead>
+      <tbody>${filas.map(f => `<tr>
+        <td>${f.nombre}</td><td>${f.respuestas}</td>
+        <td>${f.promedio ? f.promedio.toFixed(1) : '-'}</td>
+        <td>${f.negativas ? `<span class="badge badge-rojo">${f.negativas}</span>` : '0'}</td>
+        <td>${fmtMoney(f.monto)}</td><td>${f.ordenes}</td>
+        <td>${f.ordenes ? fmtMoney(f.ticketPromedio) : '-'}</td>
+        <td>${f.propinaPromedio ? f.propinaPromedio+'%' : '-'}</td>
+      </tr>`).join('')}</tbody>
+    </table>` : `<p style="color:var(--text-light);font-size:13px;">Sin datos en el rango seleccionado.</p>`;
+
+  const negativasHtml = negativas.length ? `
+    <table class="mini-table">
+      <thead><tr><th>Fecha</th><th>Mesero</th><th>Calificación</th><th>Cliente</th><th>Comentario</th></tr></thead>
+      <tbody>${negativas.slice(0,60).map(r => `<tr>
+        <td>${r.fecha}</td><td>${r.mesero||'-'}</td>
+        <td><span class="badge badge-rojo">${r.calificacion}</span></td>
+        <td>${r.cliente||'-'}</td><td style="max-width:320px;">${r.comentario||'-'}</td>
+      </tr>`).join('')}</tbody>
+    </table>` : `<p style="color:var(--text-light);font-size:13px;">Sin reseñas negativas en el rango seleccionado.</p>`;
+
+  const html = `
+    <div class="panel">
+      <div class="panel-header">
+        <div class="icon-circle" style="background:${hexToRgba(secGerencia.color,0.14)}; color:${secGerencia.color};">${ic('star',21)}</div>
+        <div><h2>Reporte 360 de servicio al cliente</h2><div class="path">${servicio360LastRuta}</div></div>
+      </div>
+      <div class="form-grid" style="margin-bottom:18px;">
+        <div class="form-field"><label>Desde</label><input type="date" id="s360_desde" value="${desde}"></div>
+        <div class="form-field"><label>Hasta</label><input type="date" id="s360_hasta" value="${hasta}"></div>
+        <div class="form-field" style="align-self:flex-end;"><button class="btn-primary" style="width:auto;padding:10px 18px;" onclick="servicio360AplicarRango(null)">Aplicar</button></div>
+      </div>
+      ${kpisHtml}
+      <h3 style="font-size:15px;margin-bottom:10px;">Desempeño por mesero</h3>
+      ${tablaHtml}
+      <h3 style="font-size:15px;margin:24px 0 10px;">Reseñas negativas (calificación menor a 3)</h3>
+      ${negativasHtml}
     </div>`;
   document.getElementById('content').innerHTML = html;
 }
