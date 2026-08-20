@@ -1345,14 +1345,14 @@ const NAV = [
         { id:'cfg_sedes', label:'Sedes', icon:'pin', roles:['administracion','gerencia'] },
         { id:'cfg_parametros', label:'Parámetros', icon:'sliders', roles:['administracion','gerencia'] },
         { id:'cfg_areas_activas', label:'Áreas activas de la app', icon:'sliders', roles:['gerencia'], customRender:'renderConfigAreasActivas' },
-        { id:'cfg_faq_sonia', label:'Preguntas frecuentes de SonIA', icon:'chat', roles:['gerencia'], customRender:'renderFaqSoniaModule' }
+        { id:'cfg_faq_sonia', label:'Preguntas frecuentes de Harol-IA', icon:'chat', roles:['gerencia'], customRender:'renderFaqSoniaModule' }
       ]}
     ]},
-  { id:'asistente', label:'SonIA', icon:'chat', color:'#D9B54C',
+  { id:'asistente', label:'Harol-IA', icon:'chat', color:'#D9B54C',
     desc:'Resuelve dudas de trabajo diario y de gestión de restaurantes, con IA.',
     groups:[
       { id:'chat', label:'Preguntas y respuestas', matchArea:null, items:[
-        { id:'ast_chat', label:'Hablar con SonIA', icon:'chat', roles:['empleado','administracion','gerencia'], customRender:'renderAsistenteModule' }
+        { id:'ast_chat', label:'Hablar con Harol-IA', icon:'chat', roles:['empleado','administracion','gerencia'], customRender:'renderAsistenteModule' }
       ]}
     ]}
 ];
@@ -3893,7 +3893,7 @@ function escuelaTemaPorId(id){ return escuelaTodosLosTemas().find(t=>t.id===id) 
    /api/chat, que vive en Vercel y tiene la clave como variable de
    entorno del lado del servidor.
    ================================================================== */
-let asistenteLastRuta = 'SonIA';
+let asistenteLastRuta = 'Harol-IA';
 let asistenteEnviando = false;
 
 // Arma un texto compacto con el contenido de ESCUELA_TEMAS para dárselo
@@ -5483,11 +5483,11 @@ const ASISTENTE_SUGERENCIAS = [
   '¿Qué es PEPS y por qué importa en el inventario?'
 ];
 
-// "Sonia" con las dos últimas letras ("IA") resaltadas — el nombre lleva
+// "Harol-IA" con las dos últimas letras ("IA") resaltadas — el nombre lleva
 // adentro, a propósito, la sigla de Inteligencia Artificial.
-const SONIA_NOMBRE_HTML = 'Son<span style="color:var(--dorado);">IA</span>';
+const SONIA_NOMBRE_HTML = 'Harol-<span style="color:var(--dorado);">IA</span>';
 
-// Emblema circular de SonIA: una chispa/estrella con tres puntos conectados,
+// Emblema circular de Harol-IA: una chispa/estrella con tres puntos conectados,
 // usado en el avatar de cada burbuja de respuesta y en la cabecera "hero".
 const SONIA_EMBLEM_HTML = `<svg viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
   <path d="M24 6 L27 20 L41 24 L27 28 L24 42 L21 28 L7 24 L21 20 Z" stroke-linejoin="round" stroke-linecap="round"/>
@@ -5527,7 +5527,7 @@ function asistenteActualizarBotonMic(){
   if(!btn) return;
   btn.style.background = asistenteReconociendo ? 'var(--dorado)' : 'var(--white)';
   btn.style.color = asistenteReconociendo ? '#fff' : 'var(--text)';
-  btn.title = asistenteReconociendo ? 'Escuchando… toca para detener' : 'Hablarle a SonIA';
+  btn.title = asistenteReconociendo ? 'Escuchando… toca para detener' : 'Hablarle a Harol-IA';
 }
 function asistenteMicToggle(){
   if(!asistenteMicSoportado()){
@@ -5564,7 +5564,7 @@ function asistenteToggleVoz(){
   asistenteRefrescarVista();
 }
 
-/* ---- Selección de voz femenina para SonIA. El navegador carga la lista
+/* ---- Selección de voz de respaldo para Harol-IA. El navegador carga la lista
    de voces de forma asíncrona (a veces está vacía al inicio), por eso se
    cachea y se vuelve a intentar tanto al cargar como cuando el navegador
    avisa que ya tiene la lista lista (evento 'voiceschanged'). ---- */
@@ -5594,7 +5594,7 @@ if(window.speechSynthesis){
 
 // Limpia el texto antes de leerlo en voz alta: quita marcado (asteriscos,
 // guiones bajos, encabezados, viñetas, enlaces, código) y símbolos sueltos
-// para que SonIA lea solo palabras naturales, sin nombrar signos.
+// para que Harol-IA lea solo palabras naturales, sin nombrar signos.
 function asistenteLimpiarTextoParaVoz(texto){
   return (texto || '')
     .replace(/\*\*(.*?)\*\*/g, '$1')
@@ -5615,12 +5615,15 @@ function asistenteLimpiarTextoParaVoz(texto){
     .trim();
 }
 
-function asistenteHablar(texto){
-  if(!asistenteVozActiva() || !texto) return;
+// Voz clonada (ElevenLabs, vía api/tts.js): se intenta primero. Si el
+// servidor todavía no tiene configuradas ELEVENLABS_API_KEY /
+// ELEVENLABS_VOICE_ID, o falla la llamada por cualquier razón (sin
+// internet, servicio caído, etc.), se cae automáticamente a la voz del
+// navegador de siempre — nunca se rompe el chat por esto.
+let asistenteAudioClonado = null;
+function asistenteHablarConVozNavegador(limpio){
   if(!window.speechSynthesis || typeof SpeechSynthesisUtterance === 'undefined') return;
   try {
-    const limpio = asistenteLimpiarTextoParaVoz(texto);
-    if(!limpio) return;
     window.speechSynthesis.cancel();
     const u = new SpeechSynthesisUtterance(limpio);
     u.lang = 'es-CO';
@@ -5631,13 +5634,38 @@ function asistenteHablar(texto){
     window.speechSynthesis.speak(u);
   } catch(e){ /* si falla la síntesis de voz, no interrumpe el chat */ }
 }
+async function asistenteHablar(texto){
+  if(!asistenteVozActiva() || !texto) return;
+  const limpio = asistenteLimpiarTextoParaVoz(texto);
+  if(!limpio) return;
+
+  if(asistenteAudioClonado){ try{ asistenteAudioClonado.pause(); }catch(e){} asistenteAudioClonado = null; }
+  if(window.speechSynthesis) { try{ window.speechSynthesis.cancel(); }catch(e){} }
+
+  try {
+    const resp = await fetch('/api/tts', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ texto: limpio })
+    });
+    if(!resp.ok) throw new Error('voz_clonada_no_disponible');
+    const data = await resp.json();
+    if(!data || !data.audio) throw new Error('sin_audio');
+    const audio = new Audio('data:' + (data.formato || 'audio/mpeg') + ';base64,' + data.audio);
+    asistenteAudioClonado = audio;
+    audio.play().catch(() => { asistenteHablarConVozNavegador(limpio); });
+  } catch(e){
+    // Voz clonada no configurada todavía (o falló) — se usa la voz normal.
+    asistenteHablarConVozNavegador(limpio);
+  }
+}
 function asistenteHablarBurbuja(idBurbuja){
   const el = document.getElementById(idBurbuja);
   if(el) asistenteHablar(el.textContent || '');
 }
 
 // Widget del asistente, compartido entre Inicio (embebido, debajo de las 3
-// columnas) y la pantalla completa "Hablar con Sonia" del menú — para que
+// columnas) y la pantalla completa "Hablar con Harol-IA" del menú — para que
 // la conversación se vea y se sienta igual en los dos lugares. opts.ruta
 // muestra la miguita de pan (solo tiene sentido en la pantalla completa).
 function asistenteWidgetHtml(opts){
@@ -5664,11 +5692,11 @@ function asistenteWidgetHtml(opts){
         </div>
         <div class="sonia-learning">¿Sobre qué quieres aprender?</div>
         <div class="sonia-composer">
-          <button type="button" id="ast_mic_btn" class="sonia-icon-btn" onclick="asistenteMicToggle()" title="Hablarle a SonIA">${ic('mic',18)}</button>
-          <textarea id="ast_input" rows="1" placeholder="Pregúntale a SonIA sobre la operación del restaurante…" onkeydown="asistenteTeclaInput(event)"></textarea>
+          <button type="button" id="ast_mic_btn" class="sonia-icon-btn" onclick="asistenteMicToggle()" title="Hablarle a Harol-IA">${ic('mic',18)}</button>
+          <textarea id="ast_input" rows="1" placeholder="Pregúntale a Harol-IA sobre la operación del restaurante…" onkeydown="asistenteTeclaInput(event)"></textarea>
           <button type="button" class="sonia-send" onclick="asistenteEnviar()" ${asistenteEnviando?'disabled':''}>→</button>
         </div>
-        <div id="ast_estado" class="sonia-state">${asistenteEnviando ? 'SonIA está escribiendo…' : 'Presiona Enter para enviar'}</div>
+        <div id="ast_estado" class="sonia-state">${asistenteEnviando ? 'Harol-IA está escribiendo…' : 'Presiona Enter para enviar'}</div>
         <div class="sonia-tools">
           <a href="#" class="sonia-voice" onclick="asistenteToggleVoz();return false;">${ic('speaker',12)}${asistenteVozActiva() ? 'Voz activada' : 'Voz silenciada'}</a>
         </div>
@@ -5701,10 +5729,10 @@ function asistenteBorrarConversacion(){
   asistenteRefrescarVista();
 }
 
-/* ---- Preguntas frecuentes: cada pregunta que alguien le hace a Sonia
+/* ---- Preguntas frecuentes: cada pregunta que alguien le hace a Harol-IA
    queda registrada (texto + normalizada + si se respondió con la IA real
    o con el respaldo sin conexión), para que gerencia pueda revisar en
-   "Preguntas frecuentes de Sonia" cuáles se repiten y escribirles una
+   "Preguntas frecuentes de Harol-IA" cuáles se repiten y escribirles una
    respuesta oficial ya perfeccionada. Esa respuesta oficial, guardada en
    asistente_faq_oficial, se usa después con prioridad tanto en el modo
    sin conexión como en el system prompt que recibe la IA real. ---- */
@@ -5821,13 +5849,13 @@ function asistenteRespuestaLocalRespaldo(pregunta){
     if(puntaje > mejorPuntaje){ mejorPuntaje = puntaje; mejor = t; }
   });
   if(mejor && mejorPuntaje > 0){
-    return `(Sonia en modo sin conexión) Esto puede servirte — "${mejor.titulo}":\n` + mejor.contenido.map(c=>'• '+c).join('\n');
+    return `(Harol-IA en modo sin conexión) Esto puede servirte — "${mejor.titulo}":\n` + mejor.contenido.map(c=>'• '+c).join('\n');
   }
   return 'No pude conectarme con el asistente en este momento (esta función solo funciona en la versión publicada de la app, no al abrir el archivo directamente). Intenta de nuevo más tarde, o pregúntale a tu líder de área.';
 }
 
 /* ==================================================================
-   GERENCIA: Preguntas frecuentes de Sonia. Agrupa las preguntas ya
+   GERENCIA: Preguntas frecuentes de Harol-IA. Agrupa las preguntas ya
    registradas (asistente_preguntas) por texto normalizado, ordenadas de
    la más repetida a la menos repetida, y deja escribir/editar la
    respuesta oficial de cada una (asistente_faq_oficial) — esa respuesta
@@ -5853,7 +5881,7 @@ function faqSoniaGrupos(){
   return [...mapa.values()].sort((a,b) => b.count - a.count);
 }
 
-let faqSoniaLastRuta = 'Preguntas frecuentes de Sonia';
+let faqSoniaLastRuta = 'Preguntas frecuentes de Harol-IA';
 function renderFaqSoniaModule(sec, group, item, ruta){
   if(ruta) faqSoniaLastRuta = ruta;
   const oficial = asistenteFaqOficialGet();
@@ -5901,10 +5929,10 @@ function renderFaqSoniaModule(sec, group, item, ruta){
     <div class="panel">
       <div class="panel-header">
         <div class="icon-circle" style="background:${hexToRgba('#6B4A8A',0.14)}; color:#6B4A8A;">${ic('chat',21)}</div>
-        <div><h2>Preguntas frecuentes de Sonia</h2><div class="path">${faqSoniaLastRuta}</div></div>
+        <div><h2>Preguntas frecuentes de Harol-IA</h2><div class="path">${faqSoniaLastRuta}</div></div>
       </div>
       <p style="font-size:12.5px;color:var(--text-light);margin-bottom:14px;">
-        Aquí aparecen, de la más repetida a la menos repetida, las preguntas reales que el equipo le ha hecho a Sonia. Escríbele una respuesta oficial a las que más se repiten — esa respuesta queda disponible aunque no haya conexión, y la IA la usa con prioridad cuando le vuelvan a preguntar algo parecido.
+        Aquí aparecen, de la más repetida a la menos repetida, las preguntas reales que el equipo le ha hecho a Harol-IA. Escríbele una respuesta oficial a las que más se repiten — esa respuesta queda disponible aunque no haya conexión, y la IA la usa con prioridad cuando le vuelvan a preguntar algo parecido.
       </p>
       ${kpisHtml}
       <input type="text" placeholder="Buscar entre las preguntas..." value="${faqSoniaBusqueda}" oninput="faqSoniaSetBusqueda(this.value)" style="margin-bottom:14px;">
