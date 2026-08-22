@@ -1958,6 +1958,16 @@ function enterApp(){
    si el equipo se prendió tarde, ni quedar mudo si el chequeo cae unos
    segundos después de la hora exacta).
    ================================================================== */
+// Compartida por las alarmas de la app (mise en place de servicio, mise en
+// place de cocina, etc.): una alarma solo debe sonar para gerencia
+// (cualquier área, siempre puede supervisar) o para quien tenga sesión en
+// el área responsable de esa tarea — así un mesero no escucha la alarma de
+// cocina, ni cocina la de servicio al cliente, ni caja la de bar, etc.
+function alarmaAplicaParaSesion(areaResponsable){
+  if(!SESSION) return false;
+  if(SESSION.rol === 'gerencia') return true;
+  return SESSION.area === areaResponsable;
+}
 function alarmaMiseServicioConfig(){
   return DB.get('alarma_mise_servicio', { hora:'11:00', activa:true });
 }
@@ -1998,6 +2008,8 @@ function alarmaMiseServicioDecirMensaje(){
   alarmaMiseServicioMostrarBanner(msg);
 }
 function alarmaMiseServicioCheck(){
+  // Solo gerencia o el área de servicio al cliente escuchan este recordatorio.
+  if(!alarmaAplicaParaSesion('servicio_cliente')) return;
   const cfg = alarmaMiseServicioConfig();
   if(!cfg.activa || !cfg.hora) return;
   const hoy = hoyStr();
@@ -3442,6 +3454,10 @@ function miseCocinaAlarmaDetener(){
   if(banner) banner.remove();
 }
 function miseCocinaAlarmaMasterCheck(){
+  // Solo gerencia o el área de cocina escuchan esta alarma, aunque el
+  // dispositivo esté emparejado con una estación (por si alguien de otra
+  // área queda con sesión abierta en esa pantalla).
+  if(!alarmaAplicaParaSesion('cocina')){ miseCocinaAlarmaDetener(); return; }
   const estacion = DB.get('mise_cocina_estacion_dispositivo', null);
   const cfg = estacion ? MISE_COCINA_ESTACIONES[estacion] : null;
   if(!cfg){ miseCocinaAlarmaDetener(); return; }
