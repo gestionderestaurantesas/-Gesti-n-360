@@ -1709,6 +1709,7 @@ const HOME_COLUMNAS_IDS = ['checklists','operacion','gerencia'];
 let homeColsAbiertas = new Set();
 
 function goHome(){
+  navEmpujarHash('#');
   setActiveNav(null);
   document.getElementById('crumbLabel').innerHTML = '<b>Inicio</b>';
   asistenteVistaActual = 'home';
@@ -1816,6 +1817,7 @@ function openModuleById(secId, groupId, itemId){
    RENDER: PANEL DE MÓDULO (placeholder — próxima fase)
    ================================================================== */
 function openModule(sec, group, item){
+  navEmpujarHash(navHashDe(sec.id, group.id, item.id));
   setActiveNav(sec.id, group.id, item.id);
   const ruta = group.label ? `${sec.label} → ${group.label} → ${item.label}` : `${sec.label} → ${item.label}`;
   document.getElementById('crumbLabel').innerHTML = '<b>'+sec.label+'</b>' + (group.label ? ' · '+group.label : '') + ' · ' + item.label;
@@ -1875,6 +1877,58 @@ function setActiveNav(secId, groupId, itemId){
 }
 
 /* ==================================================================
+   RUTAS POR URL — cada área, subárea y tarea tiene su propia dirección
+   (#seccion/subarea/tarea), para poder compartirla, guardarla como
+   marcador, y para que el botón "atrás" del navegador funcione en vez
+   de sacar a la persona de la app. Inicio usa el hash vacío ('#').
+   Reutiliza los mismos filtros de permisos y de "Áreas activas" que ya
+   usa el menú (visibleGroupsOf), así nunca se puede llegar por URL a
+   algo que esa persona no vería igual haciendo clic normalmente.
+   ================================================================== */
+// Mientras se aplica un hash que ya viene de la URL (carga inicial o
+// atrás/adelante del navegador), se evita volver a empujarlo al
+// historial — si no, cada "atrás" generaría una entrada nueva en vez
+// de retroceder de verdad.
+let navSuprimirPush = false;
+function navHashDe(secId, groupId, itemId){ return '#' + secId + '/' + groupId + '/' + itemId; }
+function navEmpujarHash(hash){
+  if(navSuprimirPush) return;
+  // Un hash vacío o solo "#" se leen igual (location.hash === ''), así que
+  // se normalizan antes de comparar para no generar una entrada nueva de
+  // historial cada vez que se vuelve a Inicio estando ya en Inicio.
+  if((location.hash || '#') === hash) return;
+  history.pushState(null, '', hash);
+}
+function navResolverHash(hash){
+  const partes = (hash || '').replace(/^#/, '').split('/').filter(Boolean);
+  if(partes.length !== 3) return null;
+  const [secId, groupId, itemId] = partes;
+  const sec = NAV.find(s => s.id === secId);
+  if(!sec || !sectionVisible(sec)) return null;
+  for(const { group, items } of visibleGroupsOf(sec)){
+    if(group.id !== groupId) continue;
+    const item = items.find(i => i.id === itemId);
+    if(item) return { sec, group, item };
+  }
+  return null;
+}
+// Aplica lo que diga la URL actual: si apunta a un módulo válido y
+// visible para esta sesión, lo abre; si no, vuelve a Inicio. Se usa al
+// entrar a la app y cada vez que se navega con atrás/adelante.
+function navAplicarHash(){
+  if(!SESSION) return; // todavía en la pantalla de inicio de sesión: no hay nada que enrutar
+  navSuprimirPush = true;
+  try {
+    const resuelto = navResolverHash(location.hash);
+    if(resuelto) openModule(resuelto.sec, resuelto.group, resuelto.item);
+    else goHome();
+  } finally {
+    navSuprimirPush = false;
+  }
+}
+window.addEventListener('popstate', navAplicarHash);
+
+/* ==================================================================
    ENTRAR A LA APP
    ================================================================== */
 const ROL_LABEL = { gerencia:'Gerencia', administracion:'Administración', empleado:'Empleado' };
@@ -1886,7 +1940,10 @@ function enterApp(){
   document.getElementById('userRoleLabel').textContent = (ROL_LABEL[SESSION.rol] || SESSION.rol) + (SESSION.rolPuesto ? ' · ' + rolPuestoLabel(SESSION.rolPuesto) : '');
   document.getElementById('userAvatar').textContent = SESSION.nombre.charAt(0).toUpperCase();
   renderSidebar();
-  goHome();
+  // Si la URL ya trae una dirección de módulo (se abrió un link
+  // compartido, o se recargó la página estando dentro de un módulo),
+  // abre directo ahí en vez de mandar siempre a Inicio.
+  navAplicarHash();
   alarmaMiseServicioIniciar();
   if(typeof miseCocinaAlarmaMasterIniciar === 'function') miseCocinaAlarmaMasterIniciar();
 }
