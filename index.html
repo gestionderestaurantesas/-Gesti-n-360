@@ -1797,6 +1797,7 @@ function openModuleById(secId, groupId, itemId){
    ================================================================== */
 function openModule(sec, group, item){
   if(typeof fp360LiberarCamara === 'function') fp360LiberarCamara();
+  if(typeof fp360DetenerPollingTemperatura === 'function') fp360DetenerPollingTemperatura();
   navEmpujarHash(navHashDe(sec.id, group.id, item.id));
   setActiveNav(sec.id, group.id, item.id);
   const ruta = group.label ? `${sec.label} → ${group.label} → ${item.label}` : `${sec.label} → ${item.label}`;
@@ -5282,6 +5283,7 @@ function onFotoPlatoChange(input){
       ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
       fotosPlatosFotoData = canvas.toDataURL('image/jpeg', 0.7);
       if(preview) preview.innerHTML = '<img src="'+fotosPlatosFotoData+'" style="max-width:160px;border-radius:8px;border:1px solid var(--border);display:block;">';
+      fp360AnalizarConIA(fotosPlatosFotoData);
     };
     img.src = e.target.result;
   };
@@ -5290,16 +5292,106 @@ function onFotoPlatoChange(input){
 function guardarFotoPlato(){
   const plato = (document.getElementById('fp_plato')||{}).value ? document.getElementById('fp_plato').value.trim() : '';
   const observaciones = (document.getElementById('fp_observaciones')||{}).value ? document.getElementById('fp_observaciones').value.trim() : '';
+  const estado = (document.getElementById('fp_estado')||{}).value || 'aprobado';
+  const motivo = estado !== 'aprobado' && document.getElementById('fp_motivo') ? document.getElementById('fp_motivo').value.trim() : '';
   if(!plato){ showMsg('fp_msg','Escribe el nombre del plato.','rojo'); return; }
   if(!fotosPlatosFotoData){ showMsg('fp_msg','Sube la foto del plato.','rojo'); return; }
+
+  let camposIA = {};
+  if(fp360IAUltimoVeredicto){
+    const estadoSugeridoIA = fp360IAUltimoVeredicto.cumple ? 'aprobado' : (fp360IAUltimoVeredicto.severidad === 'alta' ? 'rechazado' : 'corregir');
+    camposIA = {
+      iaPlato: fp360IAUltimoVeredicto.platoIdentificado || '',
+      iaCumple: !!fp360IAUltimoVeredicto.cumple,
+      iaProblemas: fp360IAUltimoVeredicto.problemas || [],
+      iaSeveridad: fp360IAUltimoVeredicto.severidad || '',
+      iaExplicacion: fp360IAUltimoVeredicto.explicacion || '',
+      iaCoincidioConHumano: estadoSugeridoIA === estado
+    };
+    const contadorCalib = DB.get('fp360_calibracion_contador', 0);
+    if(contadorCalib < 100) DB.set('fp360_calibracion_contador', contadorCalib + 1);
+  }
+
   DB.push('fotos_platos', {
     sede: sedeParaGuardar(), usuario: SESSION.usuario, nombre: SESSION.nombre,
     fecha: hoyStr(), hora: horaStr(),
-    plato, observaciones, foto: fotosPlatosFotoData, esEstandar: false
+    plato, observaciones, foto: fotosPlatosFotoData, esEstandar: false,
+    estado, motivo, ...camposIA
   });
   fotosPlatosFotoData = null;
+  fp360IAUltimoVeredicto = null;
   showMsg('fp_msg','Foto registrada.','verde');
   renderFotosPlatosModule(null, fotosPlatosLastGroup, fotosPlatosLastItem, fotosPlatosLastRuta);
+}
+function fp360EstadisticasCalibracion(){
+  const contador = Math.min(DB.get('fp360_calibracion_contador', 0), 100);
+  const revisadas = DB.get('fotos_platos', []).filter(f => typeof f.iaCoincidioConHumano === 'boolean');
+  const coincidencias = revisadas.filter(f => f.iaCoincidioConHumano).length;
+  const porcentaje = revisadas.length ? Math.round((coincidencias / revisadas.length) * 100) : null;
+  return { contador, porcentaje, totalRevisadas: revisadas.length };
+}
+let fp360IAUltimoVeredicto = null;
+async function fp360AnalizarConIA(fotoDataUrl){
+  const veredictoEl = document.getElementById('fp_iaVeredicto');
+  if(veredictoEl) veredictoEl.innerHTML = '<span style="color:var(--text-light);font-size:12px;">'+ic('search',12)+' Analizando la foto con IA…</span>';
+  fp360IAUltimoVeredicto = null;
+  try{
+    const base64 = fotoDataUrl.split(',')[1] || '';
+    const resp = await fetch('/api/calidad-vision', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ imagenBase64: base64 })
+    });
+    const data = await resp.json().catch(() => ({}));
+    if(!resp.ok || data.error){
+      if(veredictoEl) veredictoEl.innerHTML = '<span style="color:var(--text-light);font-size:12px;">No se pudo analizar con IA ahora mismo'+(data && data.mensaje ? ' ('+data.mensaje+')' : '')+'. Revisa manualmente y guarda.</span>';
+      return;
+    }
+    fp360IAUltimoVeredicto = data;
+    fp360AplicarVeredictoIA(data);
+  } catch(err){
+    if(veredictoEl) veredictoEl.innerHTML = '<span style="color:var(--text-light);font-size:12px;">No se pudo conectar con el análisis de IA. Revisa manualmente y guarda.</span>';
+  }
+}
+function fp360AplicarVeredictoIA(data){
+  const platoInput = document.getElementById('fp_plato');
+  if(platoInput && !platoInput.value.trim() && data.platoIdentificado) platoInput.value = data.platoIdentificado;
+
+  const estadoSelect = document.getElementById('fp_estado');
+  if(estadoSelect){
+    estadoSelect.value = data.cumple ? 'aprobado' : (data.severidad === 'alta' ? 'rechazado' : 'corregir');
+    fp360ToggleMotivo();
+  }
+  const motivoInput = document.getElementById('fp_motivo');
+  if(motivoInput && !data.cumple) motivoInput.value = (data.problemas || []).join(', ');
+
+  const veredictoEl = document.getElementById('fp_iaVeredicto');
+  if(veredictoEl){
+    const badgeClase = data.cumple ? 'badge-verde' : (data.severidad === 'alta' ? 'badge-rojo' : 'badge-dorado');
+    veredictoEl.innerHTML = '<span class="badge '+badgeClase+'">'+ic(data.cumple ? 'check' : 'flag', 11)+' IA: '+(data.cumple ? 'Cumple' : 'No cumple')+'</span> <span style="font-size:12px;color:var(--text-light);">'+(data.explicacion || '')+'</span>';
+  }
+
+  if(!data.cumple){
+    if(typeof miseCocinaReproducirBeep === 'function') miseCocinaReproducirBeep();
+    fp360MostrarAlertaCalidad(data);
+  }
+}
+function fp360MostrarAlertaCalidad(data){
+  const msg = document.getElementById('fp_msg');
+  if(!msg) return;
+  const detalle = (data.problemas || []).join(', ') || data.explicacion || 'revisar plato';
+  msg.innerHTML = '<div style="margin-top:8px;padding:10px 12px;border-radius:8px;background:var(--tint-rojo);color:var(--rojo);font-size:12.5px;font-weight:600;">'+ic('bell',13)+' La IA detectó un problema — revisa antes de servir: '+detalle+'</div>';
+}
+function fp360ToggleMotivo(){
+  const estado = (document.getElementById('fp_estado')||{}).value || 'aprobado';
+  const wrap = document.getElementById('fp_motivoWrap');
+  if(wrap) wrap.style.display = estado === 'aprobado' ? 'none' : 'block';
+}
+function fp360CssVar(name, fallback){
+  try{
+    const v = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+    return v || fallback;
+  }catch(e){ return fallback; }
 }
 function fotosPlatoMarcarEstandar(id){
   const todas = DB.get('fotos_platos', []);
@@ -5318,7 +5410,7 @@ function renderFotosPlatosModule(sec, group, item, ruta){
   renderFotosPlatosTabs(fotosPlatosActiveTab);
 }
 function fotosPlatosSetTab(tabId){
-  if(tabId !== 'pase') fp360LiberarCamara();
+  if(tabId !== 'pase'){ fp360LiberarCamara(); fp360DetenerPollingTemperatura(); }
   renderFotosPlatosTabs(tabId);
 }
 function renderFotosPlatosTabs(activeId){
@@ -5326,6 +5418,7 @@ function renderFotosPlatosTabs(activeId){
   const meta = AREA_META['cocina'];
   const tabs = [
     { id:'pase', label:'Cámara de pase', icon:'camera' },
+    { id:'calidad', label:'Calidad operativa', icon:'target' },
     { id:'resumen', label:'Resumen', icon:'chart' },
     { id:'platos', label:'Por plato', icon:'chef' },
     { id:'estandares', label:'Estándares', icon:'shield' },
@@ -5334,7 +5427,7 @@ function renderFotosPlatosTabs(activeId){
   const tabsHtml = tabs.map(t =>
     `<button class="tab-btn ${t.id===activeId?'active':''}" onclick="fotosPlatosSetTab('${t.id}')">${ic(t.icon,14)}${t.label}</button>`
   ).join('');
-  const cuerpos = { pase: fp360PaseHtml, resumen: fp360ResumenHtml, platos: fp360PlatosHtml, estandares: fp360EstandaresHtml, historial: fp360HistorialHtml };
+  const cuerpos = { pase: fp360PaseHtml, calidad: fp360CalidadHtml, resumen: fp360ResumenHtml, platos: fp360PlatosHtml, estandares: fp360EstandaresHtml, historial: fp360HistorialHtml };
   const bodyHtml = (cuerpos[activeId] || fp360PaseHtml)();
   const html = `
     <div class="panel">
@@ -5346,8 +5439,43 @@ function renderFotosPlatosTabs(activeId){
       <div>${bodyHtml}</div>
     </div>`;
   document.getElementById('content').innerHTML = html;
-  if(activeId === 'pase') fp360SincronizarVideo();
+  if(activeId === 'pase'){ fp360SincronizarVideo(); fp360IniciarPollingTemperatura(); }
   if(window.innerWidth <= 820) document.getElementById('sidebar').classList.remove('open');
+}
+/* ---- Temperatura del punto de pase: lee /api/temperatura (que a su vez
+   recibe las lecturas del sensor infrarrojo — ver el plan de sensor de
+   temperatura). Mientras el sensor no esté conectado, muestra un aviso
+   y no rompe nada más del módulo. ---- */
+let fp360TemperaturaInterval = null;
+function fp360IniciarPollingTemperatura(){
+  fp360ConsultarTemperatura();
+  if(fp360TemperaturaInterval) clearInterval(fp360TemperaturaInterval);
+  fp360TemperaturaInterval = setInterval(fp360ConsultarTemperatura, 8000);
+}
+function fp360DetenerPollingTemperatura(){
+  if(fp360TemperaturaInterval){ clearInterval(fp360TemperaturaInterval); fp360TemperaturaInterval = null; }
+}
+async function fp360ConsultarTemperatura(){
+  const card = document.getElementById('fp_temperaturaCard');
+  if(!card) return;
+  try{
+    const sede = sedeParaGuardar();
+    const resp = await fetch('/api/temperatura?sede=' + encodeURIComponent(sede));
+    const data = await resp.json().catch(() => ({}));
+    if(!resp.ok || data.error){
+      card.innerHTML = ic('target',12) + ' Temperatura del punto de pase: sensor no configurado todavía.';
+      return;
+    }
+    if(!data.disponible){
+      card.innerHTML = ic('target',12) + ' Temperatura del punto de pase: esperando la primera lectura del sensor.';
+      return;
+    }
+    const color = data.reciente ? 'var(--text)' : 'var(--text-light)';
+    const nota = data.reciente ? '' : ' (lectura antigua — revisa que el sensor siga conectado)';
+    card.innerHTML = `<span style="color:${color};">${ic('target',12)} Temperatura del punto de pase (${data.estacion || 'sensor'}): <b>${data.temperatura}°C</b>${nota}</span>`;
+  }catch(err){
+    card.innerHTML = ic('target',12) + ' Temperatura del punto de pase: no se pudo consultar el sensor.';
+  }
 }
 function fp360Kpi(color, iconName, valor, label){
   return `
@@ -5372,6 +5500,7 @@ function fp360SincronizarVideo(){
     const btnCapturar = document.getElementById('fp_btnCapturar'); if(btnCapturar) btnCapturar.disabled = false;
     const btnConectar = document.getElementById('fp_btnConectar'); if(btnConectar) btnConectar.style.display = 'none';
     const btnDetener = document.getElementById('fp_btnDetener'); if(btnDetener) btnDetener.style.display = 'inline-block';
+    const autoChk = document.getElementById('fp_autoModo'); if(autoChk) autoChk.disabled = false;
   }
 }
 function fp360ConectarCamara(){
@@ -5387,6 +5516,8 @@ function fp360ConectarCamara(){
   });
 }
 function fp360DetenerCamara(){
+  fp360ToggleAuto(false);
+  const autoChk = document.getElementById('fp_autoModo'); if(autoChk){ autoChk.checked = false; autoChk.disabled = true; }
   if(fp360CameraStream){ fp360CameraStream.getTracks().forEach(t=>t.stop()); fp360CameraStream = null; }
   const video = document.getElementById('fp_video'); if(video){ video.style.display = 'none'; video.srcObject = null; }
   const placeholder = document.getElementById('fp_videoPlaceholder'); if(placeholder) placeholder.style.display = 'flex';
@@ -5396,7 +5527,59 @@ function fp360DetenerCamara(){
   const btnDetener = document.getElementById('fp_btnDetener'); if(btnDetener) btnDetener.style.display = 'none';
 }
 function fp360LiberarCamara(){
+  if(fp360AutoInterval){ clearInterval(fp360AutoInterval); fp360AutoInterval = null; }
   if(fp360CameraStream){ fp360CameraStream.getTracks().forEach(t=>t.stop()); fp360CameraStream = null; }
+}
+/* ---- Modo automático: dispara la captura sola comparando fotogramas
+   reducidos del video en vivo (diferencia de píxeles). No identifica
+   qué plato es — detecta que algo se movió frente a la cámara del
+   pase (por ejemplo, un plato entrando al encuadre) y toma la foto,
+   dejando que el equipo solo escriba el nombre del plato y guarde. --- */
+let fp360AutoInterval = null;
+let fp360AutoUltimoFrame = null;
+let fp360AutoUltimaCaptura = 0;
+const FP360_AUTO_UMBRAL = 18;
+const FP360_AUTO_COOLDOWN_MS = 4000;
+function fp360ToggleAuto(activo){
+  if(activo){
+    if(!fp360CameraStream){
+      const chk = document.getElementById('fp_autoModo'); if(chk) chk.checked = false;
+      showMsg('fp_msg','Conecta la cámara antes de activar el modo automático.','rojo');
+      return;
+    }
+    fp360AutoUltimoFrame = null;
+    fp360AutoUltimaCaptura = 0;
+    const estadoEl = document.getElementById('fp_autoEstado'); if(estadoEl) estadoEl.textContent = 'Vigilando el pase — tomará la foto sola al detectar movimiento…';
+    if(fp360AutoInterval) clearInterval(fp360AutoInterval);
+    fp360AutoInterval = setInterval(fp360AutoRevisarMovimiento, 400);
+  } else {
+    if(fp360AutoInterval){ clearInterval(fp360AutoInterval); fp360AutoInterval = null; }
+    const estadoEl = document.getElementById('fp_autoEstado'); if(estadoEl) estadoEl.textContent = '';
+  }
+}
+function fp360AutoRevisarMovimiento(){
+  const video = document.getElementById('fp_video');
+  const mCanvas = document.getElementById('fp_motionCanvas');
+  if(!video || !mCanvas || !fp360CameraStream || !video.videoWidth) return;
+  const w = 48, h = 36;
+  mCanvas.width = w; mCanvas.height = h;
+  const ctx = mCanvas.getContext('2d');
+  ctx.drawImage(video, 0, 0, w, h);
+  const frame = ctx.getImageData(0, 0, w, h).data;
+  if(fp360AutoUltimoFrame){
+    let diffTotal = 0;
+    for(let i=0; i<frame.length; i+=4){
+      diffTotal += (Math.abs(frame[i]-fp360AutoUltimoFrame[i]) + Math.abs(frame[i+1]-fp360AutoUltimoFrame[i+1]) + Math.abs(frame[i+2]-fp360AutoUltimoFrame[i+2])) / 3;
+    }
+    const promedioDiff = diffTotal / (frame.length/4);
+    const ahora = Date.now();
+    if(promedioDiff > FP360_AUTO_UMBRAL && (ahora - fp360AutoUltimaCaptura) > FP360_AUTO_COOLDOWN_MS){
+      fp360AutoUltimaCaptura = ahora;
+      fp360CapturarDesdeCamara();
+      const estadoEl = document.getElementById('fp_autoEstado'); if(estadoEl) estadoEl.textContent = 'Movimiento detectado — foto capturada automáticamente. Escribe el plato y guarda.';
+    }
+  }
+  fp360AutoUltimoFrame = frame;
 }
 function fp360CapturarDesdeCamara(){
   const video = document.getElementById('fp_video');
@@ -5414,7 +5597,8 @@ function fp360CapturarDesdeCamara(){
   fotosPlatosFotoData = canvas.toDataURL('image/jpeg', 0.7);
   const preview = document.getElementById('fp_fotoPreview');
   if(preview) preview.innerHTML = '<span class="badge badge-verde">'+ic('check',11)+' Foto capturada — lista para guardar</span><br><img src="'+fotosPlatosFotoData+'" style="max-width:160px;border-radius:8px;border:1px solid var(--border);display:block;margin-top:6px;">';
-  showMsg('fp_msg','Foto tomada con la cámara. Escribe el plato y guarda.','verde');
+  showMsg('fp_msg','Foto tomada con la cámara. Analizando con IA…','verde');
+  fp360AnalizarConIA(fotosPlatosFotoData);
 }
 function fp360PaseHtml(){
   fotosPlatosFotoData = null;
@@ -5438,11 +5622,17 @@ function fp360PaseHtml(){
         </div>`).join('')}
     </div>` : `<p style="color:var(--text-light);font-size:13px;">Todavía no hay fotos registradas.</p>`;
 
+  const calib = fp360EstadisticasCalibracion();
+  const calibLineaHtml = calib.contador < 100
+    ? `<div style="margin:-10px 0 16px;font-size:12px;color:var(--text-light);">${ic('target',12)} Calibración de IA: <b>${calib.contador}/100</b> fotos revisadas por el equipo${calib.porcentaje!=null ? ' — '+calib.porcentaje+'% de acuerdo hasta ahora' : ''}.</div>`
+    : `<div style="margin:-10px 0 16px;font-size:12px;color:var(--text-light);">${ic('check',12)} Calibración completa (100/100)${calib.porcentaje!=null ? ' — '+calib.porcentaje+'% de acuerdo con el equipo en '+calib.totalRevisadas+' fotos revisadas' : ''}.</div>`;
+
   return `
-      <div class="module-grid" style="margin-bottom:22px;">
+      <div class="module-grid" style="margin-bottom:14px;">
         ${fp360Kpi(meta.color,'camera', deAyer.length, 'Fotos registradas ayer')}
         ${fp360Kpi(meta.color,'chart', delMes.length, 'Acumulado del mes')}
       </div>
+      ${calibLineaHtml}
       <div style="display:grid;grid-template-columns:1.25fr 1fr;gap:18px;">
         <div style="background:var(--crema);border:1px solid var(--border);border-radius:14px;padding:14px;">
           <div style="position:relative;border-radius:10px;overflow:hidden;background:#161310;min-height:260px;display:flex;align-items:center;justify-content:center;">
@@ -5453,10 +5643,19 @@ function fp360PaseHtml(){
             <span id="fp_liveBadge" class="badge badge-verde" style="position:absolute;top:10px;right:10px;display:none;">● Cámara conectada</span>
           </div>
           <canvas id="fp_canvas" style="display:none;"></canvas>
+          <canvas id="fp_motionCanvas" style="display:none;"></canvas>
           <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;">
             <button class="btn-primary" style="width:auto;padding:9px 16px;" id="fp_btnConectar" onclick="fp360ConectarCamara()">Conectar cámara</button>
             <button style="width:auto;padding:9px 16px;border:1px solid var(--border);background:var(--white);color:var(--text);border-radius:8px;cursor:pointer;display:none;" id="fp_btnDetener" onclick="fp360DetenerCamara()">Desconectar cámara</button>
             <button style="width:auto;padding:9px 16px;border:1px solid ${meta.color};background:${hexToRgba(meta.color,0.12)};color:${meta.color};border-radius:8px;cursor:pointer;font-weight:600;" id="fp_btnCapturar" onclick="fp360CapturarDesdeCamara()" disabled>${ic('camera',14)} Tomar foto</button>
+          </div>
+          <label style="display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--text);margin-top:12px;">
+            <input type="checkbox" id="fp_autoModo" onchange="fp360ToggleAuto(this.checked)" disabled>
+            Modo automático — toma la foto sola al detectar movimiento en el pase
+          </label>
+          <div id="fp_autoEstado" style="font-size:11.5px;color:var(--text-light);margin-top:4px;"></div>
+          <div id="fp_temperaturaCard" style="margin-top:12px;padding:9px 12px;border:1px solid var(--border);border-radius:10px;background:var(--white);font-size:12px;color:var(--text-light);">
+            ${ic('target',12)} Temperatura del punto de pase: sensor no conectado todavía.
           </div>
         </div>
         <div>
@@ -5464,7 +5663,29 @@ function fp360PaseHtml(){
             <div class="form-field"><label>Plato <span class="req-star">*</span></label><input id="fp_plato" placeholder="Ej: Mojarra frita con patacón"></div>
             <div class="form-field"><label>Observaciones</label><input id="fp_observaciones" placeholder="Opcional"></div>
           </div>
+          <div class="form-grid" style="margin-top:10px;">
+            <div class="form-field">
+              <label>Estado</label>
+              <select id="fp_estado" onchange="fp360ToggleMotivo()">
+                <option value="aprobado">Aprobado</option>
+                <option value="corregir">Corregir antes de servir</option>
+                <option value="rechazado">Rechazar</option>
+              </select>
+            </div>
+            <div class="form-field" id="fp_motivoWrap" style="display:none;">
+              <label>Motivo</label>
+              <input id="fp_motivo" list="fp_motivosList" placeholder="Ej: Borde del plato sucio">
+              <datalist id="fp_motivosList">
+                <option value="Borde del plato sucio">
+                <option value="Proteína descentrada">
+                <option value="Salsa fuera del patrón">
+                <option value="Decoración inconsistente">
+                <option value="Porción incorrecta">
+              </datalist>
+            </div>
+          </div>
           <div id="fp_fotoPreview" style="margin-top:10px;"></div>
+          <div id="fp_iaVeredicto" style="margin-top:8px;"></div>
           <button class="btn-primary" style="width:auto;padding:11px 22px;margin-top:14px;" onclick="guardarFotoPlato()">Guardar foto</button>
           <div id="fp_msg"></div>
           <details style="margin-top:16px;">
@@ -5477,6 +5698,48 @@ function fp360PaseHtml(){
       </div>
       <h3 style="margin:24px 0 10px;font-size:15px;">Últimas fotos registradas</h3>
       ${recientesHtml}`;
+}
+function fp360CalidadHtml(){
+  const ayer = fp360FechaOffsetStr(-1);
+  const mesActual = hoyStr().slice(0,7);
+  const todasSede = filtrarPorSede(DB.get('fotos_platos', []));
+  const deAyer = todasSede.filter(f => f.fecha === ayer);
+  const delMes = todasSede.filter(f => f.fecha.slice(0,7) === mesActual);
+
+  const contar = (arr, estado) => arr.filter(f => (f.estado || 'aprobado') === estado).length;
+  const aprobadosAyer = contar(deAyer, 'aprobado');
+  const corregirAyer = contar(deAyer, 'corregir');
+  const rechazadosAyer = contar(deAyer, 'rechazado');
+
+  const motivos = {};
+  delMes.forEach(f => { if(f.motivo){ motivos[f.motivo] = (motivos[f.motivo]||0) + 1; } });
+  const filasMotivos = Object.entries(motivos).sort((a,b)=>b[1]-a[1]);
+
+  const verde = fp360CssVar('--verde', '#2E7D32');
+  const dorado = fp360CssVar('--dorado', '#8A6D1F');
+  const rojo = fp360CssVar('--rojo', '#C0392B');
+  const bronce = fp360CssVar('--bronce', '#B4922F');
+  const calib = fp360EstadisticasCalibracion();
+  const calibHtml = `<div style="margin:-4px 0 16px;padding:10px 12px;border-radius:8px;background:var(--crema);border:1px solid var(--border);font-size:12.5px;color:var(--text);">
+    ${calib.contador < 100
+      ? `${ic('target',13)} <b>Calibración de IA: ${calib.contador}/100</b> fotos revisadas por el equipo`+(calib.porcentaje!=null ? ` — ${calib.porcentaje}% de acuerdo con la IA hasta ahora.` : '.')
+      : `${ic('check',13)} <b>Calibración completa (100/100).</b>`+(calib.porcentaje!=null ? ` La IA coincide con el equipo en ${calib.porcentaje}% de ${calib.totalRevisadas} fotos revisadas.` : '')}
+  </div>`;
+
+  return `
+      <div class="sub" style="margin:-4px 0 16px;color:var(--text-light);font-size:12.5px;">Clasificación registrada por el equipo al guardar cada foto — ayer, ${fp360FechaLarga(ayer)}, con las fallas más frecuentes del mes debajo.</div>
+      ${calibHtml}
+      <div class="module-grid" style="margin-bottom:22px;">
+        ${fp360Kpi(verde,'check', aprobadosAyer, 'Aprobados ayer')}
+        ${fp360Kpi(dorado,'flag', corregirAyer, 'Con corrección ayer')}
+        ${fp360Kpi(rojo,'flag', rechazadosAyer, 'Rechazados ayer')}
+      </div>
+      ${filasMotivos.length ? `
+      <h3 style="margin:0 0 10px;font-size:15px;">Fallas más frecuentes (mes en curso)</h3>
+      <table class="mini-table">
+        <tr><th>Motivo</th><th>Casos</th></tr>
+        ${filasMotivos.map(([motivo,n]) => `<tr><td>${motivo}</td><td>${n}</td></tr>`).join('')}
+      </table>` : `<p style="color:var(--text-light);font-size:13px;">Todavía no hay motivos de corrección registrados este mes.</p>`}`;
 }
 function fp360ResumenHtml(){
   const meta = AREA_META['cocina'];
