@@ -1202,6 +1202,7 @@ const ICONS = {
   star:      '<path d="M12 3l2.6 5.9 6.4.6-4.8 4.3 1.4 6.2-5.6-3.4-5.6 3.4 1.4-6.2-4.8-4.3 6.4-.6L12 3z"/>',
   megaphone: '<path d="M3 10v4h3l5 3V7l-5 3H3z"/><path d="M14 8.5a3.5 3.5 0 0 1 0 7"/><path d="M14 5a7 7 0 0 1 0 14"/>',
   external: '<path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><path d="M15 3h6v6"/><path d="M10 14L21 3"/>',
+  printer:  '<path d="M6 9V3h12v6"/><rect x="4" y="9" width="16" height="8" rx="1.5"/><rect x="6" y="14" width="12" height="7"/><circle cx="17" cy="12" r="0.9"/>',
   upload:   '<path d="M12 16V4"/><path d="M6 10l6-6 6 6"/><path d="M4 16v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/>',
   trend:    '<path d="M3 17l6-6 4 4 8-8"/><path d="M15 6h6v6"/>',
   book:     '<path d="M3 5c3-1.5 6-1.5 9 0v14c-3-1.5-6-1.5-9 0V5z"/><path d="M21 5c-3-1.5-6-1.5-9 0v14c3-1.5 6-1.5 9 0V5z"/>',
@@ -1321,6 +1322,7 @@ const NAV = [
       ]},
       { id:'servicio_cliente', label:'Servicio al cliente', icon:'user', matchArea:'servicio_cliente', items:[
         { id:'sc_comprobantes', label:'Comprobantes de transferencias', icon:'camera', roles:['empleado','administracion','gerencia'], customRender:'renderComprobantesStandalone' },
+        { id:'sc_comandas', label:'Comandas por persona (imprimir)', icon:'printer', roles:['empleado','administracion','gerencia'], customRender:'renderComandasModule' },
         { id:'sc_encuesta', label:'Encuesta de satisfacción', icon:'star', roles:['administracion','gerencia'], customRender:'renderEncuestaModule' }
       ]},
       { id:'cocina', label:'Cocina', icon:'chef', matchArea:'cocina', items:[
@@ -2847,6 +2849,161 @@ function renderComprobantesStandalone(sec, group, item, ruta){
     </div>`;
   document.getElementById('content').innerHTML = html;
   if(window.innerWidth <= 820) document.getElementById('sidebar').classList.remove('open');
+}
+
+/* ==================================================================
+   COMANDAS POR PERSONA — para mesas con varios comensales: se anota el
+   pedido de cada persona por separado y se imprime UNA comanda por
+   persona (papel térmico de 80mm), con su nombre bien visible, para
+   que sea fácil identificar quién pidió qué al momento de servir.
+   No usa impresión directa por comandos ESC/POS (eso necesitaría un
+   programa puente instalado en el computador) — usa el diálogo de
+   impresión normal del navegador, con el tamaño de página ajustado a
+   80mm; en ese diálogo se elige la impresora térmica ya instalada como
+   impresora del sistema, igual que para imprimir cualquier documento.
+   Colección: comandas_impresas (solo un registro liviano de cada vez
+   que se imprime, para tener rastro — no vuelve a mostrar el pedido).
+   ================================================================== */
+let comandasLastRuta = 'Operación → Servicio al cliente → Comandas por persona (imprimir)';
+let comandaMesa = '';
+let comandaZona = '';
+let comandaPersonas = [{ nombre:'', pedido:'' }];
+
+function renderComandasModule(sec, group, item, ruta){
+  if(ruta) comandasLastRuta = ruta;
+  comandaMesa = '';
+  comandaZona = '';
+  comandaPersonas = [{ nombre:'', pedido:'' }];
+  renderComandasBody(sec);
+}
+// Número de comanda simple y consecutivo (como el #21913 de la impresora
+// de la caja) — solo para que cada tanda impresa sea fácil de referenciar,
+// no reemplaza el número real del sistema de punto de venta.
+function comandaSiguienteNumero(){
+  const actual = DB.get('comandas_contador', 20000);
+  const siguiente = actual + 1;
+  DB.set('comandas_contador', siguiente);
+  return siguiente;
+}
+
+function comandasEscapar(s){
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function renderComandasBody(sec){
+  sec = sec || NAV.find(s=>s.id==='operacion');
+  const personasHtml = comandaPersonas.map((p, idx) => `
+    <div style="border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:10px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px;">
+        <b style="font-size:12.5px;">Persona ${idx+1}</b>
+        ${comandaPersonas.length > 1 ? `<button onclick="comandaQuitarPersona(${idx})" style="border:none;background:none;color:var(--rojo);font-size:12px;cursor:pointer;">Quitar</button>` : ''}
+      </div>
+      <div class="form-field" style="margin-bottom:8px;">
+        <label>Nombre de la persona</label>
+        <input type="text" value="${comandasEscapar(p.nombre)}" placeholder="Ej: Juan, Silla 2, Niño..." oninput="comandaActualizarNombre(${idx}, this.value)">
+      </div>
+      <div class="form-field">
+        <label>Pedido (un plato por línea)</label>
+        <textarea rows="3" placeholder="1 Mojarra frita&#10;1 Limonada de coco (sin hielo)" oninput="comandaActualizarPedido(${idx}, this.value)">${comandasEscapar(p.pedido)}</textarea>
+      </div>
+    </div>`).join('');
+
+  const html = `
+    <div class="panel">
+      <div class="panel-header">
+        <div class="icon-circle" style="background:${hexToRgba(sec.color,0.14)}; color:${sec.color};">${ic('printer',21)}</div>
+        <div><h2>Comandas por persona</h2><div class="path">${comandasLastRuta}</div></div>
+      </div>
+      <p style="font-size:12.5px;color:var(--text-light);margin-bottom:14px;">
+        Escribe la mesa y el pedido de cada persona, y al imprimir sale una comanda de 80mm POR PERSONA con su nombre bien visible — así en cocina y en el salón es fácil identificar quién pidió qué. En el diálogo de impresión, elige la impresora térmica del pase.
+      </p>
+      <div class="compact-form">
+      <div class="form-grid" style="max-width:420px;margin-bottom:14px;">
+        <div class="form-field"><label>Mesa</label><input type="text" id="comanda_mesa" value="${comandasEscapar(comandaMesa)}" placeholder="Ej: Mesa 5" oninput="comandaMesa=this.value"></div>
+        <div class="form-field"><label>Zona (opcional)</label><input type="text" id="comanda_zona" value="${comandasEscapar(comandaZona)}" placeholder="Ej: Salón, Rancho, Salón VIP..." oninput="comandaZona=this.value"></div>
+      </div>
+      </div>
+      <div class="form-section-title" style="margin-top:0;">Personas y sus pedidos</div>
+      ${personasHtml}
+      <button class="tab-btn" style="margin-bottom:16px;" onclick="comandaAgregarPersona()">+ Agregar persona</button>
+      <div>
+        <button class="btn-primary" style="width:auto;padding:11px 22px;" onclick="comandaImprimir()">${ic('printer',15)} Imprimir comandas</button>
+      </div>
+      <div id="comanda_msg"></div>
+    </div>`;
+  document.getElementById('content').innerHTML = html;
+  if(window.innerWidth <= 820) document.getElementById('sidebar').classList.remove('open');
+}
+
+function comandaActualizarNombre(idx, valor){ if(comandaPersonas[idx]) comandaPersonas[idx].nombre = valor; }
+function comandaActualizarPedido(idx, valor){ if(comandaPersonas[idx]) comandaPersonas[idx].pedido = valor; }
+function comandaAgregarPersona(){
+  comandaPersonas.push({ nombre:'', pedido:'' });
+  renderComandasBody();
+}
+function comandaQuitarPersona(idx){
+  comandaPersonas.splice(idx, 1);
+  if(!comandaPersonas.length) comandaPersonas = [{ nombre:'', pedido:'' }];
+  renderComandasBody();
+}
+
+function comandaImprimir(){
+  const conPedido = comandaPersonas.filter(p => (p.pedido||'').trim());
+  if(!conPedido.length){
+    showMsg('comanda_msg', 'Escribe al menos el pedido de una persona antes de imprimir.', 'rojo');
+    return;
+  }
+  const fecha = hoyStr();
+  const hora = horaStr();
+  const sedeNombre = sedeLabelGlobal(sedeParaGuardar());
+  const numero = comandaSiguienteNumero();
+  const totalPersonas = conPedido.length;
+
+  const ticketsHtml = conPedido.map((p, i) => `
+    <div class="comanda-ticket">
+      <div style="display:flex;justify-content:space-between;font-size:11px;">
+        <b>#${numero}</b><span>${hora}</span>
+      </div>
+      <div style="text-align:center;font-weight:700;font-size:13px;">RESTAURANTE CÓRDOVA</div>
+      <div style="text-align:center;font-size:11px;">Sede ${comandasEscapar(sedeNombre)}${comandaZona ? ' — ' + comandasEscapar(comandaZona) : ''}</div>
+      <div class="comanda-linea">--------------------------------</div>
+      <div style="display:flex;justify-content:space-between;"><span><b>Mesa:</b> ${comandasEscapar(comandaMesa) || '-'}</span><span>${totalPersonas} persona${totalPersonas===1?'':'s'}</span></div>
+      <div style="font-size:16px;font-weight:700;margin:4px 0;text-align:center;border:1px solid #000;padding:3px 0;">${comandasEscapar(p.nombre) || ('Persona ' + (i+1))}</div>
+      <div class="comanda-linea">--------------------------------</div>
+      <div style="white-space:pre-wrap;font-size:13px;">${comandasEscapar(p.pedido)}</div>
+      <div class="comanda-linea">--------------------------------</div>
+      <div style="font-size:10px;">Atiende: ${comandasEscapar(SESSION.nombre)} — ${fecha}</div>
+    </div>`).join('');
+
+  // Se imprime desde una ventana aparte, con su propia hoja de estilos a
+  // 80mm — así no choca con el CSS de impresión genérico que ya usan los
+  // reportes de la app (pensado para hoja tamaño carta, no para recibo).
+  const ventana = window.open('', '_blank', 'width=380,height=600');
+  if(!ventana){
+    showMsg('comanda_msg', 'El navegador bloqueó la ventana de impresión. Permite ventanas emergentes para este sitio e inténtalo de nuevo.', 'rojo');
+    return;
+  }
+  ventana.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Comandas</title>
+    <style>
+      @page{ size:80mm auto; margin:0; }
+      *{ box-sizing:border-box; }
+      body{ font-family:'Courier New',Courier,monospace; width:80mm; margin:0; padding:2mm 3mm; color:#000; }
+      .comanda-ticket{ page-break-after:always; padding-bottom:6px; }
+      .comanda-ticket:last-child{ page-break-after:auto; }
+      .comanda-linea{ font-size:11px; letter-spacing:-0.5px; }
+    </style>
+    </head><body>${ticketsHtml}</body></html>`);
+  ventana.document.close();
+  const lanzarImpresion = function(){ try{ ventana.focus(); ventana.print(); }catch(e){} };
+  ventana.onload = lanzarImpresion;
+  setTimeout(lanzarImpresion, 350); // respaldo por si onload no dispara
+
+  DB.push('comandas_impresas', {
+    sede: sedeParaGuardar(), usuario: SESSION.usuario, nombre: SESSION.nombre,
+    fecha, hora, numero, mesa: comandaMesa, zona: comandaZona, personas: conPedido.length
+  });
+
+  showMsg('comanda_msg', conPedido.length + ' comanda' + (conPedido.length===1?'':'s') + ' lista' + (conPedido.length===1?'':'s') + ' para imprimir — se abrió la ventana de impresión (elige ahí la impresora térmica).', 'verde');
 }
 
 /* ==================================================================
@@ -5600,6 +5757,38 @@ function fotosPlatoMarcarEstandar(id){
   renderFotosPlatosTabs(fotosPlatosActiveTab);
 }
 
+/* ---- Eliminar fotos de Control de calidad 360 ----
+   Con más movimiento en el modo automático, tarde o temprano hace falta
+   borrar una foto (por error, repetida, o que no correspondía). Por
+   seguridad: solo una cuenta de gerencia puede eliminar (no cualquier
+   empleado que use la cámara del pase), y siempre se pide confirmación
+   porque no se puede deshacer. ---- */
+function fotoPlatoPuedeEliminar(){
+  return !!(SESSION && SESSION.rol === 'gerencia');
+}
+function fotoPlatoEliminarCore(id){
+  if(!fotoPlatoPuedeEliminar()){
+    alert('Solo una cuenta de gerencia puede eliminar fotos de control de calidad.');
+    return false;
+  }
+  const todas = DB.get('fotos_platos', []);
+  const foto = todas.find(f => f.id === id);
+  if(!foto) return false;
+  if(!confirm('¿Eliminar esta foto de "' + (foto.plato || 'plato') + '" (' + foto.fecha + ' ' + foto.hora + ')? Esta acción no se puede deshacer.')) return false;
+  DB.set('fotos_platos', todas.filter(f => f.id !== id));
+  return true;
+}
+// Desde Historial: se puede recargar toda la pestaña sin problema.
+function fotoPlatoEliminarDesdeHistorial(id){
+  if(fotoPlatoEliminarCore(id)) renderFotosPlatosTabs('historial');
+}
+// Desde la pestaña de Cámara de pase: NO se puede recargar toda la
+// pestaña (cortaría la cámara en vivo) — se usa la misma actualización
+// liviana que ya usan los contadores en tiempo real.
+function fotoPlatoEliminarDesdePase(id){
+  if(fotoPlatoEliminarCore(id)) fp360ActualizarContadoresPase();
+}
+
 function renderFotosPlatosModule(sec, group, item, ruta){
   if(ruta) fotosPlatosLastRuta = ruta;
   if(group) fotosPlatosLastGroup = group;
@@ -5852,8 +6041,9 @@ function fp360RecientesFotosHtml(ultimas){
   return ultimas.length ? `
     <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:10px;">
       ${ultimas.map(f => `
-        <div style="border:1px solid var(--border);border-radius:10px;overflow:hidden;background:var(--white);">
+        <div style="border:1px solid var(--border);border-radius:10px;overflow:hidden;background:var(--white);position:relative;">
           <img src="${f.foto}" style="width:100%;height:84px;object-fit:cover;display:block;">
+          ${fotoPlatoPuedeEliminar() ? `<button title="Eliminar foto" onclick="fotoPlatoEliminarDesdePase('${f.id}')" style="position:absolute;top:5px;right:5px;width:22px;height:22px;border-radius:50%;border:none;background:rgba(20,16,10,0.65);color:#fff;font-size:12px;line-height:1;cursor:pointer;">✕</button>` : ''}
           <div style="padding:5px 7px;">
             <div style="font-weight:600;font-size:11px;">${f.plato}</div>
             <div style="color:var(--text-light);font-size:10px;">${f.fecha} ${f.hora}</div>
@@ -6112,7 +6302,10 @@ function fp360HistorialHtml(){
             <div style="font-weight:600;font-size:12.5px;">${f.plato}</div>
             <div style="color:var(--text-light);font-size:11px;">${f.fecha} ${f.hora} — ${f.nombre}</div>
             ${f.observaciones ? `<div style="color:var(--text-light);font-size:11px;margin-top:3px;">${f.observaciones}</div>` : ''}
-            ${!f.esEstandar ? `<button style="margin-top:6px;padding:4px 8px;font-size:11px;border:1px solid var(--border);background:var(--crema);color:var(--text);border-radius:6px;cursor:pointer;" onclick="fotosPlatoMarcarEstandar('${f.id}')">Marcar como estándar</button>` : ''}
+            <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;">
+              ${!f.esEstandar ? `<button style="padding:4px 8px;font-size:11px;border:1px solid var(--border);background:var(--crema);color:var(--text);border-radius:6px;cursor:pointer;" onclick="fotosPlatoMarcarEstandar('${f.id}')">Marcar como estándar</button>` : ''}
+              ${fotoPlatoPuedeEliminar() ? `<button style="padding:4px 8px;font-size:11px;border:1px solid var(--tint-rojo-border);background:var(--tint-rojo);color:var(--rojo);border-radius:6px;cursor:pointer;" onclick="fotoPlatoEliminarDesdeHistorial('${f.id}')">✕ Eliminar</button>` : ''}
+            </div>
           </div>
         </div>`).join('')}
     </div>` : `<p style="color:var(--text-light);font-size:13px;">No hay fotos registradas en este periodo.</p>`;
