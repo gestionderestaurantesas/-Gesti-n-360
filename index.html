@@ -1796,6 +1796,7 @@ function openModuleById(secId, groupId, itemId){
    RENDER: PANEL DE MÓDULO (placeholder — próxima fase)
    ================================================================== */
 function openModule(sec, group, item){
+  if(typeof fp360LiberarCamara === 'function') fp360LiberarCamara();
   navEmpujarHash(navHashDe(sec.id, group.id, item.id));
   setActiveNav(sec.id, group.id, item.id);
   const ruta = group.label ? `${sec.label} → ${group.label} → ${item.label}` : `${sec.label} → ${item.label}`;
@@ -5317,13 +5318,14 @@ function renderFotosPlatosModule(sec, group, item, ruta){
   renderFotosPlatosTabs(fotosPlatosActiveTab);
 }
 function fotosPlatosSetTab(tabId){
+  if(tabId !== 'pase') fp360LiberarCamara();
   renderFotosPlatosTabs(tabId);
 }
 function renderFotosPlatosTabs(activeId){
   fotosPlatosActiveTab = activeId;
   const meta = AREA_META['cocina'];
   const tabs = [
-    { id:'pase', label:'Captura de plato', icon:'camera' },
+    { id:'pase', label:'Cámara de pase', icon:'camera' },
     { id:'resumen', label:'Resumen', icon:'chart' },
     { id:'platos', label:'Por plato', icon:'chef' },
     { id:'estandares', label:'Estándares', icon:'shield' },
@@ -5344,6 +5346,7 @@ function renderFotosPlatosTabs(activeId){
       <div>${bodyHtml}</div>
     </div>`;
   document.getElementById('content').innerHTML = html;
+  if(activeId === 'pase') fp360SincronizarVideo();
   if(window.innerWidth <= 820) document.getElementById('sidebar').classList.remove('open');
 }
 function fp360Kpi(color, iconName, valor, label){
@@ -5352,6 +5355,66 @@ function fp360Kpi(color, iconName, valor, label){
       <div class="icon-circle" style="background:${hexToRgba(color,0.14)}; color:${color};">${ic(iconName,22)}</div>
       <h3>${valor}</h3><p>${label}</p>
     </div>`;
+}
+/* ---- Cámara de pase: conexión real a la cámara (getUserMedia) para
+   tomar la foto en vivo, sin pasar por el selector de archivos. Queda
+   lista para producción: solo falta conectar la cámara del punto de
+   pase y presionar "Tomar foto". Si el dispositivo/navegador no
+   permite cámara, sigue disponible subir la foto manualmente. ---- */
+let fp360CameraStream = null;
+function fp360SincronizarVideo(){
+  const video = document.getElementById('fp_video');
+  if(video && fp360CameraStream){
+    video.srcObject = fp360CameraStream;
+    video.style.display = 'block';
+    const placeholder = document.getElementById('fp_videoPlaceholder'); if(placeholder) placeholder.style.display = 'none';
+    const badge = document.getElementById('fp_liveBadge'); if(badge) badge.style.display = 'inline-flex';
+    const btnCapturar = document.getElementById('fp_btnCapturar'); if(btnCapturar) btnCapturar.disabled = false;
+    const btnConectar = document.getElementById('fp_btnConectar'); if(btnConectar) btnConectar.style.display = 'none';
+    const btnDetener = document.getElementById('fp_btnDetener'); if(btnDetener) btnDetener.style.display = 'inline-block';
+  }
+}
+function fp360ConectarCamara(){
+  if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
+    showMsg('fp_msg','Este navegador no permite conectar la cámara directamente aquí. Usa "Subir foto manualmente" abajo.','rojo');
+    return;
+  }
+  navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio:false }).then(stream => {
+    fp360CameraStream = stream;
+    fp360SincronizarVideo();
+  }).catch(err => {
+    showMsg('fp_msg','No se pudo conectar la cámara ('+(err && err.message ? err.message : 'permiso denegado')+'). Usa "Subir foto manualmente" abajo.', 'rojo');
+  });
+}
+function fp360DetenerCamara(){
+  if(fp360CameraStream){ fp360CameraStream.getTracks().forEach(t=>t.stop()); fp360CameraStream = null; }
+  const video = document.getElementById('fp_video'); if(video){ video.style.display = 'none'; video.srcObject = null; }
+  const placeholder = document.getElementById('fp_videoPlaceholder'); if(placeholder) placeholder.style.display = 'flex';
+  const badge = document.getElementById('fp_liveBadge'); if(badge) badge.style.display = 'none';
+  const btnCapturar = document.getElementById('fp_btnCapturar'); if(btnCapturar) btnCapturar.disabled = true;
+  const btnConectar = document.getElementById('fp_btnConectar'); if(btnConectar) btnConectar.style.display = 'inline-block';
+  const btnDetener = document.getElementById('fp_btnDetener'); if(btnDetener) btnDetener.style.display = 'none';
+}
+function fp360LiberarCamara(){
+  if(fp360CameraStream){ fp360CameraStream.getTracks().forEach(t=>t.stop()); fp360CameraStream = null; }
+}
+function fp360CapturarDesdeCamara(){
+  const video = document.getElementById('fp_video');
+  if(!video || !fp360CameraStream || !video.videoWidth){
+    showMsg('fp_msg','Conecta la cámara antes de tomar la foto.','rojo');
+    return;
+  }
+  const canvas = document.getElementById('fp_canvas');
+  const maxW = 640;
+  const scale = Math.min(1, maxW / video.videoWidth);
+  canvas.width = Math.max(1, Math.round(video.videoWidth * scale));
+  canvas.height = Math.max(1, Math.round(video.videoHeight * scale));
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+  fotosPlatosFotoData = canvas.toDataURL('image/jpeg', 0.7);
+  const preview = document.getElementById('fp_fotoPreview');
+  if(preview) preview.innerHTML = '<span class="badge badge-verde">'+ic('check',11)+' Foto capturada — lista para guardar</span><br><img src="'+fotosPlatosFotoData+'" style="max-width:160px;border-radius:8px;border:1px solid var(--border);display:block;margin-top:6px;">';
+  showMsg('fp_msg','Foto tomada con la cámara. Escribe el plato y guarda.','verde');
 }
 function fp360PaseHtml(){
   fotosPlatosFotoData = null;
@@ -5380,16 +5443,38 @@ function fp360PaseHtml(){
         ${fp360Kpi(meta.color,'camera', deAyer.length, 'Fotos registradas ayer')}
         ${fp360Kpi(meta.color,'chart', delMes.length, 'Acumulado del mes')}
       </div>
-      <div class="form-grid">
-        <div class="form-field"><label>Plato <span class="req-star">*</span></label><input id="fp_plato" placeholder="Ej: Mojarra frita con patacón"></div>
-        <div class="form-field"><label>Observaciones</label><input id="fp_observaciones" placeholder="Opcional"></div>
+      <div style="display:grid;grid-template-columns:1.25fr 1fr;gap:18px;">
+        <div style="background:var(--crema);border:1px solid var(--border);border-radius:14px;padding:14px;">
+          <div style="position:relative;border-radius:10px;overflow:hidden;background:#161310;min-height:260px;display:flex;align-items:center;justify-content:center;">
+            <video id="fp_video" autoplay playsinline muted style="width:100%;max-height:320px;object-fit:cover;display:none;"></video>
+            <div id="fp_videoPlaceholder" style="color:#c9bda9;font-size:12.5px;text-align:center;padding:24px;display:flex;flex-direction:column;align-items:center;gap:8px;">
+              ${ic('camera',30)}<span>Cámara no conectada</span>
+            </div>
+            <span id="fp_liveBadge" class="badge badge-verde" style="position:absolute;top:10px;right:10px;display:none;">● Cámara conectada</span>
+          </div>
+          <canvas id="fp_canvas" style="display:none;"></canvas>
+          <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;">
+            <button class="btn-primary" style="width:auto;padding:9px 16px;" id="fp_btnConectar" onclick="fp360ConectarCamara()">Conectar cámara</button>
+            <button style="width:auto;padding:9px 16px;border:1px solid var(--border);background:var(--white);color:var(--text);border-radius:8px;cursor:pointer;display:none;" id="fp_btnDetener" onclick="fp360DetenerCamara()">Desconectar cámara</button>
+            <button style="width:auto;padding:9px 16px;border:1px solid ${meta.color};background:${hexToRgba(meta.color,0.12)};color:${meta.color};border-radius:8px;cursor:pointer;font-weight:600;" id="fp_btnCapturar" onclick="fp360CapturarDesdeCamara()" disabled>${ic('camera',14)} Tomar foto</button>
+          </div>
+        </div>
+        <div>
+          <div class="form-grid">
+            <div class="form-field"><label>Plato <span class="req-star">*</span></label><input id="fp_plato" placeholder="Ej: Mojarra frita con patacón"></div>
+            <div class="form-field"><label>Observaciones</label><input id="fp_observaciones" placeholder="Opcional"></div>
+          </div>
+          <div id="fp_fotoPreview" style="margin-top:10px;"></div>
+          <button class="btn-primary" style="width:auto;padding:11px 22px;margin-top:14px;" onclick="guardarFotoPlato()">Guardar foto</button>
+          <div id="fp_msg"></div>
+          <details style="margin-top:16px;">
+            <summary style="cursor:pointer;font-size:12.5px;color:var(--text-light);">Subir foto manualmente en vez de usar la cámara</summary>
+            <div class="form-field" style="margin-top:8px;">
+              <input type="file" id="fp_foto" accept="image/*" onchange="onFotoPlatoChange(this)">
+            </div>
+          </details>
+        </div>
       </div>
-      <div class="form-field" style="margin-top:10px;"><label>Foto del plato <span class="req-star">*</span></label>
-        <input type="file" id="fp_foto" accept="image/*" onchange="onFotoPlatoChange(this)">
-        <div id="fp_fotoPreview" style="margin-top:6px;"></div>
-      </div>
-      <button class="btn-primary" style="width:auto;padding:11px 22px;margin-top:14px;" onclick="guardarFotoPlato()">Guardar foto</button>
-      <div id="fp_msg"></div>
       <h3 style="margin:24px 0 10px;font-size:15px;">Últimas fotos registradas</h3>
       ${recientesHtml}`;
 }
