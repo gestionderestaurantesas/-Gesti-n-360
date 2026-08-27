@@ -1356,7 +1356,8 @@ const NAV = [
     desc:'Desempeño, reportes y configuración del sistema, todo en un solo lugar.',
     groups:[
       { id:'general', label:'Gerencia', matchArea:null, items:[
-        { id:'ger_reporte_general360', label:'Reporte general 360', icon:'chart', roles:['gerencia'], customRender:'renderReporteGeneral360Module' }
+        { id:'ger_reporte_general360', label:'Reporte general 360', icon:'chart', roles:['gerencia'], customRender:'renderReporteGeneral360Module' },
+        { id:'ger_control_sedes', label:'Control de sedes externas', icon:'pin', roles:['gerencia'], customRender:'renderControlSedesModule' }
       ]},
       { id:'configuracion', label:'Configuración', matchArea:null, items:[
         { id:'cfg_usuarios', label:'Usuarios y permisos', icon:'users', roles:['gerencia'], customRender:'renderUsuariosPermisosModule' },
@@ -1403,8 +1404,17 @@ document.getElementById('loginForm').addEventListener('submit', function(e){
   }
   SESSION = { usuario: found.usuario, nombre: found.nombre, cargo: found.cargo, rol: found.rol, area: found.area, sede: found.sede, rolPuesto: found.rolPuesto || '', itemsExtra: found.itemsExtra || [], loginAt: new Date().toISOString() };
   DB.set('sesion_actual', SESSION);
+  registrarUltimoAcceso(found.usuario);
   enterApp();
 });
+// Deja constancia de cuándo entró cada quien por última vez — se usa en
+// Gerencia → Control de sedes externas para saber si una sede lleva
+// tiempo sin actividad (posible señal de que necesita acompañamiento).
+function registrarUltimoAcceso(usuarioId){
+  const usuarios = DB.get('usuarios', []);
+  const idx = usuarios.findIndex(u => u.usuario === usuarioId);
+  if(idx !== -1){ usuarios[idx].ultimoAcceso = new Date().toISOString(); DB.set('usuarios', usuarios); }
+}
 
 function togglePassLoginForm(e){
   if(e) e.preventDefault();
@@ -1427,6 +1437,7 @@ function onGoogleSignedIn(email, nombreGoogle){
     if(found && found.activo !== false){
       SESSION = { usuario: found.usuario, nombre: found.nombre, cargo: found.cargo, rol: found.rol, area: found.area, sede: found.sede, rolPuesto: found.rolPuesto || '', itemsExtra: found.itemsExtra || [], loginAt: new Date().toISOString(), googleEmail: email };
       DB.set('sesion_actual', SESSION);
+      registrarUltimoAcceso(found.usuario);
       enterApp();
       return;
     }
@@ -1461,6 +1472,7 @@ function vincularCuentaGoogle(){
   DB.set('google_link', enlaces);
   SESSION = { usuario: found.usuario, nombre: found.nombre, cargo: found.cargo, rol: found.rol, area: found.area, sede: found.sede, rolPuesto: found.rolPuesto || '', itemsExtra: found.itemsExtra || [], loginAt: new Date().toISOString(), googleEmail: window.pendingGoogleLink.email };
   DB.set('sesion_actual', SESSION);
+  registrarUltimoAcceso(found.usuario);
   window.pendingGoogleLink = null;
   document.getElementById('googleLinkBox').classList.add('hidden');
   document.getElementById('linkPass').value = '';
@@ -10272,6 +10284,117 @@ function sedeEntrarComoGerente(usuario){
   SESSION = { usuario: found.usuario, nombre: found.nombre, cargo: found.cargo, rol: found.rol, area: found.area, sede: found.sede, rolPuesto: found.rolPuesto || '', itemsExtra: found.itemsExtra || [], loginAt: new Date().toISOString() };
   DB.set('sesion_actual', SESSION);
   enterApp();
+}
+
+/* ==================================================================
+   CONTROL DE SEDES EXTERNAS — para la gerencia general: un vistazo
+   rápido de cómo va cada sede (calidad de platos, sucesos, hallazgos,
+   mantenimiento, caja, servicio, actividad reciente de su equipo) para
+   decidir cuál necesita soporte técnico o acompañamiento. Solo para la
+   cuenta de sede:'todas' — mismo aviso de acceso restringido que
+   Configuración → Sedes, por la misma razón (ver sedesAccesoRestringidoHtml).
+   ================================================================== */
+let controlSedesLastRuta = 'Gerencia → Control de sedes externas';
+
+function renderControlSedesModule(sec, group, item, ruta){
+  if(ruta) controlSedesLastRuta = ruta;
+  const puedeVer = SESSION && SESSION.sede === 'todas';
+  const html = `
+    <div class="panel" id="controlSedesBox">
+      <div class="panel-header">
+        <div class="icon-circle" style="background:${hexToRgba('#8A6D1F',0.14)}; color:#8A6D1F;">${ic('pin',21)}</div>
+        <div><h2>Control de sedes externas</h2><div class="path">${controlSedesLastRuta}</div></div>
+      </div>
+      ${puedeVer ? controlSedesCuerpoHtml() : sedesAccesoRestringidoHtml()}
+    </div>`;
+  document.getElementById('content').innerHTML = html;
+  if(window.innerWidth <= 820) document.getElementById('sidebar').classList.remove('open');
+}
+
+function controlSedesPorSede(coleccion, sedeId){
+  return DB.get(coleccion, []).filter(r => r && r.sede === sedeId);
+}
+
+function controlSedesTiempoRelativo(iso){
+  if(!iso) return 'Nunca ha entrado';
+  const ms = Date.now() - new Date(iso).getTime();
+  const min = Math.floor(ms/60000);
+  if(min < 1) return 'Hace un momento';
+  if(min < 60) return 'Hace ' + min + ' min';
+  const horas = Math.floor(min/60);
+  if(horas < 24) return 'Hace ' + horas + ' h';
+  const dias = Math.floor(horas/24);
+  return 'Hace ' + dias + ' día' + (dias===1?'':'s');
+}
+
+function controlSedesCuerpoHtml(){
+  const sedes = sedesTodas();
+  const usuarios = DB.get('usuarios', []);
+  const ayer = fp360FechaOffsetStr(-1);
+  const hace7 = fp360FechaOffsetStr(-7);
+  const hace30 = fp360FechaOffsetStr(-30);
+
+  const kpi = (color, iconName, valor, label) => `
+    <div class="module-card" style="cursor:default;">
+      <div class="icon-circle" style="background:${hexToRgba(color,0.14)}; color:${color};">${ic(iconName,20)}</div>
+      <h3 style="font-size:18px;">${valor}</h3><p style="font-size:11px;">${label}</p>
+    </div>`;
+
+  const tarjetas = sedes.map(s => {
+    const pendiente = s.estado === 'pendiente';
+    const personal = usuarios.filter(u => u.sede === s.id && u.activo !== false);
+    const gerente = s.gerenteUsuario ? usuarios.find(u => u.usuario === s.gerenteUsuario) : null;
+    const accesos = personal.map(u => u.ultimoAcceso).filter(Boolean).sort();
+    const ultimoAcceso = accesos.length ? accesos[accesos.length-1] : null;
+    const diasSinAcceso = ultimoAcceso ? Math.floor((Date.now() - new Date(ultimoAcceso).getTime())/86400000) : null;
+
+    const fotosAyer = controlSedesPorSede('fotos_platos', s.id).filter(f => f.fecha === ayer);
+    const fotosRechazadas = fotosAyer.filter(f => f.estado === 'rechazado').length;
+    const fotosCorregir = fotosAyer.filter(f => f.estado === 'corregir').length;
+
+    const incidentesAbiertos = controlSedesPorSede('incidentes', s.id).filter(r => r.estado !== 'cerrado').length;
+    const hallazgos30d = controlSedesPorSede('inspecciones_hallazgos', s.id).filter(r => r.fecha >= hace30).length;
+    const mantAbiertas = controlSedesPorSede('mant_solicitudes', s.id).filter(r => r.estado !== 'cerrada').length;
+    const cierresDif30d = controlSedesPorSede('caja_cierre', s.id).filter(r => r.fecha >= hace30 && (r.diferenciaTotal||0) !== 0).length;
+    const encuestaRegs = controlSedesPorSede('encuesta_satisfaccion', s.id).filter(r => r.fecha >= hace7);
+    const encuesta7d = encuestaRegs.length ? Math.round((encuestaRegs.reduce((a,r)=>a+Number(r.calificacion||0),0)/encuestaRegs.length)*10)/10 : null;
+
+    const necesitaAtencion = pendiente || incidentesAbiertos > 0 || mantAbiertas > 0 || fotosRechazadas > 0 || ultimoAcceso === null || (diasSinAcceso !== null && diasSinAcceso >= 3);
+
+    return `
+    <div style="border:1px solid var(--border);border-radius:12px;padding:16px 18px;margin-bottom:16px;${necesitaAtencion ? 'border-left:4px solid var(--rojo);' : 'border-left:4px solid var(--verde);'}">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:4px;">
+        <div style="font-weight:700;font-size:15px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+          ${s.nombre}
+          ${pendiente ? '<span class="badge badge-dorado">Pendiente de autorizar</span>' : '<span class="badge badge-verde">Activa</span>'}
+          ${necesitaAtencion ? '<span class="badge badge-rojo">Necesita atención</span>' : ''}
+        </div>
+        <div style="font-size:11.5px;color:var(--text-light);">
+          ${gerente ? 'Gerente: <b>' + gerente.nombre + '</b> (@' + gerente.usuario + ')' : 'Sin gerente asignado'}
+        </div>
+      </div>
+      <div style="font-size:11.5px;color:var(--text-light);margin-bottom:10px;">
+        ${personal.length} persona${personal.length===1?'':'s'} activa${personal.length===1?'':'s'} ·
+        ${Array.isArray(s.modulosActivos) ? s.modulosActivos.length + ' módulo' + (s.modulosActivos.length===1?'':'s') + ' activo' + (s.modulosActivos.length===1?'':'s') : 'Sin restricción de módulos'} ·
+        Último acceso: ${controlSedesTiempoRelativo(ultimoAcceso)}
+      </div>
+      <div class="module-grid" style="gap:10px;">
+        ${kpi(fotosRechazadas>0?'#C0392B':(fotosCorregir>0?'#8A6D1F':'#2E7D32'), 'camera', fotosAyer.length, 'Fotos de calidad ayer' + (fotosRechazadas ? ' (' + fotosRechazadas + ' rechazadas)' : ''))}
+        ${kpi(incidentesAbiertos>0?'#C0392B':'#2E7D32', 'bell', incidentesAbiertos, 'Sucesos abiertos')}
+        ${kpi('#3B6EA8', 'search', hallazgos30d, 'Hallazgos (30 días)')}
+        ${kpi(mantAbiertas>0?'#C0392B':'#2E7D32', 'wrench', mantAbiertas, 'Mantenimiento pendiente')}
+        ${kpi(cierresDif30d>0?'#C0392B':'#2E7D32', 'cash', cierresDif30d, 'Cierres con diferencia (30 días)')}
+        ${kpi(encuesta7d && encuesta7d<3.5?'#C0392B':'#2E7D32', 'star', encuesta7d || '-', 'Calificación servicio (7 días)')}
+      </div>
+    </div>`;
+  }).join('');
+
+  return `
+    <p style="font-size:12.5px;color:var(--text-light);margin-bottom:14px;">
+      Un vistazo rápido de cada sede — útil para decidir a cuál llamar o visitar si algo necesita soporte técnico o acompañamiento. La franja roja a la izquierda marca las que tienen algo pendiente de revisar.
+    </p>
+    ${tarjetas || '<p style="color:var(--text-light);font-size:13px;">Todavía no hay sedes registradas — créalas desde Configuración → Sedes.</p>'}
+  `;
 }
 
 /* ==================================================================
