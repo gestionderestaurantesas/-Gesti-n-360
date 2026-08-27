@@ -9984,6 +9984,7 @@ function renderConfigAreasActivas(sec, group, item, ruta){
 let sedesLastRuta = 'Gerencia → Configuración → Sedes';
 let sedesVista = 'lista'; // 'lista' | 'nueva'
 let sedesUltimaCreada = null; // {sedeNombre, usuario, pass} — confirmación de una sola vez
+let sedesEditandoId = null;
 
 function sedesTodas(){ return DB.get('sedes', []).slice(); }
 function sedeSlug(nombre){ return compraNormalizar(nombre||'').trim().replace(/[^a-z0-9]+/g,''); }
@@ -10022,7 +10023,9 @@ function renderSedesBody(){
   const puedeGestionar = SESSION && SESSION.sede === 'todas';
   const cuerpo = !puedeGestionar ? sedesAccesoRestringidoHtml()
     : sedesUltimaCreada ? sedesConfirmacionHtml()
-    : (sedesVista === 'nueva' ? sedesFormNuevaHtml() : sedesListaHtml());
+    : sedesVista === 'nueva' ? sedesFormNuevaHtml()
+    : sedesVista === 'editar' ? sedesEditarModulosHtml()
+    : sedesListaHtml();
   const html = `
     <div class="panel" id="sedesBox">
       <div class="panel-header">
@@ -10055,7 +10058,9 @@ function sedesListaHtml(){
           ${nModulos === null ? 'Sin restricción propia de módulos' : nModulos + ' módulo' + (nModulos===1?'':'s') + ' activo' + (nModulos===1?'':'s')}${gerente ? ' · Gerente: @' + gerente.usuario : ''}
         </div>
       </div>
-      ${pendiente ? `<button class="btn-primary" style="width:auto;padding:8px 16px;" onclick="sedeAutorizar('${s.id}')">Autorizar y crear gerente</button>` : ''}
+      ${pendiente
+        ? `<button class="btn-primary" style="width:auto;padding:8px 16px;" onclick="sedeAutorizar('${s.id}')">Autorizar y crear gerente</button>`
+        : `<button class="tab-btn" style="padding:8px 16px;" onclick="sedesIrEditarModulos('${s.id}')">Editar módulos</button>`}
     </div>`;
   }).join('');
 
@@ -10069,7 +10074,8 @@ function sedesListaHtml(){
     </div>`;
 }
 
-function sedesAgruparItemsHtml(gruposConItems){
+function sedesAgruparItemsHtml(gruposConItems, marcados){
+  marcados = marcados || new Set();
   let seccionActual = null;
   return gruposConItems.map(({sec:s, group:g}) => {
     const contId = 'sede_grp_' + s.id + '_' + g.id;
@@ -10077,7 +10083,7 @@ function sedesAgruparItemsHtml(gruposConItems){
       `<div style="font-weight:700;font-size:12px;margin-top:14px;margin-bottom:2px;color:var(--text-light);text-transform:uppercase;letter-spacing:.03em;">${s.label}</div>`) : '';
     const itemsHtml = (g.items||[]).map(it => `
       <label style="display:flex;gap:6px;align-items:flex-start;font-size:12px;padding:2px 0;">
-        <input type="checkbox" class="sede-mod-chk" value="${it.id}" style="margin-top:2px;">
+        <input type="checkbox" class="sede-mod-chk" value="${it.id}" ${marcados.has(it.id)?'checked':''} style="margin-top:2px;">
         <span>${it.label}</span>
       </label>`).join('');
     return `${encabezadoSeccion}
@@ -10129,13 +10135,63 @@ function guardarSedeNueva(){
     showMsg('sede_msg', 'Ya existe una sede llamada "' + existente.nombre + '". Para probar el flujo de creación usa un nombre distinto, por ejemplo "' + nombre + ' (prueba)".', 'rojo');
     return;
   }
-  const modulosActivos = Array.from(document.querySelectorAll('.sede-mod-chk:checked')).map(c => c.value);
+  const marcados = Array.from(document.querySelectorAll('.sede-mod-chk:checked')).map(c => c.value);
+  // Si no se marca nada, la sede queda SIN restricción (ve todos los
+  // módulos, igual que Chinú y Montería) — marcar casillas es solo para
+  // cuando de verdad quieras limitar qué ve esa sede en particular.
+  const modulosActivos = marcados.length ? marcados : null;
   sedes.push({
     id: slug, nombre, activa: true, estado: 'pendiente', modulosActivos,
     creadaEn: new Date().toISOString(), creadaPor: SESSION.nombre, gerenteUsuario: null
   });
   DB.set('sedes', sedes);
   sedesVista = 'lista';
+  renderSedesBody();
+}
+
+function sedesIrEditarModulos(sedeId){
+  sedesVista = 'editar';
+  sedesEditandoId = sedeId;
+  renderSedesBody();
+}
+
+function sedesEditarModulosHtml(){
+  const sede = sedesTodas().find(s => s.id === sedesEditandoId);
+  if(!sede) return sedesListaHtml();
+  const marcados = new Set(Array.isArray(sede.modulosActivos) ? sede.modulosActivos : []);
+  const gruposHtml = sedesAgruparItemsHtml(sedeItemsOperativos(), marcados);
+  return `
+    <div style="margin-bottom:14px;">
+      <a href="#" onclick="sedesVolver();return false;" style="font-size:12.5px;color:var(--dorado);text-decoration:none;">&larr; Volver a la lista de sedes</a>
+    </div>
+    <h3 style="margin:0 0 10px;font-size:15px;">Módulos de "${sede.nombre}"</h3>
+    <p style="font-size:12px;color:var(--text-light);margin:2px 0 8px;">
+      ${Array.isArray(sede.modulosActivos) ? 'Esta sede tiene módulos limitados. Desmarca todo y guarda para quitarle la restricción por completo.' : 'Esta sede no tiene restricción — ve todos los módulos. Marca solo los que quieras dejar disponibles para limitarla.'}
+    </p>
+    <div style="border:1px solid var(--border);border-radius:10px;padding:12px 16px;max-height:360px;overflow:auto;">
+      ${gruposHtml}
+    </div>
+    <div style="margin-top:16px;display:flex;gap:10px;align-items:center;">
+      <button class="btn-primary" style="width:auto;padding:11px 22px;" onclick="guardarSedeModulos()">Guardar cambios</button>
+      <button class="tab-btn" onclick="sedesQuitarRestriccion()">Quitar toda restricción</button>
+      <div id="sede_msg" style="flex:1;"></div>
+    </div>`;
+}
+
+function sedesQuitarRestriccion(){
+  document.querySelectorAll('.sede-mod-chk').forEach(c => { c.checked = false; });
+  guardarSedeModulos();
+}
+
+function guardarSedeModulos(){
+  const sedes = DB.get('sedes', []);
+  const sede = sedes.find(s => s.id === sedesEditandoId);
+  if(!sede) return;
+  const marcados = Array.from(document.querySelectorAll('.sede-mod-chk:checked')).map(c => c.value);
+  sede.modulosActivos = marcados.length ? marcados : null;
+  DB.set('sedes', sedes);
+  sedesVista = 'lista';
+  sedesEditandoId = null;
   renderSedesBody();
 }
 
@@ -10168,12 +10224,54 @@ function sedesConfirmacionHtml(){
       <div style="font-family:monospace;font-size:14px;background:var(--white);border:1px solid var(--border);border-radius:8px;padding:10px 14px;display:inline-block;">
         Usuario: <b>${c.usuario}</b> &nbsp;·&nbsp; Contraseña: <b>${c.pass}</b>
       </div>
+      <div style="margin-top:8px;">
+        <button class="tab-btn" style="padding:6px 14px;font-size:12px;" onclick="sedeCopiarCredenciales()">📋 Copiar usuario y contraseña</button>
+      </div>
+      <div id="sede_credenciales_msg"></div>
       <p style="font-size:11.5px;color:var(--text-light);margin:8px 0 0;">Guárdalos ahora — no se vuelven a mostrar aquí (si hace falta, puedes restablecer la contraseña luego desde Usuarios y permisos).</p>
     </div>
     <div style="display:flex;gap:10px;flex-wrap:wrap;">
-      <button class="btn-primary" style="width:auto;padding:10px 20px;" onclick="sedesVolver()">Volver a Sedes</button>
+      <button class="btn-primary" style="width:auto;padding:10px 20px;" onclick="sedeEntrarComoGerente('${c.usuario}')">Entrar ahora como este gerente (probar la cuenta)</button>
+      <button class="tab-btn" onclick="sedesVolver()">Volver a Sedes</button>
       <button class="tab-btn" onclick="tourIniciar()">Ver el recorrido guiado de la app</button>
-    </div>`;
+    </div>
+    <p style="font-size:11.5px;color:var(--text-light);margin-top:10px;">Tip: si al escribir el usuario/contraseña a mano te dice "incorrectos", usa el botón "Copiar" de arriba y pégalos directo en la pantalla de login — evita errores al transcribir la contraseña generada.</p>`;
+}
+
+// Copia usuario+contraseña al portapapeles (con respaldo si el navegador
+// no soporta la API moderna de portapapeles).
+function sedeCopiarCredenciales(){
+  const c = sedesUltimaCreada;
+  if(!c) return;
+  const texto = 'Usuario: ' + c.usuario + '\nContraseña: ' + c.pass;
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(texto)
+      .then(function(){ showMsg('sede_credenciales_msg', 'Copiado al portapapeles.', 'verde'); })
+      .catch(function(){ sedeCopiarFallback(texto); });
+  } else {
+    sedeCopiarFallback(texto);
+  }
+}
+function sedeCopiarFallback(texto){
+  const ta = document.createElement('textarea');
+  ta.value = texto;
+  ta.style.position = 'fixed';
+  ta.style.opacity = '0';
+  document.body.appendChild(ta);
+  ta.select();
+  try { document.execCommand('copy'); showMsg('sede_credenciales_msg', 'Copiado al portapapeles.', 'verde'); }
+  catch(e){ showMsg('sede_credenciales_msg', 'No se pudo copiar automático — selecciona el texto de arriba a mano.', 'rojo'); }
+  document.body.removeChild(ta);
+}
+// Permite entrar de una vez con la cuenta de gerente recién creada, sin
+// tener que volver a escribir el usuario/contraseña a mano — útil para
+// probar que la cuenta quedó bien armada.
+function sedeEntrarComoGerente(usuario){
+  const found = DB.get('usuarios', []).find(x => x.usuario === usuario);
+  if(!found){ showMsg('sede_credenciales_msg', 'No se encontró esa cuenta — recarga la página e intenta de nuevo.', 'rojo'); return; }
+  SESSION = { usuario: found.usuario, nombre: found.nombre, cargo: found.cargo, rol: found.rol, area: found.area, sede: found.sede, rolPuesto: found.rolPuesto || '', itemsExtra: found.itemsExtra || [], loginAt: new Date().toISOString() };
+  DB.set('sesion_actual', SESSION);
+  enterApp();
 }
 
 /* ==================================================================
