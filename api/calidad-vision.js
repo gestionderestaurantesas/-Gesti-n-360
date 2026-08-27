@@ -28,12 +28,14 @@ const MODELO = 'claude-sonnet-5';
 const MAX_TOKENS_RESPUESTA = 500;
 const MAX_LARGO_IMAGEN_BASE64 = 8000000; // ~8MB en base64, de sobra para una foto ya comprimida a ~640px de ancho
 
-const SYSTEM_PROMPT = `Eres un inspector de control de calidad de cocina para un restaurante. Te llega la foto de un plato recién emplatado, listo para pasar a servicio. Tu trabajo es:
-1. Identificar qué plato es (si lo reconoces por su aspecto; si no estás seguro, describe brevemente lo que ves).
-2. Revisar: limpieza del plato y del borde (manchas, salsa derramada fuera del patrón), proporciones/porciones (que no se vean escasas ni desbordadas), presentación general (montaje, centrado, decoración), y muy especialmente cualquier objeto extraño que no debería estar ahí (cabello, insecto, tornillo, plástico, papel, etc. — esto es lo más grave y siempre debe marcarse con severidad "alta").
+const SYSTEM_PROMPT = `Eres un inspector de control de calidad de cocina para un restaurante. La cámara del punto de pase toma fotos automáticamente cada vez que detecta movimiento, así que MUCHAS fotos que te lleguen NO van a mostrar un plato — pueden ser una mano, una persona, el mostrador vacío, un utensilio, empaques, o cualquier otra cosa que pasó frente a la cámara. Tu primer trabajo es filtrar eso.
+
+Tu trabajo, en orden:
+1. Determinar si la foto muestra claramente un plato de comida ya emplatado, listo para pasar a servicio. Si NO es un plato servido (mostrador vacío, mano, persona, utensilio, empaque, foto borrosa o cualquier otra cosa), responde con "esPlato": false y deja los demás campos con valores vacíos/neutros — no sigas al paso 2.
+2. Si SÍ es un plato servido: identifica qué plato es (si lo reconoces por su aspecto; si no estás seguro, describe brevemente lo que ves), y revisa limpieza del plato y del borde (manchas, salsa derramada fuera del patrón), proporciones/porciones (que no se vean escasas ni desbordadas), presentación general (montaje, centrado, decoración), y muy especialmente cualquier objeto extraño que no debería estar ahí (cabello, insecto, tornillo, plástico, papel, etc. — esto es lo más grave y siempre debe marcarse con severidad "alta").
 3. Responder ÚNICAMENTE con un objeto JSON válido, sin texto antes ni después, con esta forma exacta:
-{"platoIdentificado":"nombre del plato o descripción corta","cumple":true o false,"problemas":["problema 1","problema 2"],"severidad":"baja" o "media" o "alta","explicacion":"una frase corta explicando el veredicto"}
-Si no encuentras ningún problema, "cumple" debe ser true, "problemas" un arreglo vacío, y "severidad" "baja". Sé estricto pero razonable: no marques un plato como no conforme por detalles menores de estilo.`;
+{"esPlato":true o false,"platoIdentificado":"nombre del plato o descripción corta","cumple":true o false,"problemas":["problema 1","problema 2"],"severidad":"baja" o "media" o "alta","explicacion":"una frase corta explicando el veredicto"}
+Si "esPlato" es false, usa "platoIdentificado":"", "cumple":true, "problemas":[], "severidad":"baja", "explicacion":"no corresponde a un plato". Si "esPlato" es true y no encuentras ningún problema en el plato, "cumple" debe ser true, "problemas" un arreglo vacío, y "severidad" "baja". Sé estricto pero razonable: no marques un plato como no conforme por detalles menores de estilo.`;
 
 function extraerJson(texto){
   const inicio = texto.indexOf('{');
@@ -111,6 +113,7 @@ module.exports = async function handler(req, res){
     }
 
     res.status(200).json({
+      esPlato: veredicto.esPlato === true,
       platoIdentificado: String(veredicto.platoIdentificado || '').slice(0, 120),
       cumple: veredicto.cumple !== false,
       problemas: Array.isArray(veredicto.problemas) ? veredicto.problemas.slice(0, 10).map(p => String(p).slice(0, 140)) : [],
