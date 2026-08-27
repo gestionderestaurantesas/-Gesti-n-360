@@ -2918,10 +2918,19 @@ function renderComandasBody(sec){
         Escribe la mesa y el pedido de cada persona, y al imprimir sale una comanda de 80mm POR PERSONA con su nombre bien visible — así en cocina y en el salón es fácil identificar quién pidió qué. En el diálogo de impresión, elige la impresora térmica del pase.
       </p>
       <div class="compact-form">
-      <div class="form-grid" style="max-width:420px;margin-bottom:14px;">
+      <div class="form-grid" style="max-width:420px;margin-bottom:10px;">
         <div class="form-field"><label>Mesa</label><input type="text" id="comanda_mesa" value="${comandasEscapar(comandaMesa)}" placeholder="Ej: Mesa 5" oninput="comandaMesa=this.value"></div>
         <div class="form-field"><label>Zona (opcional)</label><input type="text" id="comanda_zona" value="${comandasEscapar(comandaZona)}" placeholder="Ej: Salón, Rancho, Salón VIP..." oninput="comandaZona=this.value"></div>
       </div>
+      </div>
+      <div style="border:1px dashed var(--border);border-radius:10px;padding:12px 14px;margin-bottom:16px;background:var(--crema);">
+        <div style="font-weight:600;font-size:12.5px;margin-bottom:4px;">Cargar desde una captura (semiautomático)</div>
+        <p style="font-size:11.5px;color:var(--text-light);margin:0 0 8px;">
+          Sube una foto o captura del pedido (por ejemplo, de la pantalla de cocina del punto de venta) y la IA transcribe mesa, zona y los platos — tú solo repartes cada plato entre las personas.
+        </p>
+        <input type="file" accept="image/*" id="comanda_captura" onchange="onComandaCapturaChange(this)">
+        <div id="comanda_capturaMsg" style="margin-top:6px;"></div>
+        <div id="comanda_pedidosDetectados"></div>
       </div>
       <div class="form-section-title" style="margin-top:0;">Personas y sus pedidos</div>
       ${personasHtml}
@@ -2945,6 +2954,90 @@ function comandaQuitarPersona(idx){
   comandaPersonas.splice(idx, 1);
   if(!comandaPersonas.length) comandaPersonas = [{ nombre:'', pedido:'' }];
   renderComandasBody();
+}
+
+/* ---- Carga semiautomática: leer mesa/zona/platos desde una captura ----
+   No se conecta al sistema de punto de venta — lee (transcribe) lo que
+   se ve en la imagen con IA de visión. El equipo revisa y reparte los
+   platos entre cada persona, porque esa parte no viene en la captura. */
+let comandaPedidosDetectados = [];
+
+function onComandaCapturaChange(input){
+  const msgEl = document.getElementById('comanda_capturaMsg');
+  const file = input.files && input.files[0];
+  if(!file) return;
+  if(msgEl) msgEl.innerHTML = '<span style="font-size:11px;color:var(--text-light);">Procesando imagen...</span>';
+  const reader = new FileReader();
+  reader.onload = e => {
+    const img = new Image();
+    img.onload = () => {
+      // Más resolución que en las fotos de platos: aquí lo que importa
+      // es que el texto pequeño de la comanda se pueda leer bien.
+      const maxW = 1300;
+      const scale = Math.min(1, maxW / img.width);
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.max(1, Math.round(img.width * scale));
+      canvas.height = Math.max(1, Math.round(img.height * scale));
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+      comandaLeerCaptura(dataUrl);
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+async function comandaLeerCaptura(dataUrl){
+  const msgEl = document.getElementById('comanda_capturaMsg');
+  const detectadosEl = document.getElementById('comanda_pedidosDetectados');
+  if(detectadosEl) detectadosEl.innerHTML = '';
+  if(msgEl) msgEl.innerHTML = '<span style="font-size:11px;color:var(--text-light);">'+ic('search',11)+' Leyendo la imagen con IA…</span>';
+  try{
+    const base64 = dataUrl.split(',')[1] || '';
+    const resp = await fetch('/api/comanda-ocr', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ imagenBase64: base64 })
+    });
+    const data = await resp.json().catch(() => ({}));
+    if(!resp.ok || data.error){
+      if(msgEl) msgEl.innerHTML = '<span style="font-size:11px;color:var(--rojo);">No se pudo leer la imagen ahora mismo'+(data && data.mensaje ? ' ('+data.mensaje+')' : '')+'. Escribe el pedido a mano.</span>';
+      return;
+    }
+    comandaPedidosDetectados = Array.isArray(data.pedidos) ? data.pedidos : [];
+    if(!comandaPedidosDetectados.length){
+      if(msgEl) msgEl.innerHTML = '<span style="font-size:11px;color:var(--rojo);">No se pudo leer ningún pedido claro en esa imagen. Prueba con una foto más nítida o escribe el pedido a mano.</span>';
+      return;
+    }
+    if(comandaPedidosDetectados.length === 1){
+      if(msgEl) msgEl.innerHTML = '';
+      comandaAplicarPedidoDetectado(0);
+      return;
+    }
+    if(msgEl) msgEl.innerHTML = '<span style="font-size:11px;color:var(--text-light);">Se detectó más de un pedido en la imagen — elige cuál cargar:</span>';
+    if(detectadosEl){
+      detectadosEl.innerHTML = comandaPedidosDetectados.map((p, i) => `
+        <button class="tab-btn" style="margin:6px 6px 0 0;" onclick="comandaAplicarPedidoDetectado(${i})">
+          Mesa ${comandasEscapar(p.mesa) || '?'}${p.zona ? ' — ' + comandasEscapar(p.zona) : ''} (${p.items.length} platos)
+        </button>`).join('');
+    }
+  } catch(err){
+    if(msgEl) msgEl.innerHTML = '<span style="font-size:11px;color:var(--rojo);">No se pudo conectar con el análisis de IA. Escribe el pedido a mano.</span>';
+  }
+}
+
+function comandaAplicarPedidoDetectado(idx){
+  const p = comandaPedidosDetectados[idx];
+  if(!p) return;
+  comandaMesa = p.mesa || '';
+  comandaZona = p.zona || '';
+  const nPersonas = (p.personas && p.personas > 0) ? Math.min(p.personas, 20) : 1;
+  comandaPersonas = Array.from({length: nPersonas}, () => ({ nombre:'', pedido:'' }));
+  comandaPersonas[0].pedido = (p.items || []).join('\n');
+  renderComandasBody();
+  showMsg('comanda_msg', 'Se cargó Mesa ' + (comandaMesa || '?') + ' con ' + (p.items||[]).length + ' platos en "Persona 1"'
+    + (p.camarero ? ' (mesero detectado: ' + p.camarero + ')' : '') + '. Corta y pega cada plato en la persona que corresponda.', 'dorado');
 }
 
 function comandaImprimir(){
