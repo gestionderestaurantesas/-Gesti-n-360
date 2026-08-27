@@ -5735,8 +5735,19 @@ function fp360LiberarCamara(){
 let fp360AutoInterval = null;
 let fp360AutoUltimoFrame = null;
 let fp360AutoUltimaCaptura = 0;
-const FP360_AUTO_UMBRAL = 18;
-const FP360_AUTO_COOLDOWN_MS = 4000;
+let fp360AutoUltimaFotoFingerprint = null; // huella de la última foto SÍ tomada (para detectar repetidas)
+// Umbral bajo a propósito: la idea es que capture TODO lo que llega al
+// foco de la cámara (aunque sea un movimiento suave, como un plato
+// entrando con cuidado) y filtrar después — ver fp360EsFotoRepetida y
+// el paso de IA (esPlato) en fp360AplicarVeredictoAutomatico.
+const FP360_AUTO_UMBRAL = 7;
+const FP360_AUTO_COOLDOWN_MS = 1500;
+// Umbral de "es la misma foto de antes" — mucho más estricto que el de
+// movimiento, porque aquí se compara foto tomada contra foto tomada
+// (no fotograma contra fotograma), para descartar disparos casi
+// idénticos seguidos (la mano ajustando el mismo plato, por ejemplo).
+const FP360_AUTO_REPETIDA_UMBRAL = 5;
+
 function fp360ToggleAuto(activo){
   if(activo){
     if(!fp360CameraStream){
@@ -5746,7 +5757,8 @@ function fp360ToggleAuto(activo){
     }
     fp360AutoUltimoFrame = null;
     fp360AutoUltimaCaptura = 0;
-    const estadoEl = document.getElementById('fp_autoEstado'); if(estadoEl) estadoEl.textContent = 'Vigilando el pase — tomará la foto sola al detectar movimiento…';
+    fp360AutoUltimaFotoFingerprint = null;
+    const estadoEl = document.getElementById('fp_autoEstado'); if(estadoEl) estadoEl.textContent = 'Vigilando el pase — tomará la foto sola al detectar cualquier movimiento…';
     if(fp360AutoInterval) clearInterval(fp360AutoInterval);
     fp360AutoInterval = setInterval(fp360AutoRevisarMovimiento, 400);
   } else {
@@ -5764,11 +5776,7 @@ function fp360AutoRevisarMovimiento(){
   ctx.drawImage(video, 0, 0, w, h);
   const frame = ctx.getImageData(0, 0, w, h).data;
   if(fp360AutoUltimoFrame){
-    let diffTotal = 0;
-    for(let i=0; i<frame.length; i+=4){
-      diffTotal += (Math.abs(frame[i]-fp360AutoUltimoFrame[i]) + Math.abs(frame[i+1]-fp360AutoUltimoFrame[i+1]) + Math.abs(frame[i+2]-fp360AutoUltimoFrame[i+2])) / 3;
-    }
-    const promedioDiff = diffTotal / (frame.length/4);
+    const promedioDiff = fp360DiffPromedio(frame, fp360AutoUltimoFrame);
     const ahora = Date.now();
     if(promedioDiff > FP360_AUTO_UMBRAL && (ahora - fp360AutoUltimaCaptura) > FP360_AUTO_COOLDOWN_MS){
       fp360AutoUltimaCaptura = ahora;
@@ -5776,6 +5784,28 @@ function fp360AutoRevisarMovimiento(){
     }
   }
   fp360AutoUltimoFrame = frame;
+}
+// Diferencia promedio de píxeles (canal por canal, sobre RGB) entre dos
+// capturas del mismo tamaño — la reutilizan tanto la detección de
+// movimiento (fotograma vs. fotograma) como la de fotos repetidas
+// (foto tomada vs. foto tomada).
+function fp360DiffPromedio(frameA, frameB){
+  let diffTotal = 0;
+  for(let i=0; i<frameA.length; i+=4){
+    diffTotal += (Math.abs(frameA[i]-frameB[i]) + Math.abs(frameA[i+1]-frameB[i+1]) + Math.abs(frameA[i+2]-frameB[i+2])) / 3;
+  }
+  return diffTotal / (frameA.length/4);
+}
+// Huella liviana (48x36) del fotograma actual del video — se usa para
+// comparar la foto que se está tomando contra la última foto tomada, y
+// así detectar si es prácticamente la misma escena repetida.
+function fp360Huella(video){
+  const w = 48, h = 36;
+  const c = document.createElement('canvas');
+  c.width = w; c.height = h;
+  const ctx = c.getContext('2d');
+  ctx.drawImage(video, 0, 0, w, h);
+  return ctx.getImageData(0, 0, w, h).data;
 }
 function fp360CapturarDesdeCamara(esAutomatico){
   const video = document.getElementById('fp_video');
@@ -5793,7 +5823,21 @@ function fp360CapturarDesdeCamara(esAutomatico){
   const fotoData = canvas.toDataURL('image/jpeg', 0.7);
 
   if(esAutomatico){
-    const estadoEl = document.getElementById('fp_autoEstado'); if(estadoEl) estadoEl.textContent = 'Movimiento detectado — analizando con IA…';
+    const estadoEl = document.getElementById('fp_autoEstado');
+    // Ya se tomó la foto (arriba) — ahora, ANTES de gastar una llamada a
+    // la IA, se descarta aquí mismo si es prácticamente idéntica a la
+    // última foto tomada (por ejemplo, la mano todavía moviéndose sobre
+    // el mismo plato que ya se capturó hace un segundo).
+    const huellaActual = fp360Huella(video);
+    if(fp360AutoUltimaFotoFingerprint){
+      const diffFoto = fp360DiffPromedio(huellaActual, fp360AutoUltimaFotoFingerprint);
+      if(diffFoto < FP360_AUTO_REPETIDA_UMBRAL){
+        if(estadoEl) estadoEl.textContent = 'Foto descartada — repetida (muy parecida a la anterior). Vigilando el pase…';
+        return;
+      }
+    }
+    fp360AutoUltimaFotoFingerprint = huellaActual;
+    if(estadoEl) estadoEl.textContent = 'Foto tomada — analizando con IA…';
     fp360AnalizarConIA(fotoData, true);
     return;
   }
