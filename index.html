@@ -5283,11 +5283,23 @@ function onFotoPlatoChange(input){
       ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
       fotosPlatosFotoData = canvas.toDataURL('image/jpeg', 0.7);
       if(preview) preview.innerHTML = '<img src="'+fotosPlatosFotoData+'" style="max-width:160px;border-radius:8px;border:1px solid var(--border);display:block;">';
-      fp360AnalizarConIA(fotosPlatosFotoData);
+      fp360AnalizarConIA(fotosPlatosFotoData, false);
     };
     img.src = e.target.result;
   };
   reader.readAsDataURL(file);
+}
+function fp360GuardarRegistro(datos){
+  DB.push('fotos_platos', {
+    sede: sedeParaGuardar(), usuario: SESSION.usuario, nombre: SESSION.nombre,
+    fecha: hoyStr(), hora: horaStr(),
+    plato: datos.plato, observaciones: datos.observaciones || '', foto: datos.foto, esEstandar: false,
+    estado: datos.estado, motivo: datos.motivo || '',
+    iaPlato: datos.iaPlato, iaCumple: datos.iaCumple, iaProblemas: datos.iaProblemas,
+    iaSeveridad: datos.iaSeveridad, iaExplicacion: datos.iaExplicacion,
+    iaCoincidioConHumano: datos.iaCoincidioConHumano,
+    guardadoAutomaticamente: !!datos.automatico
+  });
 }
 function guardarFotoPlato(){
   const plato = (document.getElementById('fp_plato')||{}).value ? document.getElementById('fp_plato').value.trim() : '';
@@ -5312,12 +5324,7 @@ function guardarFotoPlato(){
     if(contadorCalib < 100) DB.set('fp360_calibracion_contador', contadorCalib + 1);
   }
 
-  DB.push('fotos_platos', {
-    sede: sedeParaGuardar(), usuario: SESSION.usuario, nombre: SESSION.nombre,
-    fecha: hoyStr(), hora: horaStr(),
-    plato, observaciones, foto: fotosPlatosFotoData, esEstandar: false,
-    estado, motivo, ...camposIA
-  });
+  fp360GuardarRegistro({ plato, observaciones, estado, motivo, foto: fotosPlatosFotoData, ...camposIA });
   fotosPlatosFotoData = null;
   fp360IAUltimoVeredicto = null;
   showMsg('fp_msg','Foto registrada.','verde');
@@ -5331,10 +5338,15 @@ function fp360EstadisticasCalibracion(){
   return { contador, porcentaje, totalRevisadas: revisadas.length };
 }
 let fp360IAUltimoVeredicto = null;
-async function fp360AnalizarConIA(fotoDataUrl){
+async function fp360AnalizarConIA(fotoDataUrl, esAutomatico){
   const veredictoEl = document.getElementById('fp_iaVeredicto');
-  if(veredictoEl) veredictoEl.innerHTML = '<span style="color:var(--text-light);font-size:12px;">'+ic('search',12)+' Analizando la foto con IA…</span>';
-  fp360IAUltimoVeredicto = null;
+  const autoEl = document.getElementById('fp_autoEstado');
+  if(esAutomatico){
+    if(autoEl) autoEl.textContent = 'Foto capturada — analizando con IA…';
+  } else {
+    if(veredictoEl) veredictoEl.innerHTML = '<span style="color:var(--text-light);font-size:12px;">'+ic('search',12)+' Analizando la foto con IA…</span>';
+    fp360IAUltimoVeredicto = null;
+  }
   try{
     const base64 = fotoDataUrl.split(',')[1] || '';
     const resp = await fetch('/api/calidad-vision', {
@@ -5344,16 +5356,28 @@ async function fp360AnalizarConIA(fotoDataUrl){
     });
     const data = await resp.json().catch(() => ({}));
     if(!resp.ok || data.error){
-      if(veredictoEl) veredictoEl.innerHTML = '<span style="color:var(--text-light);font-size:12px;">No se pudo analizar con IA ahora mismo'+(data && data.mensaje ? ' ('+data.mensaje+')' : '')+'. Revisa manualmente y guarda.</span>';
+      const mensajeError = 'No se pudo analizar con IA ahora mismo'+(data && data.mensaje ? ' ('+data.mensaje+')' : '')+'.';
+      if(esAutomatico){ if(autoEl) autoEl.textContent = mensajeError+' Vigilando el pase…'; }
+      else if(veredictoEl){ veredictoEl.innerHTML = '<span style="color:var(--text-light);font-size:12px;">'+mensajeError+' Revisa manualmente y guarda.</span>'; }
       return;
     }
-    fp360IAUltimoVeredicto = data;
-    fp360AplicarVeredictoIA(data);
+    if(esAutomatico){
+      fp360AplicarVeredictoAutomatico(fotoDataUrl, data);
+    } else {
+      fp360IAUltimoVeredicto = data;
+      fp360AplicarVeredictoIA(data);
+    }
   } catch(err){
-    if(veredictoEl) veredictoEl.innerHTML = '<span style="color:var(--text-light);font-size:12px;">No se pudo conectar con el análisis de IA. Revisa manualmente y guarda.</span>';
+    if(esAutomatico){ if(autoEl) autoEl.textContent = 'No se pudo conectar con el análisis de IA. Vigilando el pase…'; }
+    else if(veredictoEl){ veredictoEl.innerHTML = '<span style="color:var(--text-light);font-size:12px;">No se pudo conectar con el análisis de IA. Revisa manualmente y guarda.</span>'; }
   }
 }
 function fp360AplicarVeredictoIA(data){
+  const veredictoEl = document.getElementById('fp_iaVeredicto');
+  if(data.esPlato === false){
+    if(veredictoEl) veredictoEl.innerHTML = '<span class="badge badge-gris">'+ic('search',11)+' La IA no reconoce esto como un plato</span> <span style="font-size:12px;color:var(--text-light);">Puedes guardarla igual si crees que sí corresponde.</span>';
+    return;
+  }
   const platoInput = document.getElementById('fp_plato');
   if(platoInput && !platoInput.value.trim() && data.platoIdentificado) platoInput.value = data.platoIdentificado;
 
@@ -5365,7 +5389,6 @@ function fp360AplicarVeredictoIA(data){
   const motivoInput = document.getElementById('fp_motivo');
   if(motivoInput && !data.cumple) motivoInput.value = (data.problemas || []).join(', ');
 
-  const veredictoEl = document.getElementById('fp_iaVeredicto');
   if(veredictoEl){
     const badgeClase = data.cumple ? 'badge-verde' : (data.severidad === 'alta' ? 'badge-rojo' : 'badge-dorado');
     veredictoEl.innerHTML = '<span class="badge '+badgeClase+'">'+ic(data.cumple ? 'check' : 'flag', 11)+' IA: '+(data.cumple ? 'Cumple' : 'No cumple')+'</span> <span style="font-size:12px;color:var(--text-light);">'+(data.explicacion || '')+'</span>';
@@ -5375,6 +5398,31 @@ function fp360AplicarVeredictoIA(data){
     if(typeof miseCocinaReproducirBeep === 'function') miseCocinaReproducirBeep();
     fp360MostrarAlertaCalidad(data);
   }
+}
+function fp360AplicarVeredictoAutomatico(fotoDataUrl, data){
+  const autoEl = document.getElementById('fp_autoEstado');
+  if(!data.esPlato){
+    if(autoEl) autoEl.textContent = 'Foto descartada — no corresponde a un plato. Vigilando el pase…';
+    return;
+  }
+
+  const estadoFinal = data.cumple ? 'aprobado' : (data.severidad === 'alta' ? 'rechazado' : 'corregir');
+  const motivoFinal = data.cumple ? '' : ((data.problemas || []).join(', ') || data.explicacion || '');
+  const platoFinal = (data.platoIdentificado || '').trim() || 'Plato sin identificar';
+
+  fp360GuardarRegistro({
+    plato: platoFinal, observaciones: '', estado: estadoFinal, motivo: motivoFinal, foto: fotoDataUrl, automatico: true,
+    iaPlato: data.platoIdentificado || '', iaCumple: !!data.cumple, iaProblemas: data.problemas || [],
+    iaSeveridad: data.severidad || '', iaExplicacion: data.explicacion || ''
+  });
+
+  if(!data.cumple){
+    if(typeof miseCocinaReproducirBeep === 'function') miseCocinaReproducirBeep();
+    fp360MostrarAlertaCalidad(data);
+  }
+
+  if(autoEl) autoEl.textContent = 'Foto guardada automáticamente: '+platoFinal+(data.cumple ? '' : ' — revisar: '+motivoFinal)+'. Vigilando el pase…';
+  fp360ActualizarContadoresPase();
 }
 function fp360MostrarAlertaCalidad(data){
   const msg = document.getElementById('fp_msg');
@@ -5477,11 +5525,11 @@ async function fp360ConsultarTemperatura(){
     card.innerHTML = ic('target',12) + ' Temperatura del punto de pase: no se pudo consultar el sensor.';
   }
 }
-function fp360Kpi(color, iconName, valor, label){
+function fp360Kpi(color, iconName, valor, label, id){
   return `
     <div class="module-card" style="cursor:default;">
       <div class="icon-circle" style="background:${hexToRgba(color,0.14)}; color:${color};">${ic(iconName,22)}</div>
-      <h3>${valor}</h3><p>${label}</p>
+      <h3${id ? ' id="'+id+'"' : ''}>${valor}</h3><p>${label}</p>
     </div>`;
 }
 /* ---- Cámara de pase: conexión real a la cámara (getUserMedia) para
@@ -5575,16 +5623,15 @@ function fp360AutoRevisarMovimiento(){
     const ahora = Date.now();
     if(promedioDiff > FP360_AUTO_UMBRAL && (ahora - fp360AutoUltimaCaptura) > FP360_AUTO_COOLDOWN_MS){
       fp360AutoUltimaCaptura = ahora;
-      fp360CapturarDesdeCamara();
-      const estadoEl = document.getElementById('fp_autoEstado'); if(estadoEl) estadoEl.textContent = 'Movimiento detectado — foto capturada automáticamente. Escribe el plato y guarda.';
+      fp360CapturarDesdeCamara(true);
     }
   }
   fp360AutoUltimoFrame = frame;
 }
-function fp360CapturarDesdeCamara(){
+function fp360CapturarDesdeCamara(esAutomatico){
   const video = document.getElementById('fp_video');
   if(!video || !fp360CameraStream || !video.videoWidth){
-    showMsg('fp_msg','Conecta la cámara antes de tomar la foto.','rojo');
+    if(!esAutomatico) showMsg('fp_msg','Conecta la cámara antes de tomar la foto.','rojo');
     return;
   }
   const canvas = document.getElementById('fp_canvas');
@@ -5594,11 +5641,44 @@ function fp360CapturarDesdeCamara(){
   canvas.height = Math.max(1, Math.round(video.videoHeight * scale));
   const ctx = canvas.getContext('2d');
   ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-  fotosPlatosFotoData = canvas.toDataURL('image/jpeg', 0.7);
+  const fotoData = canvas.toDataURL('image/jpeg', 0.7);
+
+  if(esAutomatico){
+    const estadoEl = document.getElementById('fp_autoEstado'); if(estadoEl) estadoEl.textContent = 'Movimiento detectado — analizando con IA…';
+    fp360AnalizarConIA(fotoData, true);
+    return;
+  }
+
+  fotosPlatosFotoData = fotoData;
   const preview = document.getElementById('fp_fotoPreview');
-  if(preview) preview.innerHTML = '<span class="badge badge-verde">'+ic('check',11)+' Foto capturada — lista para guardar</span><br><img src="'+fotosPlatosFotoData+'" style="max-width:160px;border-radius:8px;border:1px solid var(--border);display:block;margin-top:6px;">';
+  if(preview) preview.innerHTML = '<span class="badge badge-verde">'+ic('check',11)+' Foto capturada — lista para guardar</span><br><img src="'+fotoData+'" style="max-width:160px;border-radius:8px;border:1px solid var(--border);display:block;margin-top:6px;">';
   showMsg('fp_msg','Foto tomada con la cámara. Analizando con IA…','verde');
-  fp360AnalizarConIA(fotosPlatosFotoData);
+  fp360AnalizarConIA(fotoData, false);
+}
+function fp360RecientesFotosHtml(ultimas){
+  return ultimas.length ? `
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:10px;">
+      ${ultimas.map(f => `
+        <div style="border:1px solid var(--border);border-radius:10px;overflow:hidden;background:var(--white);">
+          <img src="${f.foto}" style="width:100%;height:84px;object-fit:cover;display:block;">
+          <div style="padding:5px 7px;">
+            <div style="font-weight:600;font-size:11px;">${f.plato}</div>
+            <div style="color:var(--text-light);font-size:10px;">${f.fecha} ${f.hora}</div>
+          </div>
+        </div>`).join('')}
+    </div>` : `<p style="color:var(--text-light);font-size:13px;">Todavía no hay fotos registradas.</p>`;
+}
+function fp360ActualizarContadoresPase(){
+  const ayer = fp360FechaOffsetStr(-1);
+  const mesActual = hoyStr().slice(0,7);
+  const todasSede = filtrarPorSede(DB.get('fotos_platos', []));
+  const deAyer = todasSede.filter(f => f.fecha === ayer);
+  const delMes = todasSede.filter(f => f.fecha.slice(0,7) === mesActual);
+  const ultimas = todasSede.slice().reverse().slice(0,6);
+
+  const kpiAyer = document.getElementById('fp_kpiAyer'); if(kpiAyer) kpiAyer.textContent = deAyer.length;
+  const kpiMes = document.getElementById('fp_kpiMes'); if(kpiMes) kpiMes.textContent = delMes.length;
+  const grid = document.getElementById('fp_recientesGrid'); if(grid) grid.innerHTML = fp360RecientesFotosHtml(ultimas);
 }
 function fp360PaseHtml(){
   fotosPlatosFotoData = null;
@@ -5610,17 +5690,7 @@ function fp360PaseHtml(){
   const delMes = todasSede.filter(f => f.fecha.slice(0,7) === mesActual);
   const ultimas = todasSede.slice().reverse().slice(0,6);
 
-  const recientesHtml = ultimas.length ? `
-    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:10px;">
-      ${ultimas.map(f => `
-        <div style="border:1px solid var(--border);border-radius:10px;overflow:hidden;background:var(--white);">
-          <img src="${f.foto}" style="width:100%;height:84px;object-fit:cover;display:block;">
-          <div style="padding:5px 7px;">
-            <div style="font-weight:600;font-size:11px;">${f.plato}</div>
-            <div style="color:var(--text-light);font-size:10px;">${f.fecha} ${f.hora}</div>
-          </div>
-        </div>`).join('')}
-    </div>` : `<p style="color:var(--text-light);font-size:13px;">Todavía no hay fotos registradas.</p>`;
+  const recientesHtml = fp360RecientesFotosHtml(ultimas);
 
   const calib = fp360EstadisticasCalibracion();
   const calibLineaHtml = calib.contador < 100
@@ -5629,8 +5699,8 @@ function fp360PaseHtml(){
 
   return `
       <div class="module-grid" style="margin-bottom:14px;">
-        ${fp360Kpi(meta.color,'camera', deAyer.length, 'Fotos registradas ayer')}
-        ${fp360Kpi(meta.color,'chart', delMes.length, 'Acumulado del mes')}
+        ${fp360Kpi(meta.color,'camera', deAyer.length, 'Fotos registradas ayer', 'fp_kpiAyer')}
+        ${fp360Kpi(meta.color,'chart', delMes.length, 'Acumulado del mes', 'fp_kpiMes')}
       </div>
       ${calibLineaHtml}
       <div style="display:grid;grid-template-columns:1.25fr 1fr;gap:18px;">
@@ -5651,7 +5721,7 @@ function fp360PaseHtml(){
           </div>
           <label style="display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--text);margin-top:12px;">
             <input type="checkbox" id="fp_autoModo" onchange="fp360ToggleAuto(this.checked)" disabled>
-            Modo automático — toma la foto sola al detectar movimiento en el pase
+            Modo automático — toma, analiza y guarda (o descarta) cada foto sola al detectar movimiento en el pase
           </label>
           <div id="fp_autoEstado" style="font-size:11.5px;color:var(--text-light);margin-top:4px;"></div>
           <div id="fp_temperaturaCard" style="margin-top:12px;padding:9px 12px;border:1px solid var(--border);border-radius:10px;background:var(--white);font-size:12px;color:var(--text-light);">
@@ -5697,7 +5767,7 @@ function fp360PaseHtml(){
         </div>
       </div>
       <h3 style="margin:24px 0 10px;font-size:15px;">Últimas fotos registradas</h3>
-      ${recientesHtml}`;
+      <div id="fp_recientesGrid">${recientesHtml}</div>`;
 }
 function fp360CalidadHtml(){
   const ayer = fp360FechaOffsetStr(-1);
