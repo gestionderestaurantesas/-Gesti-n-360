@@ -847,6 +847,10 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       </button>
     </nav>
 
+    <button id="tourBtn" onclick="tourIniciar()" style="background:none;border:none;color:var(--text-light);font-size:12px;cursor:pointer;display:flex;align-items:center;gap:6px;padding:8px 20px;">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 2-3 4"/><path d="M12 17h.01"/></svg>
+      Ver recorrido guiado
+    </button>
     <button id="logoutBtn" onclick="logout()">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg>
       Cerrar sesión
@@ -1036,8 +1040,20 @@ const ROLES_PUESTO = [
   { id:'inspector',               label:'Inspector' },
   { id:'gerente_operativa',       label:'Gerente operativa' },
   { id:'gerente_financiera',      label:'Gerente financiera' },
+  // Roles sugeridos para cuando un "Gerente de sede" crea el equipo de su
+  // propia sede (ver Configuración → Sedes) — se muestran primero en el
+  // desplegable de rol de puesto al crear un usuario nuevo.
+  { id:'aux_cocina',              label:'Auxiliar de cocina',            sugerido:true },
+  { id:'aux_bar',                 label:'Auxiliar de bar',               sugerido:true },
+  { id:'lider_servicio_cliente',  label:'Líder de servicio al cliente',  sugerido:true },
+  { id:'administrador',           label:'Administrador de sede',         sugerido:true },
   { id:'otros',                   label:'Otros' }
 ];
+const ROLES_PUESTO_SUGERIDOS_SEDE = ['mesero', 'aux_cocina', 'lider_cocina', 'aux_bar', 'lider_servicio_cliente', 'administrador'];
+// Nivel de acceso (rol) por defecto sugerido para cada rol de puesto, al
+// crear un usuario nuevo desde Configuración → Sedes/Usuarios: los roles
+// operativos entran como "empleado" y los de liderazgo como "administración".
+const ROL_NIVEL_SUGERIDO = { mesero:'empleado', aux_cocina:'empleado', aux_bar:'empleado', lider_cocina:'administracion', lider_servicio_cliente:'administracion', administrador:'administracion' };
 function rolPuestoLabel(id){ const r = ROLES_PUESTO.find(x=>x.id===id); return r ? r.label : ''; }
 
 // Permisos por defecto de cada rol de puesto — el gerente los puede
@@ -1345,7 +1361,7 @@ const NAV = [
       { id:'configuracion', label:'Configuración', matchArea:null, items:[
         { id:'cfg_usuarios', label:'Usuarios y permisos', icon:'users', roles:['gerencia'], customRender:'renderUsuariosPermisosModule' },
         { id:'cfg_roles', label:'Roles y tareas', icon:'shield', roles:['gerencia'], customRender:'renderRolesPermisosModule' },
-        { id:'cfg_sedes', label:'Sedes', icon:'pin', roles:['administracion','gerencia'] },
+        { id:'cfg_sedes', label:'Sedes', icon:'pin', roles:['gerencia'], customRender:'renderSedesModule' },
         { id:'cfg_parametros', label:'Parámetros', icon:'sliders', roles:['administracion','gerencia'] },
         { id:'cfg_areas_activas', label:'Áreas activas de la app', icon:'sliders', roles:['gerencia'], customRender:'renderConfigAreasActivas' },
         { id:'cfg_faq_sonia', label:'Preguntas frecuentes de Harol-IA', icon:'chat', roles:['gerencia'], customRender:'renderFaqSoniaModule' }
@@ -1562,8 +1578,23 @@ function visibleGroupsOf(sec){
   return sec.groups
     .filter(groupVisible)
     .filter(g => navGrupoActivo(sec.id, g.id))
-    .map(g => ({ group:g, items: (g.items||[]).filter(it => itemVisible(it) && navItemActivo(sec.id, g.id, it.id)) }))
+    .map(g => ({ group:g, items: (g.items||[]).filter(it => itemVisible(it) && navItemActivo(sec.id, g.id, it.id) && sedeItemActivo(sec.id, it.id)) }))
     .filter(g => g.group.link || g.items.length > 0);
+}
+// Filtro por sede (Configuración → Sedes): cada sede puede tener su propia
+// lista de módulos operativos activos (modulosActivos). Solo aplica a
+// Checklists/Operación — Gerencia y Harol-IA quedan siempre disponibles
+// para cualquier cuenta con rol gerencia/administración, sin importar la
+// sede, porque son pantallas de gestión/soporte, no módulos operativos.
+// Una sede sin modulosActivos configurado (como Chinú y Montería, creadas
+// antes de que existiera esta pantalla) se comporta igual que siempre:
+// sin restricción propia por sede.
+function sedeItemActivo(secId, itemId){
+  if(secId !== 'operacion' && secId !== 'checklists') return true;
+  if(!SESSION || SESSION.sede === 'todas') return true;
+  const sede = (DB.get('sedes', []) || []).find(s => s.id === SESSION.sede);
+  if(!sede || !Array.isArray(sede.modulosActivos)) return true;
+  return sede.modulosActivos.includes(itemId);
 }
 // Para listas planas con .area (Checklists): agrupa visualmente con
 // separadores de color, sin fragmentar en acordeones anidados.
@@ -1928,6 +1959,112 @@ function enterApp(){
   navAplicarHash();
   alarmaMiseServicioIniciar();
   if(typeof miseCocinaAlarmaMasterIniciar === 'function') miseCocinaAlarmaMasterIniciar();
+  tourOfrecerSiPendiente();
+}
+
+/* ==================================================================
+   RECORRIDO GUIADO — un "tour" corto en modo spotlight (resalta un
+   botón del menú a la vez, con una tarjeta explicándolo) para que
+   alguien nuevo entienda rápido cómo se mueve la app. Se ofrece solo
+   una vez, automáticamente, la primera vez que entra un usuario recién
+   creado como "Gerente de sede" (ver sedeAutorizar), y además queda
+   disponible para repetirlo cuando sea desde el botón "Ver recorrido"
+   al pie del menú lateral.
+   ================================================================== */
+let tourPasosActivos = [];
+let tourPasoActual = 0;
+
+function tourPasosDefault(){
+  const pasos = [];
+  if(document.getElementById('navHomeBtn')){
+    pasos.push({ el:'#navHomeBtn', titulo:'Inicio', texto:'Aquí ves un resumen rápido apenas entras a la app.' });
+  }
+  if(document.getElementById('sedeLabelSidebar')){
+    pasos.push({ el:'#sedeLabelSidebar', titulo:'Tu sede', texto:'Aquí ves en qué sede estás trabajando ahora mismo.' });
+  }
+  NAV.filter(sectionVisible).forEach(sec => {
+    if(visibleGroupsOf(sec).length === 0) return;
+    const btnId = 'sec_' + sec.id;
+    if(document.getElementById(btnId)){
+      pasos.push({ el:'#'+btnId, titulo:sec.label, texto: sec.desc || ('Explora las opciones de ' + sec.label + '.') });
+    }
+  });
+  if(document.getElementById('logoutBtn')){
+    pasos.push({ el:'#logoutBtn', titulo:'Cerrar sesión', texto:'Cuando termines, cierra tu sesión desde aquí — sobre todo si usas un dispositivo compartido.' });
+  }
+  return pasos;
+}
+
+function tourOfrecerSiPendiente(){
+  if(!SESSION) return;
+  const usuarios = DB.get('usuarios', []);
+  const idx = usuarios.findIndex(u => u.usuario === SESSION.usuario);
+  if(idx === -1 || !usuarios[idx].tourPendiente) return;
+  usuarios[idx].tourPendiente = false;
+  DB.set('usuarios', usuarios);
+  setTimeout(function(){
+    if(typeof confirm === 'function' && confirm('¡Bienvenido/a a Gestión de Restaurantes 360! ¿Quieres un recorrido rápido antes de empezar?')){
+      tourIniciar();
+    }
+  }, 400);
+}
+
+function tourIniciar(){
+  tourPasosActivos = tourPasosDefault();
+  tourPasoActual = 0;
+  if(!tourPasosActivos.length) return;
+  if(window.innerWidth <= 820){ const sb = document.getElementById('sidebar'); if(sb) sb.classList.add('open'); }
+  tourRenderPaso();
+}
+function tourCerrar(){
+  const ov = document.getElementById('tourOverlay');
+  if(ov) ov.remove();
+}
+function tourSiguiente(){
+  tourPasoActual++;
+  if(tourPasoActual >= tourPasosActivos.length){ tourCerrar(); return; }
+  tourRenderPaso();
+}
+function tourAnterior(){
+  if(tourPasoActual === 0) return;
+  tourPasoActual--;
+  tourRenderPaso();
+}
+function tourRenderPaso(){
+  let ov = document.getElementById('tourOverlay');
+  if(!ov){
+    ov = document.createElement('div');
+    ov.id = 'tourOverlay';
+    ov.style.cssText = 'position:fixed;inset:0;z-index:9999;pointer-events:none;';
+    document.body.appendChild(ov);
+  }
+  const paso = tourPasosActivos[tourPasoActual];
+  const target = document.querySelector(paso.el);
+  const rect = target ? target.getBoundingClientRect() : { top:16, left:16, width:220, height:40 };
+  const pad = 6;
+  const spotTop = Math.max(0, rect.top - pad), spotLeft = Math.max(0, rect.left - pad);
+  const spotW = rect.width + pad*2, spotH = rect.height + pad*2;
+  const tipW = 270;
+  let tipLeft = spotLeft + spotW + 14;
+  if(tipLeft + tipW > window.innerWidth - 10) tipLeft = Math.max(10, spotLeft - tipW - 14);
+  if(tipLeft + tipW > window.innerWidth - 10) tipLeft = Math.max(10, window.innerWidth - tipW - 10);
+  const tipTop = Math.max(10, Math.min(spotTop, window.innerHeight - 190));
+  const esUltimo = tourPasoActual + 1 === tourPasosActivos.length;
+
+  ov.innerHTML = `
+    <div style="position:absolute;top:${spotTop}px;left:${spotLeft}px;width:${spotW}px;height:${spotH}px;border-radius:10px;box-shadow:0 0 0 9999px rgba(20,16,10,0.62);pointer-events:none;transition:top .18s,left .18s;"></div>
+    <div style="position:absolute;top:${tipTop}px;left:${tipLeft}px;width:${tipW}px;background:var(--white);border-radius:12px;box-shadow:var(--shadow);padding:16px 18px;pointer-events:auto;">
+      <div style="font-weight:700;font-size:14px;margin-bottom:6px;color:var(--dorado);">${paso.titulo}</div>
+      <div style="font-size:12.5px;color:var(--text);margin-bottom:14px;line-height:1.4;">${paso.texto}</div>
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+        <span style="font-size:11px;color:var(--text-light);">${tourPasoActual+1} / ${tourPasosActivos.length}</span>
+        <div style="display:flex;gap:6px;">
+          <button onclick="tourCerrar()" style="border:none;background:none;color:var(--text-light);font-size:12px;cursor:pointer;">Saltar</button>
+          ${tourPasoActual>0 ? `<button onclick="tourAnterior()" class="tab-btn" style="padding:6px 12px;">Atrás</button>` : ''}
+          <button onclick="tourSiguiente()" class="btn-primary" style="width:auto;padding:6px 14px;">${esUltimo ? 'Listo' : 'Siguiente'}</button>
+        </div>
+      </div>
+    </div>`;
 }
 
 /* ==================================================================
@@ -9828,6 +9965,218 @@ function renderConfigAreasActivas(sec, group, item, ruta){
 }
 
 /* ==================================================================
+   SEDES — pestaña donde la gerencia general (cuenta con sede:'todas',
+   es decir Harol) autoriza la creación de una sede nueva: le pone
+   nombre y elige qué módulos operativos/checklists va a usar. Al
+   autorizarla, la app crea automáticamente un usuario "Gerente de
+   sede <Nombre>" para que esa persona entre con su propia cuenta y
+   arme el equipo de su sede desde Usuarios y permisos (que ya le
+   queda limitado solo a su propia sede — ver sección más abajo).
+   Colección: sedes (ya existía con Chinú y Montería seedeadas, sin
+   modulosActivos = sin restricción propia, para no afectar cómo
+   vienen funcionando hasta ahora).
+   Esta pantalla es solo para la cuenta de sede:'todas' — una cuenta
+   de "Gerente de sede X" ve el ítem en el menú (tiene rol gerencia,
+   como cualquier gerente) pero al entrar aquí ve un aviso de acceso
+   restringido, en vez de duplicar el sistema de permisos por ítem
+   que ya existe (roles/itemsExtra) solo para esta distinción.
+   ================================================================== */
+let sedesLastRuta = 'Gerencia → Configuración → Sedes';
+let sedesVista = 'lista'; // 'lista' | 'nueva'
+let sedesUltimaCreada = null; // {sedeNombre, usuario, pass} — confirmación de una sola vez
+
+function sedesTodas(){ return DB.get('sedes', []).slice(); }
+function sedeSlug(nombre){ return compraNormalizar(nombre||'').trim().replace(/[^a-z0-9]+/g,''); }
+function sedeGenerarUsuarioGerente(slug){
+  const usuarios = DB.get('usuarios', []);
+  let base = 'gerente.' + slug, candidato = base, n = 2;
+  while(usuarios.find(u => u.usuario === candidato)){ candidato = base + n; n++; }
+  return candidato;
+}
+function sedeGenerarPass(){
+  const chars = 'abcdefghjkmnpqrstuvwxyz23456789';
+  let out = '';
+  for(let i=0;i<6;i++) out += chars.charAt(Math.floor(Math.random()*chars.length));
+  return out;
+}
+// Solo Checklists y Operación entran al selector de módulos por sede —
+// Gerencia y Harol-IA son pantallas de gestión/soporte, no se restringen
+// por sede (ver sedeItemActivo, más arriba en el bloque de permisos).
+function sedeItemsOperativos(){
+  return todosLosGruposConItems().filter(x => x.sec.id === 'operacion' || x.sec.id === 'checklists');
+}
+
+function renderSedesModule(sec, group, item, ruta){
+  if(ruta) sedesLastRuta = ruta;
+  sedesVista = 'lista';
+  sedesUltimaCreada = null;
+  renderSedesBody();
+}
+function sedesIrNueva(){ sedesVista = 'nueva'; renderSedesBody(); }
+function sedesVolver(){ sedesVista = 'lista'; sedesUltimaCreada = null; renderSedesBody(); }
+function sedesMarcarGrupo(contId, marcar){
+  document.querySelectorAll('#'+contId+' .sede-mod-chk').forEach(c => { c.checked = marcar; });
+}
+
+function renderSedesBody(){
+  const puedeGestionar = SESSION && SESSION.sede === 'todas';
+  const cuerpo = !puedeGestionar ? sedesAccesoRestringidoHtml()
+    : sedesUltimaCreada ? sedesConfirmacionHtml()
+    : (sedesVista === 'nueva' ? sedesFormNuevaHtml() : sedesListaHtml());
+  const html = `
+    <div class="panel" id="sedesBox">
+      <div class="panel-header">
+        <div class="icon-circle" style="background:${hexToRgba('#8A6D1F',0.14)}; color:#8A6D1F;">${ic('pin',21)}</div>
+        <div><h2>Sedes</h2><div class="path">${sedesLastRuta}</div></div>
+      </div>
+      ${cuerpo}
+    </div>`;
+  document.getElementById('content').innerHTML = html;
+  if(window.innerWidth <= 820) document.getElementById('sidebar').classList.remove('open');
+}
+
+function sedesAccesoRestringidoHtml(){
+  return `<p style="font-size:13px;color:var(--text-light);">Esta pantalla es solo para la cuenta de gerencia general (todas las sedes). Como gerente de tu sede, crea y administra tu propio equipo desde <b>Configuración → Usuarios y permisos</b>.</p>`;
+}
+
+function sedesListaHtml(){
+  const sedes = sedesTodas();
+  const usuarios = DB.get('usuarios', []);
+  const filas = sedes.map(s => {
+    const pendiente = s.estado === 'pendiente';
+    const gerente = s.gerenteUsuario ? usuarios.find(u => u.usuario === s.gerenteUsuario) : null;
+    const nModulos = Array.isArray(s.modulosActivos) ? s.modulosActivos.length : null;
+    return `
+    <div style="display:flex;align-items:center;gap:12px;padding:12px 14px;border-top:1px solid var(--border);flex-wrap:wrap;">
+      <div style="width:36px;height:36px;border-radius:50%;background:var(--tint-dorado);display:flex;align-items:center;justify-content:center;color:var(--dorado);flex-shrink:0;">${ic('pin',17)}</div>
+      <div style="flex:1;min-width:180px;">
+        <div style="font-weight:600;font-size:13.5px;">${s.nombre} ${pendiente ? '<span class="badge badge-dorado">Pendiente de autorizar</span>' : '<span class="badge badge-verde">Activa</span>'}</div>
+        <div style="font-size:11.5px;color:var(--text-light);">
+          ${nModulos === null ? 'Sin restricción propia de módulos' : nModulos + ' módulo' + (nModulos===1?'':'s') + ' activo' + (nModulos===1?'':'s')}${gerente ? ' · Gerente: @' + gerente.usuario : ''}
+        </div>
+      </div>
+      ${pendiente ? `<button class="btn-primary" style="width:auto;padding:8px 16px;" onclick="sedeAutorizar('${s.id}')">Autorizar y crear gerente</button>` : ''}
+    </div>`;
+  }).join('');
+
+  return `
+    <p style="font-size:12.5px;color:var(--text-light);margin-bottom:10px;">
+      Aquí autorizas la creación de una sede nueva: le eliges nombre y qué módulos va a usar, y al autorizarla la app crea un usuario "Gerente de sede" para que esa persona entre y arme su propio equipo (en Usuarios y permisos, ya limitado a su sede).
+    </p>
+    <button class="btn-primary" style="width:auto;padding:10px 20px;margin-bottom:14px;" onclick="sedesIrNueva()">+ Nueva sede</button>
+    <div style="border:1px solid var(--border);border-radius:10px;overflow:hidden;">
+      ${filas || '<div style="padding:16px;color:var(--text-light);font-size:13px;">Todavía no hay sedes registradas.</div>'}
+    </div>`;
+}
+
+function sedesAgruparItemsHtml(gruposConItems){
+  let seccionActual = null;
+  return gruposConItems.map(({sec:s, group:g}) => {
+    const contId = 'sede_grp_' + s.id + '_' + g.id;
+    const encabezadoSeccion = s.id !== seccionActual ? (seccionActual = s.id,
+      `<div style="font-weight:700;font-size:12px;margin-top:14px;margin-bottom:2px;color:var(--text-light);text-transform:uppercase;letter-spacing:.03em;">${s.label}</div>`) : '';
+    const itemsHtml = (g.items||[]).map(it => `
+      <label style="display:flex;gap:6px;align-items:flex-start;font-size:12px;padding:2px 0;">
+        <input type="checkbox" class="sede-mod-chk" value="${it.id}" style="margin-top:2px;">
+        <span>${it.label}</span>
+      </label>`).join('');
+    return `${encabezadoSeccion}
+      <div style="margin-bottom:8px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;">
+          <div style="font-size:11.5px;color:var(--text-light);">${g.label||'General'}</div>
+          <span style="font-size:10.5px;">
+            <a href="#" onclick="sedesMarcarGrupo('${contId}',true);return false;" style="color:var(--dorado);text-decoration:none;">Todo</a>
+            &nbsp;·&nbsp;
+            <a href="#" onclick="sedesMarcarGrupo('${contId}',false);return false;" style="color:var(--text-light);text-decoration:none;">Ninguno</a>
+          </span>
+        </div>
+        <div id="${contId}" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:0 14px;">${itemsHtml}</div>
+      </div>`;
+  }).join('');
+}
+
+function sedesFormNuevaHtml(){
+  return `
+    <div style="margin-bottom:14px;">
+      <a href="#" onclick="sedesVolver();return false;" style="font-size:12.5px;color:var(--dorado);text-decoration:none;">&larr; Volver a la lista de sedes</a>
+    </div>
+    <div class="compact-form">
+    <div class="form-grid" style="max-width:360px;">
+      <div class="form-field"><label>Nombre de la sede</label><input type="text" id="sede_nombre" placeholder="Ej: Sahagún"></div>
+    </div>
+    </div>
+    <div class="form-section-title" style="margin-top:18px;">Módulos, áreas y tareas que va a controlar esta sede</div>
+    <p style="font-size:12px;color:var(--text-light);margin:2px 0 8px;">
+      Marca los checklists y módulos de Operación que aplican a esta sede. Lo que dejes sin marcar queda oculto para el equipo de esa sede (Gerencia y Harol-IA siempre quedan disponibles). Puedes ajustarlo después volviendo a crear/editar.
+    </p>
+    <div style="border:1px solid var(--border);border-radius:10px;padding:12px 16px;max-height:360px;overflow:auto;">
+      ${sedesAgruparItemsHtml(sedeItemsOperativos())}
+    </div>
+    <div style="margin-top:16px;display:flex;gap:10px;align-items:center;">
+      <button class="btn-primary" style="width:auto;padding:11px 22px;" onclick="guardarSedeNueva()">Crear sede (queda pendiente de autorizar)</button>
+      <div id="sede_msg" style="flex:1;"></div>
+    </div>`;
+}
+
+function guardarSedeNueva(){
+  const nombre = document.getElementById('sede_nombre').value.trim();
+  if(!nombre){ showMsg('sede_msg', 'Ponle un nombre a la sede.', 'rojo'); return; }
+  const slug = sedeSlug(nombre);
+  if(!slug){ showMsg('sede_msg', 'Ese nombre no es válido, prueba con otro.', 'rojo'); return; }
+  const sedes = DB.get('sedes', []);
+  const existente = sedes.find(s => s.id === slug);
+  if(existente){
+    showMsg('sede_msg', 'Ya existe una sede llamada "' + existente.nombre + '". Para probar el flujo de creación usa un nombre distinto, por ejemplo "' + nombre + ' (prueba)".', 'rojo');
+    return;
+  }
+  const modulosActivos = Array.from(document.querySelectorAll('.sede-mod-chk:checked')).map(c => c.value);
+  sedes.push({
+    id: slug, nombre, activa: true, estado: 'pendiente', modulosActivos,
+    creadaEn: new Date().toISOString(), creadaPor: SESSION.nombre, gerenteUsuario: null
+  });
+  DB.set('sedes', sedes);
+  sedesVista = 'lista';
+  renderSedesBody();
+}
+
+function sedeAutorizar(sedeId){
+  const sedes = DB.get('sedes', []);
+  const sede = sedes.find(s => s.id === sedeId);
+  if(!sede) return;
+  const usuarioGerente = sedeGenerarUsuarioGerente(sede.id);
+  const pass = sedeGenerarPass();
+  const usuarios = DB.get('usuarios', []);
+  usuarios.push({
+    usuario: usuarioGerente, pass, nombre: 'Gerente de sede ' + sede.nombre, cargo: 'Gerente de sede',
+    sede: sede.id, area: 'todas', rol: 'gerencia', rolPuesto: '', itemsExtra: [], activo: true,
+    tourPendiente: true
+  });
+  DB.set('usuarios', usuarios);
+  sede.estado = 'activa';
+  sede.gerenteUsuario = usuarioGerente;
+  DB.set('sedes', sedes);
+  sedesUltimaCreada = { sedeNombre: sede.nombre, usuario: usuarioGerente, pass };
+  renderSedesBody();
+}
+
+function sedesConfirmacionHtml(){
+  const c = sedesUltimaCreada;
+  return `
+    <div style="border:1px solid var(--verde);background:var(--tint-verde);border-radius:10px;padding:16px 18px;margin-bottom:14px;">
+      <div style="font-weight:700;font-size:14px;margin-bottom:6px;">Sede "${c.sedeNombre}" autorizada</div>
+      <p style="font-size:12.5px;margin:0 0 10px;">Se creó la cuenta de gerente de esta sede. Compártele estos datos para que entre y arme su equipo desde <b>Configuración → Usuarios y permisos</b> (ya le queda limitado solo a su sede):</p>
+      <div style="font-family:monospace;font-size:14px;background:var(--white);border:1px solid var(--border);border-radius:8px;padding:10px 14px;display:inline-block;">
+        Usuario: <b>${c.usuario}</b> &nbsp;·&nbsp; Contraseña: <b>${c.pass}</b>
+      </div>
+      <p style="font-size:11.5px;color:var(--text-light);margin:8px 0 0;">Guárdalos ahora — no se vuelven a mostrar aquí (si hace falta, puedes restablecer la contraseña luego desde Usuarios y permisos).</p>
+    </div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;">
+      <button class="btn-primary" style="width:auto;padding:10px 20px;" onclick="sedesVolver()">Volver a Sedes</button>
+      <button class="tab-btn" onclick="tourIniciar()">Ver el recorrido guiado de la app</button>
+    </div>`;
+}
+
+/* ==================================================================
    ROLES Y TAREAS — el gerente le asigna a cada rol de puesto (caja,
    mesero, cocina, steward, bar, producción, líder de servicio y
    reservas, líder de cocina, auxiliar de compras, inspector, gerente
@@ -9978,7 +10327,13 @@ function renderUsuariosPermisosBody(){
 
 function usuariosPermisosListaHtml(){
   const q = compraNormalizar(usuariosPermisosBusqueda||'').trim();
-  const usuarios = DB.get('usuarios', []).slice().sort((a,b)=>a.nombre.localeCompare(b.nombre,'es'));
+  // Una cuenta de gerencia limitada a su propia sede (p.ej. "Gerente de
+  // sede Chinú") solo ve y crea usuarios de esa misma sede — la gerencia
+  // general (sede:'todas') sigue viendo a todo el mundo, como siempre.
+  const propiaSede = SESSION.sede !== 'todas';
+  const baseUsuarios = DB.get('usuarios', []).slice().sort((a,b)=>a.nombre.localeCompare(b.nombre,'es'));
+  const usuarios = propiaSede ? baseUsuarios.filter(u => u.sede === SESSION.sede) : baseUsuarios;
+  const avisoSede = propiaSede ? `<p style="font-size:12px;color:var(--text-light);margin-bottom:8px;">Mostrando solo el equipo de tu sede (${sedeLabelGlobal(SESSION.sede)}).</p>` : '';
   const filtrados = !q ? usuarios : usuarios.filter(u =>
     compraNormalizar(u.nombre).includes(q) || compraNormalizar(u.usuario).includes(q) || compraNormalizar(u.cargo||'').includes(q)
   );
@@ -9996,6 +10351,7 @@ function usuariosPermisosListaHtml(){
     </div>`).join('');
 
   return `
+    ${avisoSede}
     <div style="display:flex;gap:10px;align-items:center;margin-bottom:14px;flex-wrap:wrap;">
       <input type="text" placeholder="Buscar por nombre, usuario o cargo..." value="${usuariosPermisosBusqueda}" oninput="usuariosPermisosBuscarCambio(this.value)" style="flex:1;min-width:220px;">
       <button class="btn-primary" style="width:auto;padding:9px 18px;" onclick="usuariosPermisosAbrir(null)">+ Nuevo usuario</button>
@@ -10007,19 +10363,38 @@ function usuariosPermisosListaHtml(){
 
 function usuariosPermisosDetalleHtml(usuarioId){
   const esNuevo = !usuarioId;
+  const propiaSede = SESSION.sede !== 'todas';
   const usuarios = DB.get('usuarios', []);
-  const u = esNuevo ? { usuario:'', pass:'', nombre:'', cargo:'', sede:(DB.get('sedes',[])[0]||{}).id||'chinu', area:'servicio_cliente', rol:'empleado', rolPuesto:'', itemsExtra:[], activo:true } : (usuarios.find(x=>x.usuario===usuarioId) || {});
+  const sedeDefecto = propiaSede ? SESSION.sede : ((DB.get('sedes',[])[0]||{}).id||'chinu');
+  const u = esNuevo ? { usuario:'', pass:'', nombre:'', cargo:'', sede:sedeDefecto, area:'servicio_cliente', rol:'empleado', rolPuesto:'', itemsExtra:[], activo:true } : (usuarios.find(x=>x.usuario===usuarioId) || {});
+
+  // Una cuenta de sede solo puede ver/editar gente de su propia sede.
+  if(propiaSede && !esNuevo && u.sede !== SESSION.sede){
+    return `<p style="font-size:13px;color:var(--rojo);">Este usuario pertenece a otra sede — no tienes acceso a editarlo desde aquí. <a href="#" onclick="usuariosPermisosVolver();return false;" style="color:var(--dorado);">Volver a la lista</a></p>`;
+  }
 
   const sedes = DB.get('sedes', []);
   const sedeOptsFinal = `<option value="todas" ${u.sede==='todas'?'selected':''}>Todas las sedes</option>` + sedes.map(s => `<option value="${s.id}" ${u.sede===s.id?'selected':''}>${s.nombre}</option>`).join('');
+  // Una cuenta de gerencia de sede (no la gerencia general) crea gente
+  // solo para su propia sede — el campo queda fijo, no seleccionable.
+  const sedeFieldHtml = propiaSede
+    ? `<div class="form-field"><label>Sede</label><input type="text" value="${sedeLabelGlobal(SESSION.sede)}" disabled style="opacity:.75;"><input type="hidden" id="up_sede" value="${SESSION.sede}"></div>`
+    : `<div class="form-field"><label>Sede</label><select id="up_sede">${sedeOptsFinal}</select></div>`;
 
   const areaOpts = Object.keys(AREA_META).map(a => `<option value="${a}" ${u.area===a?'selected':''}>${AREA_META[a].label}</option>`).join('')
     + `<option value="todas" ${u.area==='todas'?'selected':''}>Todas las áreas</option>`;
 
   const rolOpts = Object.keys(ROL_LABEL).map(r => `<option value="${r}" ${u.rol===r?'selected':''}>${ROL_LABEL[r]}</option>`).join('');
 
+  // Roles sugeridos primero (mesero, auxiliar de cocina, líder de cocina,
+  // auxiliar de bar, líder de servicio al cliente, administrador) — el
+  // resto de roles de puesto queda debajo, para configuración más fina.
+  const sugeridos = ROLES_PUESTO.filter(r => ROLES_PUESTO_SUGERIDOS_SEDE.includes(r.id))
+    .sort((a,b) => ROLES_PUESTO_SUGERIDOS_SEDE.indexOf(a.id) - ROLES_PUESTO_SUGERIDOS_SEDE.indexOf(b.id));
+  const otros = ROLES_PUESTO.filter(r => !ROLES_PUESTO_SUGERIDOS_SEDE.includes(r.id));
   const rolPuestoOpts = `<option value="" ${!u.rolPuesto?'selected':''}>— Sin rol de puesto (acceso por nivel/área, como antes) —</option>`
-    + ROLES_PUESTO.map(r => `<option value="${r.id}" ${u.rolPuesto===r.id?'selected':''}>${r.label}</option>`).join('');
+    + `<optgroup label="Roles sugeridos">` + sugeridos.map(r => `<option value="${r.id}" ${u.rolPuesto===r.id?'selected':''}>${r.label}</option>`).join('') + `</optgroup>`
+    + `<optgroup label="Otros roles">` + otros.map(r => `<option value="${r.id}" ${u.rolPuesto===r.id?'selected':''}>${r.label}</option>`).join('') + `</optgroup>`;
 
   const extraSeleccionados = new Set(u.itemsExtra||[]);
   let seccionActual = null;
@@ -10049,10 +10424,10 @@ function usuariosPermisosDetalleHtml(usuarioId){
       <div class="form-field"><label>Cargo</label><input type="text" id="up_cargo" value="${(u.cargo||'').replace(/"/g,'&quot;')}"></div>
       <div class="form-field"><label>Usuario (para entrar)</label><input type="text" id="up_usuario" value="${u.usuario||''}" autocapitalize="off"></div>
       <div class="form-field"><label>Contraseña ${esNuevo?'':'(dejar vacío para no cambiarla)'}</label><input type="text" id="up_pass" placeholder="${esNuevo?'':'••••'}"></div>
-      <div class="form-field"><label>Sede</label><select id="up_sede">${sedeOptsFinal}</select></div>
+      ${sedeFieldHtml}
       <div class="form-field"><label>Área</label><select id="up_area">${areaOpts}</select></div>
       <div class="form-field"><label>Nivel de acceso</label><select id="up_rol">${rolOpts}</select></div>
-      <div class="form-field"><label>Rol de puesto</label><select id="up_rolpuesto">${rolPuestoOpts}</select></div>
+      <div class="form-field"><label>Rol de puesto</label><select id="up_rolpuesto" onchange="upAplicarNivelSugerido(this.value)">${rolPuestoOpts}</select></div>
     </div>
     <div style="margin-top:10px;">
       <label style="display:flex;align-items:center;gap:8px;font-size:13px;">
@@ -10069,6 +10444,15 @@ function usuariosPermisosDetalleHtml(usuarioId){
       <div id="up_msg" style="flex:1;"></div>
     </div>
   `;
+}
+
+// Al elegir un rol sugerido (mesero, auxiliar de cocina...) sugiere de
+// una vez el nivel de acceso típico para ese rol, sin bloquear que lo
+// cambien a mano si hace falta.
+function upAplicarNivelSugerido(rolPuestoId){
+  const nivel = ROL_NIVEL_SUGERIDO[rolPuestoId];
+  const sel = document.getElementById('up_rol');
+  if(nivel && sel) sel.value = nivel;
 }
 
 function guardarUsuarioPermisos(usuarioIdOriginal){
