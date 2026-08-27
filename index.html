@@ -855,6 +855,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
         <div class="crumb" id="crumbLabel"><b>Inicio</b></div>
       </div>
       <div style="display:flex; align-items:center; gap:14px;">
+        <button id="alarmasGerenciaBtn" class="tab-btn hidden" onclick="alarmasGerenciaToggleSilencio()" title="Silenciar o activar las alarmas de voz en tu usuario"></button>
         <button id="temaToggleBtn" onclick="toggleTema()" title="Cambiar tema claro/oscuro"></button>
         <div class="user-chip">
           <div class="avatar" id="userAvatar">?</div>
@@ -997,18 +998,11 @@ const NAV_GRUPOS_DESACTIVADOS_SEED = [
 const NAV_ITEMS_DESACTIVADOS_SEED = [
   'operacion::administracion::cf_inventarios',
   'operacion::administracion::cf_compras',
-  'operacion::administracion::cf_talento',
-  'operacion::administracion::cf_proveedores',
   'operacion::administracion::cf_propina',
   'operacion::administracion::cf_prevision',
   'operacion::administracion::cf_pagos',
   'operacion::servicio_cliente::sc_comprobantes',
-  'operacion::cocina::coc_ordenes',
-  'operacion::bar::bar_produccion',
-  'operacion::bar::bar_insumos',
-  'operacion::bar::bar_ventas',
-  'operacion::mantenimiento::mant_fallas',
-  'operacion::mantenimiento::mant_seguimiento'
+  'operacion::cocina::coc_ordenes'
 ];
 if(!DB.get('nav_grupos_desactivados')){ DB.set('nav_grupos_desactivados', NAV_GRUPOS_DESACTIVADOS_SEED); }
 if(!DB.get('nav_items_desactivados')){ DB.set('nav_items_desactivados', NAV_ITEMS_DESACTIVADOS_SEED); }
@@ -1049,14 +1043,14 @@ const ROLES_PERMISOS_SEED = {
   mesero: ['chk_briefing','chk_mise_servicio','chk_aseo_salon','chk_cierre_servicio','sc_comprobantes','sc_reservas','ast_chat'],
   cocina: ['chk_briefing_cocina','chk_mise_cocina_parrilla','chk_mise_cocina_fritos','chk_mise_cocina_armado','chk_mise_cocina_corrientes','chk_mise_cocina_pastas','chk_higiene','chk_prueba_prep','chk_cierre_cocina','coc_comida_personal','coc_ordenes','coc_bajas','coc_mejora','coc_inventario','coc_fotos_platos','ast_chat'],
   steward: ['chk_alistamiento_steward','chk_cierre_steward','ast_chat'],
-  bar: ['chk_briefing_bar','chk_mise_bar','chk_aseo_bar','chk_cierre_bar','bar_inventario','bar_produccion','bar_insumos','bar_ventas','ast_chat'],
+  bar: ['chk_mise_bar','chk_aseo_bar','chk_cierre_bar','bar_inventario','ast_chat'],
   produccion: ['chk_aseo_cp','cp_inventario','cp_ordenes','cp_recibo','cp_despacho','ast_chat'],
   lider_servicio_reservas: ['chk_briefing','chk_mise_servicio','chk_aseo_salon','chk_cierre_servicio','sc_comprobantes','sc_reservas','sc_encuesta','ast_chat'],
   lider_cocina: ['chk_briefing_cocina','chk_mise_cocina_parrilla','chk_mise_cocina_fritos','chk_mise_cocina_armado','chk_mise_cocina_corrientes','chk_mise_cocina_pastas','chk_higiene','chk_prueba_prep','chk_alistamiento_steward','chk_cierre_cocina','chk_cierre_steward','coc_comida_personal','coc_ordenes','coc_bajas','coc_mejora','coc_inventario','coc_fotos_platos','ast_chat'],
-  aux_compras: ['cf_compras','cf_proveedores','cf_pagos','mant_proveedores','mant_contratacion','ast_chat'],
-  inspector: ['chk_alistamiento','chk_cierre_caja','chk_briefing','chk_mise_servicio','chk_aseo_salon','chk_cierre_servicio','chk_briefing_cocina','chk_mise_cocina_parrilla','chk_mise_cocina_fritos','chk_mise_cocina_armado','chk_mise_cocina_corrientes','chk_mise_cocina_pastas','chk_higiene','chk_prueba_prep','chk_alistamiento_steward','chk_cierre_cocina','chk_cierre_steward','chk_briefing_bar','chk_mise_bar','chk_aseo_bar','chk_cierre_bar','chk_aseo_cp','chk_aseo_periferica','chk_aseo_banos_internos','chk_aseo_banos_publicos','chk_aseo_traperos','coc_inspeccion','sc_inspeccion','bar_inspeccion','cf_inspeccion_caja','ast_chat'],
-  gerente_operativa: ['chk_alistamiento','chk_cierre_caja','chk_briefing','chk_mise_servicio','chk_aseo_salon','chk_cierre_servicio','chk_briefing_cocina','chk_mise_cocina_parrilla','chk_mise_cocina_fritos','chk_mise_cocina_armado','chk_mise_cocina_corrientes','chk_mise_cocina_pastas','chk_higiene','chk_prueba_prep','chk_alistamiento_steward','chk_cierre_cocina','chk_cierre_steward','chk_briefing_bar','chk_mise_bar','chk_aseo_bar','chk_cierre_bar','chk_aseo_cp','chk_aseo_periferica','chk_aseo_banos_internos','chk_aseo_banos_publicos','chk_aseo_traperos','cf_caja','cf_inventarios','cf_inspeccion_caja','cf_planificacion_tareas','sc_comprobantes','sc_reservas','sc_encuesta','sc_inspeccion','coc_comida_personal','coc_ordenes','coc_bajas','coc_mejora','coc_inventario','coc_fotos_platos','coc_inspeccion','bar_inventario','bar_produccion','bar_insumos','bar_ventas','bar_inspeccion','cp_inventario','cp_ordenes','cp_recibo','cp_despacho','mant_preventivo','mant_correctivo','mant_fallas','mant_solicitudes','mant_seguimiento','mant_historial','ger_reporte_ventas360','ger_reporte_inventario','ger_reporte_caja','ger_reporte_bajas','ger_sucesos_area','ger_hallazgos_inspeccion','ger_checklist360','ger_reporte_servicio360','ast_chat','ger_incumplimientos'],
-  gerente_financiera: ['chk_alistamiento','chk_cierre_caja','cf_caja','cf_inventarios','cf_compras','cf_talento','cf_proveedores','cf_propina','cf_horarios','cf_prevision','cf_pagos','cf_planificacion_tareas','ger_reporte_caja','ger_reporte_inventario','ger_reporte_bajas','ger_reporte_servicio360','cfg_parametros','ast_chat'],
+  aux_compras: ['cf_compras','cf_pagos','mant_proveedores','ast_chat'],
+  inspector: ['chk_alistamiento','chk_cierre_caja','chk_briefing','chk_mise_servicio','chk_aseo_salon','chk_cierre_servicio','chk_briefing_cocina','chk_mise_cocina_parrilla','chk_mise_cocina_fritos','chk_mise_cocina_armado','chk_mise_cocina_corrientes','chk_mise_cocina_pastas','chk_higiene','chk_prueba_prep','chk_alistamiento_steward','chk_cierre_cocina','chk_cierre_steward','chk_mise_bar','chk_aseo_bar','chk_cierre_bar','chk_aseo_cp','chk_aseo_periferica','chk_aseo_banos_internos','chk_aseo_banos_publicos','chk_aseo_traperos','coc_inspeccion','sc_inspeccion','bar_inspeccion','cf_inspeccion_caja','ast_chat'],
+  gerente_operativa: ['chk_alistamiento','chk_cierre_caja','chk_briefing','chk_mise_servicio','chk_aseo_salon','chk_cierre_servicio','chk_briefing_cocina','chk_mise_cocina_parrilla','chk_mise_cocina_fritos','chk_mise_cocina_armado','chk_mise_cocina_corrientes','chk_mise_cocina_pastas','chk_higiene','chk_prueba_prep','chk_alistamiento_steward','chk_cierre_cocina','chk_cierre_steward','chk_mise_bar','chk_aseo_bar','chk_cierre_bar','chk_aseo_cp','chk_aseo_periferica','chk_aseo_banos_internos','chk_aseo_banos_publicos','chk_aseo_traperos','cf_caja','cf_inventarios','cf_inspeccion_caja','cf_planificacion_tareas','sc_comprobantes','sc_reservas','sc_encuesta','sc_inspeccion','coc_comida_personal','coc_ordenes','coc_bajas','coc_mejora','coc_inventario','coc_fotos_platos','coc_inspeccion','bar_inventario','bar_inspeccion','cp_inventario','cp_ordenes','cp_recibo','cp_despacho','mant_equipos','mant_solicitudes','mant_proveedores','ger_reporte_ventas360','ger_reporte_inventario','ger_reporte_caja','ger_reporte_bajas','ger_sucesos_area','ger_hallazgos_inspeccion','ger_checklist360','ger_reporte_servicio360','ast_chat','ger_incumplimientos'],
+  gerente_financiera: ['chk_alistamiento','chk_cierre_caja','cf_caja','cf_inventarios','cf_compras','cf_propina','cf_horarios','cf_prevision','cf_pagos','cf_planificacion_tareas','ger_reporte_caja','ger_reporte_inventario','ger_reporte_bajas','ger_reporte_servicio360','cfg_parametros','ast_chat'],
   otros: []
 };
 if(!DB.get('roles_permisos')){ DB.set('roles_permisos', ROLES_PERMISOS_SEED); }
@@ -1260,7 +1254,7 @@ const NAV = [
       { id:'servicio_cliente', label:'Servicio al cliente', icon:'user', matchArea:'servicio_cliente', items:[
         { id:'chk_briefing', label:'Briefing de servicio', icon:'megaphone', area:'servicio_cliente', categoria:'briefing', roles:['empleado','administracion','gerencia'], customRender:'renderBriefingServicioModule' },
         { id:'chk_mise_servicio', label:'Mise en place de servicio', icon:'user', area:'servicio_cliente', categoria:'mise_en_place', roles:['empleado','administracion','gerencia'], customRender:'renderAlistamientoAreaModule' },
-        { id:'chk_aseo_salon', label:'Aseo del salón', icon:'checklist', area:'servicio_cliente', categoria:'aseo', roles:['empleado','administracion','gerencia'] },
+        { id:'chk_aseo_salon', label:'Aseo del salón', icon:'checklist', area:'servicio_cliente', categoria:'aseo', roles:['empleado','administracion','gerencia'], customRender:'renderAseoAreaModule' },
         { id:'chk_cierre_servicio', label:'Cierre de área', icon:'checklist', area:'servicio_cliente', categoria:'cierre', roles:['empleado','administracion','gerencia'], customRender:'renderCierreAreaModule' }
       ]},
       { id:'cocina', label:'Cocina', icon:'chef', matchArea:'cocina', items:[
@@ -1270,26 +1264,25 @@ const NAV = [
         { id:'chk_mise_cocina_armado', label:'Mise en place: Armado / Cantador', icon:'chef', area:'cocina', categoria:'mise_en_place', roles:['empleado','administracion','gerencia'], customRender:'renderMiseCocinaModule', estacion:'armado' },
         { id:'chk_mise_cocina_corrientes', label:'Mise en place: Corrientes / Sopas / Mote', icon:'chef', area:'cocina', categoria:'mise_en_place', roles:['empleado','administracion','gerencia'], customRender:'renderMiseCocinaModule', estacion:'corrientes' },
         { id:'chk_mise_cocina_pastas', label:'Mise en place: Pastas y Mariscos', icon:'chef', area:'cocina', categoria:'mise_en_place', roles:['empleado','administracion','gerencia'], customRender:'renderMiseCocinaModule', estacion:'pastas_mariscos' },
-        { id:'chk_higiene', label:'Aseo de cocina', icon:'checklist', area:'cocina', categoria:'aseo', roles:['empleado','administracion','gerencia'] },
-        { id:'chk_prueba_prep', label:'Prueba de preparaciones diarias', icon:'chef', area:'cocina', categoria:'prueba', roles:['empleado','administracion','gerencia'] },
+        { id:'chk_higiene', label:'Aseo de cocina', icon:'checklist', area:'cocina', categoria:'aseo', roles:['empleado','administracion','gerencia'], customRender:'renderAseoAreaModule' },
+        { id:'chk_prueba_prep', label:'Prueba de preparaciones diarias', icon:'chef', area:'cocina', categoria:'prueba', roles:['empleado','administracion','gerencia'], customRender:'renderAseoAreaModule' },
         { id:'chk_alistamiento_steward', label:'Alistamiento de steward / lavado de platos', icon:'checklist', area:'cocina', categoria:'alistamiento', roles:['empleado','administracion','gerencia'], customRender:'renderAlistamientoAreaModule', contentKey:'steward' },
         { id:'chk_cierre_cocina', label:'Cierre de área', icon:'checklist', area:'cocina', categoria:'cierre', roles:['empleado','administracion','gerencia'], customRender:'renderCierreAreaModule' },
         { id:'chk_cierre_steward', label:'Cierre de área – Steward / lavado de platos', icon:'checklist', area:'cocina', categoria:'cierre', roles:['empleado','administracion','gerencia'], customRender:'renderCierreAreaModule', contentKey:'steward' }
       ]},
       { id:'bar', label:'Bar', icon:'glass', matchArea:'bar', items:[
-        { id:'chk_briefing_bar', label:'Briefing de bar', icon:'megaphone', area:'bar', categoria:'briefing', roles:['empleado','administracion','gerencia'] },
         { id:'chk_mise_bar', label:'Mise en place de bar', icon:'glass', area:'bar', categoria:'mise_en_place', roles:['empleado','administracion','gerencia'], customRender:'renderAlistamientoAreaModule' },
-        { id:'chk_aseo_bar', label:'Aseo del bar', icon:'checklist', area:'bar', categoria:'aseo', roles:['empleado','administracion','gerencia'] },
+        { id:'chk_aseo_bar', label:'Aseo del bar', icon:'checklist', area:'bar', categoria:'aseo', roles:['empleado','administracion','gerencia'], customRender:'renderAseoAreaModule' },
         { id:'chk_cierre_bar', label:'Cierre de área', icon:'checklist', area:'bar', categoria:'cierre', roles:['empleado','administracion','gerencia'], customRender:'renderCierreAreaModule' }
       ]},
       { id:'centro_produccion', label:'Centro de producción', icon:'factory', matchArea:'centro_produccion', items:[
-        { id:'chk_aseo_cp', label:'Aseo de centro de producción', icon:'checklist', area:'centro_produccion', categoria:'aseo', roles:['empleado','administracion','gerencia'] }
+        { id:'chk_aseo_cp', label:'Aseo de centro de producción', icon:'checklist', area:'centro_produccion', categoria:'aseo', roles:['empleado','administracion','gerencia'], customRender:'renderAseoAreaModule' }
       ]},
       { id:'aseo_comun', label:'Aseo de áreas comunes', icon:'checklist', matchArea:null, items:[
-        { id:'chk_aseo_periferica', label:'Aseo del área periférica', icon:'checklist', categoria:'aseo', roles:['empleado','administracion','gerencia'] },
-        { id:'chk_aseo_banos_internos', label:'Aseo de baños internos', icon:'checklist', categoria:'aseo', roles:['empleado','administracion','gerencia'] },
-        { id:'chk_aseo_banos_publicos', label:'Aseo de baños públicos', icon:'checklist', categoria:'aseo', roles:['empleado','administracion','gerencia'] },
-        { id:'chk_aseo_traperos', label:'Aseo de zona de traperos', icon:'checklist', categoria:'aseo', roles:['empleado','administracion','gerencia'] }
+        { id:'chk_aseo_periferica', label:'Aseo del área periférica', icon:'checklist', categoria:'aseo', roles:['empleado','administracion','gerencia'], customRender:'renderAseoAreaModule' },
+        { id:'chk_aseo_banos_internos', label:'Aseo de baños internos', icon:'checklist', categoria:'aseo', roles:['empleado','administracion','gerencia'], customRender:'renderAseoAreaModule' },
+        { id:'chk_aseo_banos_publicos', label:'Aseo de baños públicos', icon:'checklist', categoria:'aseo', roles:['empleado','administracion','gerencia'], customRender:'renderAseoAreaModule' },
+        { id:'chk_aseo_traperos', label:'Aseo de zona de traperos', icon:'checklist', categoria:'aseo', roles:['empleado','administracion','gerencia'], customRender:'renderAseoAreaModule' }
       ]}
     ]},
   { id:'operacion', label:'Operación', icon:'tray', color:'#3B6EA8',
@@ -1299,8 +1292,6 @@ const NAV = [
         { id:'cf_caja', label:'Caja (cierre y comprobantes)', icon:'cash', roles:['empleado','administracion','gerencia'], customRender:'renderCajaModule' },
         { id:'cf_inventarios', label:'Inventarios', icon:'box', roles:['administracion','gerencia'], customRender:'renderInventarioModule' },
         { id:'cf_compras', label:'Compras', icon:'truck', roles:['administracion','gerencia'], customRender:'renderComprasModule' },
-        { id:'cf_talento', label:'Talento humano', icon:'users', roles:['administracion','gerencia'] },
-        { id:'cf_proveedores', label:'Proveedores', icon:'truck', roles:['administracion','gerencia'] },
         { id:'cf_propina', label:'Propina', icon:'cash', roles:['administracion','gerencia'] },
         { id:'cf_horarios', label:'Horarios', icon:'clock', roles:['administracion','gerencia'], customRender:'renderHorariosModule' },
         { id:'cf_prevision', label:'Previsión y planificación', icon:'target', roles:['administracion','gerencia'], customRender:'renderPrevisionModule' },
@@ -1313,7 +1304,7 @@ const NAV = [
         { id:'sc_encuesta', label:'Encuesta de satisfacción', icon:'star', roles:['administracion','gerencia'], customRender:'renderEncuestaModule' }
       ]},
       { id:'cocina', label:'Cocina', icon:'chef', matchArea:'cocina', items:[
-        { id:'coc_comida_personal', label:'Comida del personal', icon:'chef', roles:['empleado','administracion','gerencia'] },
+        { id:'coc_comida_personal', label:'Comida del personal', icon:'chef', roles:['empleado','administracion','gerencia'], customRender:'renderComidaPersonalModule' },
         { id:'coc_ordenes', label:'Órdenes de producción', icon:'checklist', roles:['empleado','administracion','gerencia'] },
         { id:'coc_bajas', label:'Reporte de bajas', icon:'down', roles:['empleado','administracion','gerencia'], customRender:'renderBajasModule' },
         { id:'coc_mejora', label:'Prueba, desarrollo y mejora constante', icon:'target', roles:['empleado','administracion','gerencia'] },
@@ -1321,10 +1312,7 @@ const NAV = [
         { id:'coc_fotos_platos', label:'Fotos de platos', icon:'camera', roles:['empleado','administracion','gerencia'], customRender:'renderFotosPlatosModule' }
       ]},
       { id:'bar', label:'Bar', icon:'glass', matchArea:'bar', items:[
-        { id:'bar_inventario', label:'Inventario de bar', icon:'box', roles:['empleado','administracion','gerencia'] },
-        { id:'bar_produccion', label:'Producción de bebidas', icon:'glass', roles:['empleado','administracion','gerencia'] },
-        { id:'bar_insumos', label:'Control de insumos', icon:'checklist', roles:['empleado','administracion','gerencia'] },
-        { id:'bar_ventas', label:'Reporte de ventas de bar', icon:'chart', roles:['empleado','administracion','gerencia'] }
+        { id:'bar_inventario', label:'Inventario de bar', icon:'box', roles:['empleado','administracion','gerencia'] }
       ]},
       { id:'inspeccion', label:'Inspección', icon:'search', matchArea:'inspecciones', items:[
         { id:'coc_inspeccion', label:'Inspección de cocina', icon:'search', roles:['empleado','administracion','gerencia'], areaObjetivo:'cocina', customRender:'renderInspeccionAreaModule' },
@@ -1339,14 +1327,9 @@ const NAV = [
         { id:'cp_despacho', label:'Despacho de productos', icon:'truck', roles:['empleado','administracion','gerencia'] }
       ]},
       { id:'mantenimiento', label:'Mantenimiento', icon:'wrench', matchArea:'mantenimiento', items:[
-        { id:'mant_preventivo', label:'Mantenimiento preventivo', icon:'wrench', roles:['empleado','administracion','gerencia'] },
-        { id:'mant_correctivo', label:'Mantenimiento correctivo', icon:'wrench', roles:['empleado','administracion','gerencia'] },
-        { id:'mant_fallas', label:'Control de fallas', icon:'bell', roles:['empleado','administracion','gerencia'] },
-        { id:'mant_solicitudes', label:'Solicitudes de reparación', icon:'checklist', roles:['empleado','administracion','gerencia'] },
-        { id:'mant_seguimiento', label:'Seguimiento técnico', icon:'clock', roles:['empleado','administracion','gerencia'] },
-        { id:'mant_historial', label:'Historial de equipos', icon:'clock', roles:['empleado','administracion','gerencia'] },
-        { id:'mant_proveedores', label:'Base de datos de proveedores', icon:'truck', roles:['empleado','administracion','gerencia'] },
-        { id:'mant_contratacion', label:'Contratación de bienes y servicios', icon:'checklist', roles:['empleado','administracion','gerencia'] }
+        { id:'mant_equipos', label:'Equipos (factura, hoja de vida e historial)', icon:'wrench', roles:['empleado','administracion','gerencia'], customRender:'renderMantenimientoModule', tab:'equipos' },
+        { id:'mant_solicitudes', label:'Reporte de daños y solicitudes', icon:'bell', roles:['empleado','administracion','gerencia'], customRender:'renderMantenimientoModule', tab:'solicitudes' },
+        { id:'mant_proveedores', label:'Proveedores de mantenimiento', icon:'truck', roles:['empleado','administracion','gerencia'], customRender:'renderMantenimientoModule', tab:'proveedores' }
       ]}
     ]},
   { id:'gerencia', label:'Gerencia', icon:'crown', color:'#8A6D1F',
@@ -1939,6 +1922,7 @@ function enterApp(){
   document.getElementById('userNameLabel').textContent = SESSION.nombre;
   document.getElementById('userRoleLabel').textContent = (ROL_LABEL[SESSION.rol] || SESSION.rol) + (SESSION.rolPuesto ? ' · ' + rolPuestoLabel(SESSION.rolPuesto) : '');
   document.getElementById('userAvatar').textContent = SESSION.nombre.charAt(0).toUpperCase();
+  alarmasGerenciaActualizarBoton();
   renderSidebar();
   // Si la URL ya trae una dirección de módulo (se abrió un link
   // compartido, o se recargó la página estando dentro de un módulo),
@@ -1965,8 +1949,43 @@ function enterApp(){
 // cocina, ni cocina la de servicio al cliente, ni caja la de bar, etc.
 function alarmaAplicaParaSesion(areaResponsable){
   if(!SESSION) return false;
-  if(SESSION.rol === 'gerencia') return true;
+  if(SESSION.rol === 'gerencia') return !alarmasGerenciaSilenciadas();
   return SESSION.area === areaResponsable;
+}
+// Silencio de alarmas por usuario de gerencia: gerencia escucha todas las
+// alarmas de voz de la app (mise en place de servicio, mise en place de
+// cocina) sin importar el área — este interruptor, guardado por usuario
+// (no por dispositivo), le permite a cada gerente apagarlas en su propia
+// sesión sin afectar a otros gerentes ni a las áreas responsables, que
+// siguen escuchándolas normalmente.
+function alarmasGerenciaSilenciadas(){
+  if(!SESSION || SESSION.rol !== 'gerencia') return false;
+  const silenciados = DB.get('alarmas_gerencia_silenciadas', []);
+  return silenciados.includes(SESSION.usuario);
+}
+function alarmasGerenciaToggleSilencio(){
+  if(!SESSION || SESSION.rol !== 'gerencia') return;
+  let silenciados = DB.get('alarmas_gerencia_silenciadas', []);
+  silenciados = silenciados.includes(SESSION.usuario)
+    ? silenciados.filter(u => u !== SESSION.usuario)
+    : silenciados.concat([SESSION.usuario]);
+  DB.set('alarmas_gerencia_silenciadas', silenciados);
+  // Si se acaba de silenciar, corta de inmediato la alarma de cocina si
+  // estuviera sonando en este momento en esta pantalla.
+  if(alarmasGerenciaSilenciadas() && typeof miseCocinaAlarmaDetener === 'function') miseCocinaAlarmaDetener();
+  alarmasGerenciaActualizarBoton();
+}
+function alarmasGerenciaActualizarBoton(){
+  const btn = document.getElementById('alarmasGerenciaBtn');
+  if(!btn) return;
+  if(!SESSION || SESSION.rol !== 'gerencia'){
+    btn.classList.add('hidden');
+    return;
+  }
+  btn.classList.remove('hidden');
+  const silenciado = alarmasGerenciaSilenciadas();
+  btn.innerHTML = ic('bell', 14) + (silenciado ? 'Alarmas silenciadas' : 'Silenciar mis alarmas');
+  btn.classList.toggle('active', silenciado);
 }
 function alarmaMiseServicioConfig(){
   return DB.get('alarma_mise_servicio', { hora:'11:00', activa:true });
@@ -2850,64 +2869,541 @@ function cambiarEstadoIncidente(id, nuevoEstado){
 }
 
 /* ==================================================================
+   CONTENIDO DE CHECKLISTS DE ASEO, PRUEBA DIARIA Y CIERRE — cargado a
+   partir del Excel "Checklist_operativo_mejorado_Cordova" que preparó
+   Harol junto con el equipo, zona por zona. Cada pregunta ya viene en
+   formato Sí/No, con su frecuencia (Diaria, Semanal, Cada turno, Cada
+   cierre). _aseoItems() solo arma los objetos {id,label,frecuencia}
+   generando un id corto y estable a partir de un prefijo por zona, para
+   no tener que escribir un id único a mano en cada una de las ~280
+   preguntas.
+   ================================================================== */
+function _aseoItems(prefix, pairs){
+  return pairs.map((p, i) => ({ id: prefix + '_' + (i + 1), label: p[0], frecuencia: p[1] }));
+}
+
+const PRUEBA_DIARIA_ITEMS = _aseoItems('prd', [
+    ["¿Se probó arroz del día: sal, punto de cocción y textura?", "Diaria / según producción"],
+    ["¿Se probó sopa de costilla: sabor, sal, carne y caldo?", "Diaria / según producción"],
+    ["¿Se probó mote de queso: textura, sal y punto?", "Diaria / según producción"],
+    ["¿Se probó ensalada: sazón, punto de vegetales y presentación?", "Diaria / según producción"],
+    ["¿Se probó salsa de champiñón: sabor y textura?", "Diaria / según producción"],
+    ["¿Se probó salsa de tocineta: sabor y textura?", "Diaria / según producción"],
+    ["¿Se probó salsa de maracuyá: balance ácido/dulce?", "Diaria / según producción"],
+    ["¿Se probó berenjena frita: punto de fritura y sazón?", "Diaria / según producción"],
+    ["¿Se probó quesos fritos: punto de fritura?", "Diaria / según producción"],
+    ["¿Se probó maduritos: punto de fritura y dulzor?", "Diaria / según producción"],
+    ["¿Se probó guacamole: sazón y textura?", "Diaria / según producción"],
+    ["¿Se probó bisque: sabor, sal y textura?", "Diaria / según producción"],
+    ["¿Se probó salsa de pimienta: sabor y balance de sal?", "Diaria / según producción"],
+    ["¿Se probó puré de papa: textura, sal y mantequilla?", "Diaria / según producción"],
+    ["¿Se probó carnero guisado: cocción, sal y sabor?", "Diaria / según producción"],
+    ["¿Se probó gallina criolla guisada: cocción, sal y sabor?", "Diaria / según producción"],
+    ["¿Se probó pato guisado (domingos): cocción, sal y sabor?", "Diaria / según producción"],
+    ["¿Se probó frijol (solo sede Chinú): cocción y sal?", "Diaria / según producción"],
+    ["¿Se probó sopa de gallina: sabor, sal y caldo?", "Diaria / según producción"],
+    ["¿Se probó sopa de pato: sabor, sal y caldo?", "Diaria / según producción"],
+    ["¿Se probó sopa de espinazo: sabor, sal y caldo?", "Diaria / según producción"],
+    ["¿Se registraron la hora de prueba, el responsable de la preparación y la persona que aprobó?", "Diaria / según producción"],
+    ["¿Las preparaciones calientes y frías se encuentran a la temperatura de servicio definida?", "Diaria / según producción"],
+    ["¿Las preparaciones que requieren ajuste fueron corregidas y probadas nuevamente?", "Diaria / según producción"],
+]);
+
+// Criterios detallados de referencia por plato (hoja 09b del Excel de Harol),
+// se muestran como checklist informativo dentro de cada pregunta de plato.
+const PRUEBA_DIARIA_CRITERIOS = {
+  "SOPA DE COSTILLA": [
+    "¿La carne está blanda, pero conserva firmeza?",
+    "¿El caldo tiene buen cuerpo y sabor a costilla?",
+    "¿El nivel de sal es adecuado?",
+    "¿El caldo está limpio y sin exceso de grasa?",
+    "¿La preparación tiene buen olor y sabor?",
+  ],
+  "CARNERO GUISADO": [
+    "¿La carne está completamente cocida?",
+    "¿La carne está blanda, jugosa y no se desintegra?",
+    "¿El nivel de sal y condimentos es adecuado?",
+    "¿El guiso tiene buen sabor y no está amargo?",
+    "¿La preparación tiene buen olor y color natural?",
+  ],
+  "ENSALADA": [
+    "¿La presentación tiene forma, altura y tamaño uniformes?",
+    "¿Los vegetales están frescos y en el punto de cocción correcto?",
+    "¿El sabor tiene buen equilibrio entre acidez y dulzor?",
+    "¿El nivel de sal es adecuado?",
+    "¿El plato está limpio y la ensalada está bien centrada?",
+  ],
+  "SOPA DE FRIJOL — CHINÚ": [
+    "¿El frijol está completamente cocido y sin granos duros?",
+    "¿La sopa tiene una textura cremosa y uniforme?",
+    "¿El nivel de sal y dulzor es adecuado?",
+    "¿La preparación está libre de sabores ácidos o fermentados?",
+    "¿La sopa conserva un color homogéneo y no está separada?",
+  ],
+  "CAZUELA DE CAMARONES": [
+    "¿La salsa está cremosa y homogénea?",
+    "¿La salsa está libre de separación de grasa?",
+    "¿El nivel de sal y ajo es adecuado?",
+    "¿Los camarones tienen sabor y olor fresco?",
+    "¿La cazuela tiene color brillante y buena presentación?",
+  ],
+  "GALLINA CRIOLLA GUISADA": [
+    "¿La gallina está completamente cocida?",
+    "¿La carne está blanda, jugosa y no se desintegra?",
+    "¿El nivel de sal y condimentos es adecuado?",
+    "¿El guiso tiene buen sabor y no está amargo?",
+    "¿La preparación tiene buen olor y color natural?",
+  ],
+  "ARROZ": [
+    "¿El grano está completamente cocido?",
+    "¿El arroz está suelto y sin grumos?",
+    "¿El nivel de sal es adecuado?",
+    "¿El arroz está libre de exceso de grasa?",
+    "¿La preparación tiene buen sabor y apariencia?",
+  ],
+  "MOTE DE QUESO": [
+    "¿El ñame está blando y completamente cocido?",
+    "¿La textura está cremosa, sin quedar demasiado espesa o líquida?",
+    "¿El nivel de sal y suero es equilibrado?",
+    "¿La preparación está libre de sabores ácidos o agrios?",
+    "¿El color es blanco y la mezcla está uniforme?",
+  ],
+  "PURÉ DE PAPA": [
+    "¿La papa está completamente cocida?",
+    "¿La textura está suave y sin grumos?",
+    "¿El puré tiene la consistencia correcta y no está aguado?",
+    "¿El nivel de sal y mantequilla es equilibrado?",
+    "¿El puré tiene color natural y buen sabor?",
+  ],
+  "PATO GUISADO — DOMINGOS": [
+    "¿El pato está completamente cocido?",
+    "¿La carne está blanda, jugosa y no se desintegra?",
+    "¿El nivel de sal y condimentos es adecuado?",
+    "¿El guiso tiene buen sabor y no está amargo?",
+    "¿La preparación tiene buen olor y color natural?",
+  ],
+  "SOPA DE GALLINA": [
+    "¿La carne está blanda, pero conserva firmeza?",
+    "¿El caldo tiene buen cuerpo y sabor a gallina?",
+    "¿El nivel de sal es adecuado?",
+    "¿El caldo está limpio y sin exceso de grasa?",
+    "¿La preparación tiene buen olor y sabor?",
+  ],
+  "SOPA DE PATO": [
+    "¿La carne está blanda, pero conserva firmeza?",
+    "¿El caldo tiene buen cuerpo y sabor a pato?",
+    "¿El nivel de sal es adecuado?",
+    "¿El caldo está limpio y sin exceso de grasa?",
+    "¿La preparación tiene buen olor y sabor?",
+  ],
+  "SOPA DE ESPINAZO": [
+    "¿La carne está blanda, pero conserva firmeza?",
+    "¿El caldo tiene buen cuerpo y sabor a espinazo?",
+    "¿El nivel de sal es adecuado?",
+    "¿El caldo está limpio y sin exceso de grasa?",
+    "¿La preparación tiene buen olor y sabor?",
+  ],
+  "SALSA DE CHAMPIÑONES": [
+    "¿La salsa está cremosa y homogénea?",
+    "¿La salsa está libre de separación de grasa?",
+    "¿El nivel de sal es adecuado?",
+    "¿El sabor a champiñón está bien definido?",
+    "¿La salsa tiene color natural y está libre de grumos?",
+  ],
+  "SALSA DE TOCINETA": [
+    "¿La salsa está cremosa y homogénea?",
+    "¿La salsa está libre de separación de grasa?",
+    "¿El nivel de sal es adecuado?",
+    "¿El sabor ahumado está presente sin ser excesivo?",
+    "¿La salsa tiene color natural y está libre de grumos?",
+  ],
+  "SALSA DE MARACUYÁ": [
+    "¿El sabor tiene buen equilibrio entre acidez y dulzor?",
+    "¿La textura es homogénea y no está demasiado espesa o aguada?",
+    "¿El sabor a maracuyá está bien definido?",
+    "¿El color es natural y brillante?",
+    "¿La salsa está libre de exceso de semillas?",
+  ],
+  "SALSA DE PIMIENTA": [
+    "¿La salsa tiene buen equilibrio entre sal y picante?",
+    "¿La textura está homogénea y sin grumos?",
+    "¿El sabor a pimienta está bien definido?",
+    "¿La salsa está libre de sabor amargo?",
+    "¿El color y la presentación son adecuados?",
+  ],
+  "BERENJENA FRITA": [
+    "¿La berenjena tiene un dorado uniforme?",
+    "¿Está crocante por fuera y suave por dentro?",
+    "¿El nivel de sal es adecuado?",
+    "¿Está libre de exceso de aceite?",
+    "¿Está libre de sabor a aceite quemado?",
+  ],
+  "QUESOS FRITOS": [
+    "¿Los quesos tienen un dorado uniforme?",
+    "¿Están suaves por dentro?",
+    "¿Están libres de exceso de aceite?",
+    "¿Están libres de sabor a aceite quemado?",
+    "¿La temperatura de servicio es adecuada?",
+  ],
+  "MADURITOS": [
+    "¿Los maduritos tienen un dorado uniforme?",
+    "¿Conservan el dulzor natural del plátano?",
+    "¿Están suaves por dentro?",
+    "¿Están libres de exceso de aceite?",
+    "¿La temperatura de servicio es adecuada?",
+  ],
+  "GUACAMOLE": [
+    "¿El aguacate está fresco y sin oxidación?",
+    "¿La textura es cremosa sin estar demasiado licuada?",
+    "¿El nivel de sal es adecuado?",
+    "¿El sabor tiene buen equilibrio de limón o cítrico?",
+    "¿El color es verde natural y está libre de sabor amargo?",
+  ],
+  "BISQUE": [
+    "¿La consistencia está cremosa y homogénea?",
+    "¿El nivel de sal es adecuado?",
+    "¿El sabor a marisco está bien definido y fresco?",
+    "¿La preparación está libre de separación de grasa?",
+    "¿El color y la temperatura de servicio son adecuados?",
+  ],
+};
+
+const PRUEBA_DIARIA_DISH_MAP = {
+  prd_1: "ARROZ",
+  prd_2: "SOPA DE COSTILLA",
+  prd_3: "MOTE DE QUESO",
+  prd_4: "ENSALADA",
+  prd_5: "SALSA DE CHAMPIÑONES",
+  prd_6: "SALSA DE TOCINETA",
+  prd_7: "SALSA DE MARACUYÁ",
+  prd_8: "BERENJENA FRITA",
+  prd_9: "QUESOS FRITOS",
+  prd_10: "MADURITOS",
+  prd_11: "GUACAMOLE",
+  prd_12: "BISQUE",
+  prd_13: "SALSA DE PIMIENTA",
+  prd_14: "PURÉ DE PAPA",
+  prd_15: "CARNERO GUISADO",
+  prd_16: "GALLINA CRIOLLA GUISADA",
+  prd_17: "PATO GUISADO — DOMINGOS",
+  prd_18: "SOPA DE FRIJOL — CHINÚ",
+  prd_19: "SOPA DE GALLINA",
+  prd_20: "SOPA DE PATO",
+  prd_21: "SOPA DE ESPINAZO",
+};
+
+const ASEO_AREA_ITEMS = {
+  chk_aseo_periferica: _aseoItems('per', [
+    ["¿El frente del restaurante quedó barrido y libre de basura?", "Cada turno"],
+    ["¿Las canecas de basura del frente quedaron vacías y limpias?", "Cada turno"],
+    ["¿Las plantas del frente están libres de hojas secas?", "Diaria"],
+    ["¿Las plantas del frente quedaron regadas?", "Diaria"],
+    ["¿El área de entrada de vehículos quedó barrida?", "Diaria"],
+    ["¿El área de entrada de vehículos está libre de hojas, bolsas y basura?", "Cada turno"],
+    ["¿Los bijaos quedaron regados?", "Diaria"],
+    ["¿La zona de parqueo de personal interno está aseada?", "Diaria"],
+    ["¿La zona de parqueo público está aseada?", "Diaria"],
+    ["¿El área al lado del salón de eventos quedó barrida y sin basura?", "Cada turno"],
+    ["¿La zona de palmeras del salón de eventos (lado calle) está organizada y barrida?", "Diaria"],
+    ["¿La zona al aire libre, incluida la grama sintética y la pasarela de madera, quedó barrida y organizada?", "Diaria"],
+    ["¿La zona de pinos quedó barrida y organizada?", "Diaria"],
+    ["¿La zona detrás del área al aire libre quedó barrida y organizada?", "Diaria"],
+    ["¿El área de cilindros de gas quedó limpia, organizada y sin elementos ajenos?", "Diaria"],
+    ["¿La fachada y los vidrios exteriores están limpios?", "Diaria"],
+    ["¿La iluminación exterior está funcionando (luces del frente y parqueadero)?", "Diaria"],
+    ["¿Las rejillas y los sumideros exteriores están libres de obstrucciones?", "Diaria"],
+    ["¿Las rutas de acceso y evacuación quedaron despejadas?", "Diaria"],
+    ["¿Los extintores exteriores están visibles, señalizados y sin obstrucciones?", "Semanal"],
+    ["¿La zona de cilindros está ventilada, sin olor a gas y sin señales visibles de fuga?", "Diaria"],
+    ["¿Los cables, tomas y conexiones eléctricas exteriores están protegidos y en buen estado?", "Diaria"],
+  ]),
+  chk_aseo_banos_internos: _aseoItems('bin', [
+    ["¿La taza del inodoro recibió una limpieza profunda?", "Diaria"],
+    ["¿El lavamanos y los grifos están limpios y sin sarro?", "Cada turno"],
+    ["¿El basurero está limpio y vacío?", "Diaria"],
+    ["¿El piso está limpio, seco y trapeado?", "Cada turno"],
+    ["¿El techo está limpio y organizado, sin telarañas?", "Semanal"],
+    ["¿Las paredes están limpias, sin manchas ni humedad?", "Semanal"],
+    ["¿La tubería, la taza del inodoro y el lavamanos están libres de fugas de agua?", "Cada turno"],
+    ["¿Hay papel higiénico disponible y un repuesto?", "Diaria"],
+    ["¿El jabón está disponible en el dispensador?", "Diaria"],
+    ["¿El área tiene un olor agradable y ambientador, cuando aplica?", "Diaria"],
+    ["¿La puerta y la cerradura están en buen estado?", "Diaria"],
+    ["¿La iluminación está funcionando (bombillos encendidos)?", "Diaria"],
+    ["¿El área está libre de insectos?", "Diaria"],
+    ["¿Los zapatos, la ropa y demás artículos personales están guardados dentro de los casilleros?", "Diaria"],
+    ["¿El drenaje está libre de obstrucciones?", "Diaria"],
+    ["¿El espejo está limpio y sin manchas?", "Diaria"],
+    ["¿El lavamanos cuenta con agua, jabón y elemento para el secado de manos?", "Cada turno"],
+    ["¿Los artículos personales están guardados dentro de los casilleros?", "Diaria"],
+  ]),
+  chk_aseo_banos_publicos: _aseoItems('bpu', [
+    ["¿La taza del inodoro recibió una limpieza profunda?", "Diaria"],
+    ["¿El lavamanos y los grifos están limpios y sin sarro?", "Cada turno"],
+    ["¿El espejo está limpio, sin manchas?", "Diaria"],
+    ["¿El basurero está limpio y vacío?", "Diaria"],
+    ["¿El piso está limpio, seco y trapeado?", "Cada turno"],
+    ["¿El techo está limpio y organizado, sin telarañas?", "Semanal"],
+    ["¿Las paredes están limpias, sin manchas ni humedad?", "Semanal"],
+    ["¿La tubería, la taza del inodoro y el lavamanos están libres de fugas de agua?", "Cada turno"],
+    ["¿Hay papel higiénico disponible y un repuesto?", "Diaria"],
+    ["¿El jabón de manos está disponible en el dispensador?", "Diaria"],
+    ["¿Hay papel secamanos disponible o funciona correctamente el secador de manos?", "Diaria"],
+    ["¿El área tiene un olor agradable y ambientador, cuando aplica?", "Diaria"],
+    ["¿La puerta y la cerradura están en buen estado?", "Diaria"],
+    ["¿La iluminación está funcionando (bombillos encendidos)?", "Diaria"],
+    ["¿El área está libre de insectos?", "Diaria"],
+    ["¿El drenaje está libre de obstrucciones?", "Diaria"],
+    ["¿Los orinales están limpios, sin sarro y funcionando correctamente, cuando aplica?", "Diaria"],
+    ["¿Los dispensadores están limpios, abastecidos y funcionando?", "Diaria"],
+    ["¿Se registró la hora y la persona responsable de la revisión?", "Diaria"],
+  ]),
+  chk_aseo_traperos: _aseoItems('trap', [
+    ["¿Los traperos quedaron lavados y guardados en el sitio dispuesto para ellos?", "Diaria"],
+    ["¿El producto está libre de traperos sucios o engrasados?", "Diaria"],
+    ["¿La zona de traperos lavada?", "Diaria"],
+    ["¿Las llaves de agua están cerradas, sin goteo?", "Diaria"],
+    ["¿El drenaje o sifón sin obstrucciones?", "Diaria"],
+    ["¿La zona contigua está despejada, sin objetos regados?", "Diaria"],
+    ["¿Las canastas están despejadas, secas y limpias?", "Diaria"],
+    ["¿El área está libre de malos olores?", "Diaria"],
+    ["¿Los traperos quedaron colgados secándose, no amontonados?", "Diaria"],
+    ["¿Los productos químicos están rotulados, cerrados y almacenados lejos de alimentos?", "Cada turno"],
+    ["¿Los traperos están diferenciados por área o uso para evitar contaminación cruzada?", "Diaria"],
+    ["¿Las escobas, cepillos y recogedores están limpios y colgados?", "Diaria"],
+  ]),
+  chk_aseo_salon: _aseoItems('sal', [
+    ["¿Las sillas están limpias y en buen estado?", "Diaria"],
+    ["¿Las mesas están limpias y en buen estado?", "Diaria"],
+    ["¿Las sillas y mesas están alineadas y ordenadas?", "Diaria"],
+    ["¿Las sillas para niños están limpias y en buen estado?", "Diaria"],
+    ["¿Las lámparas están limpias y funcionando?", "Diaria"],
+    ["¿Los ventiladores están limpios y funcionando?", "Diaria"],
+    ["¿El aire acondicionado está funcionando y a temperatura agradable?", "Cada turno"],
+    ["¿Las tarimas están limpias y organizadas?", "Diaria"],
+    ["¿Las paredes están limpias, sin manchas?", "Semanal"],
+    ["¿Las techos están limpios, sin telarañas?", "Semanal"],
+    ["¿Los pisos están limpios, secos y sin residuos?", "Cada turno"],
+    ["¿Los servilleteros están limpios y llenos?", "Diaria"],
+    ["¿Los vidrios del salón con aire acondicionado están limpios?", "Diaria"],
+    ["¿La entrada del salón está limpia y despejada?", "Diaria"],
+    ["¿Los basureros del salón están limpios y vacíos?", "Diaria"],
+    ["¿Los cuadros y adornos están alineados, firmes y sin polvo?", "Diaria"],
+    ["¿El área tiene buen olor en todas las zonas del salón?", "Diaria"],
+    ["¿La estructura de madera del rancho está limpia y en buen estado?", "Semanal"],
+    ["¿La jardinera del rancho está limpia, sin hojas secas ni maleza?", "Diaria"],
+    ["¿Las plantas del rancho sin hojas están secas?", "Diaria"],
+    ["¿Las cartas (menús) están limpias y sin daños?", "Diaria"],
+    ["¿Las rutas de evacuación y salidas están libres de obstáculos?", "Diaria"],
+    ["¿Los extintores están visibles, señalizados y sin obstrucciones?", "Semanal"],
+    ["¿El piso está libre de desniveles, derrames u otros riesgos de caída?", "Cada turno"],
+    ["¿La música y los equipos de sonido funcionan correctamente?", "Diaria"],
+  ]),
+  chk_higiene: _aseoItems('coc', [
+    ["¿El Josper está limpio y en buen estado?", "Diaria"],
+    ["¿El horno Rational está limpio y en buen estado?", "Diaria"],
+    ["¿Las estufas están limpias y en buen estado?", "Diaria"],
+    ["¿La campana central está limpia?", "Semanal"],
+    ["¿La campana de la parrilla y del Josper está limpia?", "Semanal"],
+    ["¿La base chef de carnes está limpia y organizada?", "Diaria"],
+    ["¿La mesa de apoyo de ensaladas está limpia y organizada?", "Diaria"],
+    ["¿El mesón principal de armado está limpio y organizado?", "Diaria"],
+    ["¿La zona bajo el mesón principal está limpia y despejada?", "Diaria"],
+    ["¿La mesa de armado secundaria está limpia y organizada?", "Diaria"],
+    ["¿El estante de la mesa de armado secundaria está limpio y organizado?", "Diaria"],
+    ["¿El estante de platos está organizado y limpio?", "Diaria"],
+    ["¿Los platos están organizados y limpios?", "Diaria"],
+    ["¿Las bandejas y los platos metálicos están limpios?", "Diaria"],
+    ["¿Las tablas de madera están limpias?", "Diaria"],
+    ["¿El piso de cocina está seco y limpio?", "Cada turno"],
+    ["¿El congelador del área de mariscos está limpio y organizado?", "Cada turno"],
+    ["¿Las freidoras están organizadas y limpias?", "Diaria"],
+    ["¿La mesa de apoyo de freidoras está organizada y limpia?", "Diaria"],
+    ["¿La zona de los equipos POS está limpia y ordenada, y los equipos funcionan correctamente?", "Diaria"],
+    ["¿El techo está limpio, sin telarañas?", "Semanal"],
+    ["¿Las paredes están limpias?", "Semanal"],
+    ["¿La zona de frutas y verduras está limpia, seca, trapeada y sin objetos ajenos al área?", "Diaria"],
+    ["¿La zona de congeladores está seca y organizada?", "Cada turno"],
+    ["¿Los congeladores están cerrados, limpios y organizados, sin carnes por fuera?", "Cada turno"],
+    ["¿Los recipientes de basura están limpios, secos y bien ubicados?", "Cada turno"],
+    ["¿La zona de platos está limpia y seca?", "Diaria"],
+    ["¿El lavamanos está limpio y organizado?", "Cada turno"],
+    ["¿La zona de platos usados está limpia y organizada?", "Diaria"],
+    ["¿Los sifones y las rejillas de piso están libres de obstrucciones?", "Cada turno"],
+    ["¿El lavamanos cuenta con agua, jabón y elemento para el secado de manos?", "Cada turno"],
+    ["¿Los alimentos están tapados, fechados, rotulados y dentro de su vida útil?", "Cada turno"],
+    ["¿Los alimentos crudos están separados de los cocidos o listos para servir?", "Cada turno"],
+    ["¿Las temperaturas de neveras y congeladores fueron verificadas y registradas?", "Cada turno"],
+    ["¿Los productos químicos están rotulados y almacenados separados de los alimentos?", "Cada turno"],
+    ["¿Las tablas y utensilios están limpios, desinfectados y sin deterioro?", "Diaria"],
+    ["¿El área está libre de insectos, roedores o señales de plagas?", "Diaria"],
+    ["¿Las válvulas y conexiones de gas están libres de olor y de señales visibles de fuga?", "Diaria"],
+  ]),
+  chk_aseo_bar: _aseoItems('bar', [
+    ["¿La barra está limpia, organizada y sin elementos ajenos?", "Diaria"],
+    ["¿La mesa de acero está limpia?", "Diaria"],
+    ["¿El congelador está organizado y limpio?", "Cada turno"],
+    ["¿Las neveras de bebidas están limpias y organizadas?", "Cada turno"],
+    ["¿La cava de hielo está limpia y organizada?", "Diaria"],
+    ["¿El piso está limpio?", "Cada turno"],
+    ["¿El lavaplatos está limpio y seco?", "Diaria"],
+    ["¿El lavamanos del bar está limpio y organizado?", "Cada turno"],
+    ["¿La licuadora está limpia y seca?", "Diaria"],
+    ["¿Los utensilios de bar (coctelera, jigger, colador) están limpios y guardados?", "Diaria"],
+    ["¿Las copas están limpias, sin polvo ni manchas?", "Diaria"],
+    ["¿Los licores exhibidos están limpios?", "Diaria"],
+    ["¿Las estanterías de exhibición están limpias y organizadas?", "Diaria"],
+    ["¿El techo está limpio, sin telarañas?", "Semanal"],
+    ["¿Las paredes están limpias?", "Semanal"],
+    ["¿Los basureros del bar están limpios y vacíos?", "Diaria"],
+    ["¿El área tiene buen olor en toda el área?", "Diaria"],
+    ["¿El sistema de grifos de cerveza está limpio (si aplica)?", "Diaria"],
+    ["¿Los tapetes antideslizantes están limpios?", "Diaria"],
+    ["¿Las frutas, pulpas, jarabes y decoraciones están tapados, fechados y rotulados?", "Diaria"],
+    ["¿El hielo está protegido de contaminación y se manipula con pala limpia?", "Diaria"],
+    ["¿Las temperaturas de neveras y congelador fueron verificadas y registradas?", "Cada turno"],
+    ["¿Los productos vencidos o deteriorados fueron retirados y reportados?", "Diaria"],
+  ]),
+  chk_aseo_cp: _aseoItems('cp', [
+    ["¿Las mesas centrales de trabajo están organizadas, alineadas y limpias?", "Diaria"],
+    ["¿Las todas las mesas de trabajo están limpias, organizadas y sin elementos ajenos a la estación?", "Diaria"],
+    ["¿Las estibas están limpias y organizadas?", "Diaria"],
+    ["¿Las canastas están limpias y organizadas en su puesto?", "Diaria"],
+    ["¿Los congeladores están limpios y organizados?", "Cada turno"],
+    ["¿El estufa está limpia y organizada?", "Diaria"],
+    ["¿El piso está limpio y seco?", "Cada turno"],
+    ["¿Las paredes están limpias?", "Semanal"],
+    ["¿La mesa del computador está limpia y organizada?", "Diaria"],
+    ["¿El computador enciende y funciona correctamente?", "Diaria"],
+    ["¿La carpeta de registros está limpia y organizada?", "Diaria"],
+    ["¿El techo sin telarañas?", "Semanal"],
+    ["¿El área tiene buen olor en la zona?", "Diaria"],
+    ["¿La salida hacia el salón de eventos está organizada y limpia?", "Diaria"],
+    ["¿Las básculas están limpias y funcionando?", "Diaria"],
+    ["¿El drenaje está libre de obstrucciones?", "Diaria"],
+    ["¿Los alimentos están tapados, fechados, rotulados y dentro de su vida útil?", "Cada turno"],
+    ["¿Las materias primas crudas están separadas de los productos listos para consumo?", "Diaria"],
+    ["¿Las temperaturas de neveras y congeladores fueron verificadas y registradas?", "Cada turno"],
+    ["¿Los productos químicos están rotulados y separados de los alimentos?", "Cada turno"],
+    ["¿El área está libre de insectos, roedores o señales de plagas?", "Diaria"],
+  ]),
+  chk_prueba_prep: PRUEBA_DIARIA_ITEMS,
+};
+
+/* ==================================================================
    MÓDULO CIERRE DE ÁREA — checklist de cierre + reporte de incidentes,
    en pestañas, reutilizable para Caja, Servicio al cliente, Cocina y
    Bar. El área se toma de group.matchArea.
    ================================================================== */
 const CIERRE_AREA_ITEMS = {
-  contabilidad: [
-    { id:'ca_caja_1', label:'Área de caja despejada, organizada y sin objetos personales' },
-    { id:'ca_caja_2', label:'Efectivo contado y resguardado en caja fuerte o lugar seguro' },
-    { id:'ca_caja_3', label:'Sistema de facturación y ventas cerrado correctamente' },
-    { id:'ca_caja_4', label:'Datáfonos apagados o en modo seguro, con cierre de lote realizado' },
-    { id:'ca_caja_5', label:'Comprobantes y documentos del día archivados' },
-    { id:'ca_caja_6', label:'Cables, conectores y equipos tecnológicos ordenados' },
-    { id:'ca_caja_7', label:'Mesón y piso del área de caja limpios' },
-    { id:'ca_caja_8', label:'Novedades del día reportadas al responsable o a gerencia' }
-  ],
-  servicio_cliente: [
-    { id:'ca_sc_1', label:'Todas las mesas recogidas, limpias y con mantelería lista para el siguiente turno' },
-    { id:'ca_sc_2', label:'Sillas y mobiliario del salón acomodados en su lugar' },
-    { id:'ca_sc_3', label:'Salón barrido y trapeado' },
-    { id:'ca_sc_4', label:'Estación de servicio (cubertería, servilletas, condimentos) reabastecida' },
-    { id:'ca_sc_5', label:'Menús y cartas revisados, limpios y completos' },
-    { id:'ca_sc_6', label:'Baños públicos revisados y en condiciones de aseo' },
-    { id:'ca_sc_7', label:'Luces, música y aire acondicionado apagados o en modo nocturno' },
-    { id:'ca_sc_8', label:'Puertas y ventanas de acceso aseguradas' },
-    { id:'ca_sc_9', label:'Novedades del turno reportadas al encargado' }
-  ],
-  cocina: [
-    { id:'ca_coc_1', label:'Todas las estaciones de cocina limpias y desinfectadas' },
-    { id:'ca_coc_2', label:'Equipos (planchas, freidoras, hornos) apagados y en buen estado' },
-    { id:'ca_coc_3', label:'Neveras y cuartos fríos cerrados y en temperatura correcta' },
-    { id:'ca_coc_4', label:'Insumos perecederos rotulados, guardados y organizados (PEPS)' },
-    { id:'ca_coc_5', label:'Basuras sacadas y canecas limpias' },
-    { id:'ca_coc_6', label:'Piso de cocina barrido y trapeado' },
-    { id:'ca_coc_7', label:'Gas y llaves de paso cerrados' },
-    { id:'ca_coc_8', label:'Loza y utensilios lavados, secos y guardados' },
-    { id:'ca_coc_9', label:'Novedades o pendientes para el siguiente turno reportados' }
-  ],
-  bar: [
-    { id:'ca_bar_1', label:'Licores y bebidas guardados bajo llave' },
-    { id:'ca_bar_2', label:'Neveras y congeladores del bar cerrados y en temperatura correcta' },
-    { id:'ca_bar_3', label:'Vasos, copas y utensilios lavados y guardados' },
-    { id:'ca_bar_4', label:'Barra y estación de trabajo limpias y desinfectadas' },
-    { id:'ca_bar_5', label:'Hielo sobrante desechado o almacenado correctamente' },
-    { id:'ca_bar_6', label:'Inventario de licores abiertos verificado' },
-    { id:'ca_bar_7', label:'Basuras sacadas y área de bar ordenada' },
-    { id:'ca_bar_8', label:'Novedades del turno reportadas' }
-  ],
-  steward: [
-    { id:'ca_st_1', label:'Máquina lavaloza apagada, limpia y sin residuos de comida' },
-    { id:'ca_st_2', label:'Todas las canastillas, bandejas y organizadores lavados y guardados' },
-    { id:'ca_st_3', label:'Loza, cristalería y cubertería del día lavados y almacenados en su lugar' },
-    { id:'ca_st_4', label:'Trampa de grasas revisada y sin obstrucciones' },
-    { id:'ca_st_5', label:'Mesones y área de lavado desinfectados' },
-    { id:'ca_st_6', label:'Estropajos, esponjas y trapos lavados o desechados según corresponda' },
-    { id:'ca_st_7', label:'Basuras sacadas y canecas limpias' },
-    { id:'ca_st_8', label:'Piso del área de lavado limpio, sin agua estancada ni residuos' },
-    { id:'ca_st_9', label:'Novedades del turno reportadas al encargado' }
-  ]
+  contabilidad: _aseoItems('cca', [
+    ["¿La zona de caja está limpia?", "Cada cierre"],
+    ["¿Las portacuentas revisados y están organizados?", "Cada cierre"],
+    ["¿Las cartas (menús) están organizadas?", "Cada cierre"],
+    ["¿Las datáfonos están cerrados y guardados?", "Cada cierre"],
+    ["¿La caja quedó contada y cerrada?", "Cada cierre"],
+    ["¿El efectivo quedó contado?", "Cada cierre"],
+    ["¿Los comprobantes de transferencia están organizados y guardados?", "Cada cierre"],
+    ["¿La mesa de caja está libre de papeles y comida?", "Cada cierre"],
+    ["¿Los recipientes (vasos, platos, basura) quedaron retirados de la zona?", "Cada cierre"],
+    ["¿La silla está organizada?", "Cada cierre"],
+    ["¿La zona está despejada?", "Cada cierre"],
+    ["¿Las luces y equipos innecesarios quedaron apagados?", "Cada cierre"],
+    ["¿Se realizó el cierre de lote del datáfono realizado?", "Cada cierre"],
+    ["¿El valor del efectivo coincide con el cierre del sistema?", "Cada cierre"],
+    ["¿Las diferencias de caja fueron reportadas y justificadas?", "Cada cierre"],
+    ["¿Las llaves, documentos y valores quedaron asegurados?", "Cada cierre"],
+  ]),
+  servicio_cliente: _aseoItems('csa', [
+    ["¿Las mesas sin comida y están limpias?", "Cada cierre"],
+    ["¿La basura quedó recogida?", "Cada cierre"],
+    ["¿Las mesas y sillas están organizadas?", "Cada cierre"],
+    ["¿El mise en place quedó recogido y guardado?", "Cada cierre"],
+    ["¿Las neveras quedaron surtidas y contadas?", "Cada cierre"],
+    ["¿Las microondas quedaron apagados?", "Cada cierre"],
+    ["¿La mesa de cubiertos y auxiliar está limpias?", "Cada cierre"],
+    ["¿Los basureros están limpios y basura sacada?", "Cada cierre"],
+    ["¿Las cartas (menús) en su lugar?", "Cada cierre"],
+    ["¿Las carros de servicio están limpios y organizados?", "Cada cierre"],
+    ["¿Los ventiladores verificados y quedaron apagados?", "Cada cierre"],
+    ["¿Las luces quedaron apagadas?", "Cada cierre"],
+    ["¿El aire acondicionado quedó apagado?", "Cada cierre"],
+    ["¿La música y equipos de sonido quedó apagados?", "Cada cierre"],
+    ["¿El piso quedó barrido antes de cerrar?", "Cada cierre"],
+    ["¿Las puertas quedaron aseguradas?", "Cada cierre"],
+    ["¿Los servilleteros están llenos para el siguiente turno?", "Cada cierre"],
+    ["¿Los derrames y riesgos de caída fueron eliminados antes del cierre?", "Cada cierre"],
+    ["¿Las salidas, ventanas y accesos quedaron asegurados?", "Cada cierre"],
+    ["¿Las novedades del turno fueron registradas y comunicadas?", "Cada cierre"],
+    ["¿Los sucesos del turno quedaron reportados en el módulo de reporte de sucesos por área (si los hubo)?", "Cada cierre"],
+  ]),
+  cocina: _aseoItems('ccc', [
+    ["¿La base chef de carnes quedó surtida?", "Cada cierre"],
+    ["¿El horno Rational quedó en el ciclo de lavado establecido y bajo control del responsable?", "Cada cierre"],
+    ["¿Las mesas de acero están limpias?", "Cada cierre"],
+    ["¿Que no queden alimentos fuera de refrigeración?", "Cada cierre"],
+    ["¿Los extractores quedaron apagados?", "Cada cierre"],
+    ["¿Los computadores quedaron apagados?", "Cada cierre"],
+    ["¿La mesa de trabajo de mariscos está limpia y surtida?", "Cada cierre"],
+    ["¿Las freidoras quedaron apagadas y tapadas?", "Cada cierre"],
+    ["¿Los platos están limpios y en su lugar?", "Cada cierre"],
+    ["¿Las tablas están limpias y en su lugar?", "Cada cierre"],
+    ["¿Los baños de María desconectados y sin alimentos?", "Cada cierre"],
+    ["¿El piso está limpio y seco?", "Cada cierre"],
+    ["¿Los congeladores están cerrados y limpios?", "Cada cierre"],
+    ["¿La basura sacada?", "Cada cierre"],
+    ["¿El reporte de bajas quedó revisado y diligenciado?", "Cada cierre"],
+    ["¿Los sucesos del turno quedaron reportados en el módulo de reporte de sucesos por área (si los hubo)?", "Cada cierre"],
+    ["¿La solicitud de elementos a bodega quedó diligenciada?", "Cada cierre"],
+    ["¿Las estufas quedaron apagadas y limpias?", "Cada cierre"],
+    ["¿Las válvulas de gas quedaron cerradas y sin olor o señales de fuga?", "Cada cierre"],
+    ["¿Las temperaturas de neveras y congeladores fueron registradas antes del cierre?", "Cada cierre"],
+    ["¿Los alimentos quedaron tapados, rotulados y fechados?", "Cada cierre"],
+    ["¿Los productos químicos quedaron cerrados y separados de los alimentos?", "Cada cierre"],
+    ["¿El ciclo de lavado del horno Rational se inició conforme al procedimiento y quedó bajo control del responsable?", "Cada cierre"],
+  ]),
+  bar: _aseoItems('cba', [
+    ["¿Se realizó el conteo de licores?", "Cada cierre"],
+    ["¿La barra está limpia?", "Cada cierre"],
+    ["¿Las mesas de acero están limpias?", "Cada cierre"],
+    ["¿El lavaplatos está limpio y seco?", "Cada cierre"],
+    ["¿El piso está limpio y trapeado?", "Cada cierre"],
+    ["¿El congelador está cerrado y limpio?", "Cada cierre"],
+    ["¿El computador quedó apagado?", "Cada cierre"],
+    ["¿Las máquinas dispensadoras de agua quedaron apagadas?", "Cada cierre"],
+    ["¿Las copas están limpias y organizadas?", "Cada cierre"],
+    ["¿Las licuadoras están limpias y desconectadas?", "Cada cierre"],
+    ["¿Los utensilios, recipientes y herramientas del bar están limpios y en su lugar?", "Cada cierre"],
+    ["¿Las luces quedaron apagadas?", "Cada cierre"],
+    ["¿La solicitud de elementos a bodega quedó diligenciada?", "Cada cierre"],
+    ["¿El reporte de bar quedó diligenciado (sucesos, faltantes, novedades del turno)?", "Cada cierre"],
+    ["¿Las neveras y cava de hielo verificadas y están cerradas?", "Cada cierre"],
+    ["¿Las frutas, pulpas, jarabes y decoraciones quedaron tapados, fechados y refrigerados?", "Cada cierre"],
+    ["¿Las temperaturas de neveras y congelador fueron registradas antes del cierre?", "Cada cierre"],
+    ["¿Los licores y productos de alto valor quedaron asegurados?", "Cada cierre"],
+    ["¿Los productos vencidos, agotados o deteriorados fueron reportados?", "Cada cierre"],
+  ]),
+  steward: _aseoItems('cst', [
+    ["¿El piso está limpio y seco?", "Cada cierre"],
+    ["¿La zona de colocación de platos está despejada y limpia?", "Cada cierre"],
+    ["¿La basura sólida y líquida evacuada?", "Cada cierre"],
+    ["¿Los basureros están limpios y con tapa?", "Cada cierre"],
+    ["¿Las lavavajillas están limpio, despejado y apagado?", "Cada cierre"],
+    ["¿La zona de lavaplatos está limpia y despejada?", "Cada cierre"],
+    ["¿Las carros de servicio están limpios?", "Cada cierre"],
+    ["¿El trampa de grasa está limpia?", "Cada cierre"],
+    ["¿La mesa auxiliar está limpia y seca?", "Cada cierre"],
+    ["¿Las canastillas de lavado están organizadas?", "Cada cierre"],
+    ["¿Los platos están organizados en sus puestos?", "Cada cierre"],
+    ["¿Las copas y cubiertos están limpios y en su puesto?", "Cada cierre"],
+    ["¿La basura sacada?", "Cada cierre"],
+    ["¿Las esponjas y estropajos en buen estado y quedaron guardados?", "Cada cierre"],
+    ["¿El jabón/detergente de lavado con stock suficiente para el siguiente turno?", "Cada cierre"],
+    ["¿Los sucesos del turno quedaron reportados en el módulo de reporte de sucesos por área (si los hubo)?", "Cada cierre"],
+    ["¿Los productos químicos quedaron cerrados, rotulados y almacenados correctamente?", "Cada cierre"],
+    ["¿Los pisos quedaron libres de grasa y de riesgos de caída?", "Cada cierre"],
+    ["¿La trampa de grasa quedó cerrada y sin derrames después de su limpieza?", "Cada cierre"],
+  ]),
 };
 
 let cierreAreaLastRuta = '';
@@ -3067,6 +3563,217 @@ function guardarCierreArea(area){
   cierreAreaReady = null;
   showMsg('ca_msg','Cierre de área guardado correctamente.','verde');
   cierreAreaSetTab('checklist');
+}
+
+/* ==================================================================
+   MÓDULO DE ASEO / PRUEBA DIARIA — mismo espíritu que Cierre de área
+   (checklist de Sí/No/N/A + pestaña de incidentes), pero con la
+   frecuencia de cada punto visible (Diaria, Semanal, Cada turno...) y,
+   cuando la respuesta es "No", un pequeño formulario adicional para
+   Observación, Responsable de corregir y Acción correctiva — así queda
+   registrado no solo QUE algo falló, sino quién lo va a arreglar y
+   cómo. Un mismo motor sirve para las 8 zonas de aseo y para "Prueba
+   de preparaciones diarias" (chk_prueba_prep), que además muestra los
+   criterios de calidad detallados de cada plato (hoja 09b de Harol)
+   como referencia dentro de su propia pregunta. Colección: aseo_area.
+   ================================================================== */
+let aseoAreaLastRuta = '';
+let aseoAreaLastItemId = null;
+let aseoAreaActiveTab = 'checklist';
+let aseoAreaValues = {};
+let aseoAreaExtra = {};
+let aseoAreaReady = null;
+
+function renderAseoAreaModule(sec, group, item, ruta){
+  if(ruta) aseoAreaLastRuta = ruta;
+  if(item.id !== aseoAreaLastItemId){
+    aseoAreaActiveTab = 'checklist';
+    aseoAreaValues = {};
+    aseoAreaExtra = {};
+    aseoAreaReady = null;
+    aseoAreaLastItemId = item.id;
+  }
+  renderAseoAreaTabs(aseoAreaActiveTab);
+}
+
+function aseoAreaSetTab(tabId){
+  renderAseoAreaTabs(tabId);
+}
+
+function aseoAreaItemDef(itemId){
+  const sec = NAV.find(s=>s.id==='checklists');
+  let found = null;
+  sec.groups.forEach(g => { const it = g.items.find(i=>i.id===itemId); if(it) found = it; });
+  return found;
+}
+
+function renderAseoAreaTabs(activeId){
+  aseoAreaActiveTab = activeId;
+  const sec = NAV.find(s=>s.id==='checklists');
+  const itemDef = aseoAreaItemDef(aseoAreaLastItemId);
+  const areaKey = (itemDef && itemDef.area) || aseoAreaLastItemId;
+  const meta = AREA_META[areaKey] || { label: itemDef ? itemDef.label : 'Aseo', color: sec.color };
+
+  const tabs = [
+    { id:'checklist',  label:'Checklist',  icon:'checklist' },
+    { id:'incidentes', label:'Reporte de incidentes', icon:'bell' }
+  ];
+  const tabsHtml = tabs.map(t =>
+    `<button class="tab-btn ${t.id===activeId?'active':''}" onclick="aseoAreaSetTab('${t.id}')">${ic(t.icon,14)}${t.label}</button>`
+  ).join('');
+
+  const bodyHtml = activeId==='checklist' ? aseoAreaChecklistHtml(aseoAreaLastItemId, areaKey) : incidentesSeccionHtml(areaKey);
+
+  const html = `
+    <div class="panel">
+      <div class="panel-header">
+        <div class="icon-circle" style="background:${hexToRgba(meta.color,0.14)}; color:${meta.color};">${ic('checklist',21)}</div>
+        <div><h2>${itemDef ? itemDef.label : 'Checklist de aseo'}</h2><div class="path">${aseoAreaLastRuta}</div></div>
+      </div>
+      <div class="tab-bar">${tabsHtml}</div>
+      <div id="aseoAreaTabBody">${bodyHtml}</div>
+    </div>`;
+  document.getElementById('content').innerHTML = html;
+  if(window.innerWidth <= 820) document.getElementById('sidebar').classList.remove('open');
+}
+
+function aseoAreaSetCheck(id, val, btnEl){
+  aseoAreaValues[id] = val;
+  const wrap = document.getElementById('aseo_' + id);
+  if(wrap){
+    wrap.querySelectorAll('.yn-btn').forEach(b => b.classList.remove('active'));
+    if(btnEl) btnEl.classList.add('active');
+  }
+  const extra = document.getElementById('aseo_extra_' + id);
+  if(extra) extra.classList.toggle('hidden', val !== 'No cumple');
+  aseoAreaUpdateProgress();
+}
+function aseoAreaSetReady(val){
+  aseoAreaReady = val;
+  const row = document.getElementById('as_readyRow');
+  if(row) row.querySelectorAll('.yn-btn').forEach(b=>b.classList.remove('active'));
+  const btn = document.getElementById(val==='Cumple' ? 'as_readyYes' : 'as_readyNo');
+  if(btn) btn.classList.add('active');
+}
+function aseoAreaUpdateProgress(){
+  const items = ASEO_AREA_ITEMS[aseoAreaLastItemId] || [];
+  const answered = items.filter(it => aseoAreaValues[it.id]).length;
+  const pct = items.length ? Math.round((answered / items.length) * 100) : 0;
+  const circle = document.getElementById('as_progressCircle');
+  if(circle) circle.style.background = `conic-gradient(var(--bronce) ${pct}%, var(--border) ${pct}%)`;
+  const txt = document.getElementById('as_progressPct');
+  if(txt) txt.textContent = pct + '%';
+}
+function aseoAreaExtraInput(id, campo, valor){
+  if(!aseoAreaExtra[id]) aseoAreaExtra[id] = {};
+  aseoAreaExtra[id][campo] = valor;
+}
+
+function aseoAreaChecklistHtml(itemId, areaKey){
+  const items = ASEO_AREA_ITEMS[itemId] || [];
+  const checksHtml = items.map(it => {
+    const extra = aseoAreaExtra[it.id] || {};
+    const dishKey = PRUEBA_DIARIA_DISH_MAP[it.id];
+    const criteriosHtml = dishKey && PRUEBA_DIARIA_CRITERIOS[dishKey] ? `
+      <details style="margin:2px 0 8px;">
+        <summary style="cursor:pointer;font-size:11.5px;color:var(--bronce);">Ver criterios de calidad de ${dishKey.charAt(0)+dishKey.slice(1).toLowerCase()}</summary>
+        <ul style="margin:6px 0 0 18px;padding:0;font-size:12px;color:var(--text-light);">
+          ${PRUEBA_DIARIA_CRITERIOS[dishKey].map(c=>`<li style="margin-bottom:3px;">${c}</li>`).join('')}
+        </ul>
+      </details>` : '';
+    return `
+    <div class="check-row3" style="align-items:flex-start;">
+      <div>
+        <span>${it.label}</span>
+        <div style="font-size:11px;color:var(--text-light);margin-top:2px;">Frecuencia: ${it.frecuencia}</div>
+        ${criteriosHtml}
+      </div>
+      <div class="toggle-yn" id="aseo_${it.id}">
+        <button type="button" class="yn-btn yes" onclick="aseoAreaSetCheck('${it.id}','Cumple',this)">Sí</button>
+        <button type="button" class="yn-btn no" onclick="aseoAreaSetCheck('${it.id}','No cumple',this)">No</button>
+        <button type="button" class="yn-btn na" onclick="aseoAreaSetCheck('${it.id}','N/A',this)">N/A</button>
+      </div>
+    </div>
+    <div class="aseo-extra hidden" id="aseo_extra_${it.id}" style="margin:-4px 0 12px;padding:10px 12px;background:var(--marfil);border-radius:8px;">
+      <div class="form-field"><label>Observación / novedad</label><textarea rows="2" maxlength="300" oninput="aseoAreaExtraInput('${it.id}','observacion',this.value)">${extra.observacion||''}</textarea></div>
+      <div class="form-grid">
+        <div class="form-field"><label>Responsable de corregir</label><input value="${extra.responsableCorregir||''}" oninput="aseoAreaExtraInput('${it.id}','responsableCorregir',this.value)"></div>
+        <div class="form-field"><label>Acción correctiva</label><input value="${extra.accionCorrectiva||''}" oninput="aseoAreaExtraInput('${it.id}','accionCorrectiva',this.value)"></div>
+      </div>
+    </div>`;
+  }).join('');
+
+  const historial = filtrarPorSede(DB.get('aseo_area', [])).filter(h => h.area === itemId).slice(-8).reverse();
+  const historialHtml = historial.length ? `
+    <table class="mini-table">
+      <thead><tr><th>Fecha</th><th>Sede</th><th>Responsable</th><th>Ítems ok</th><th>Área lista</th></tr></thead>
+      <tbody>${historial.map(h => `<tr>
+        <td>${h.fecha} ${h.hora}</td><td>${sedeLabelGlobal(h.sede)}</td><td>${h.responsable}</td>
+        <td>${h.itemsOk}/${h.itemsTotal}</td>
+        <td>${h.listo ? '<span class="badge badge-verde">Sí</span>' : '<span class="badge badge-rojo">Con pendientes</span>'}</td>
+      </tr>`).join('')}</tbody>
+    </table>` : `<p style="color:var(--text-light);font-size:13px;">Todavía no hay checklists registrados en esta área.</p>`;
+
+  return `
+    <div class="compact-form">
+    <div class="progress-box2">
+      <div class="progress-circle" id="as_progressCircle" style="background:conic-gradient(var(--bronce) 0%, var(--border) 0%);"><span id="as_progressPct">0%</span></div>
+      <div class="progress-legend">Progreso del checklist<br>Responde los ${items.length} puntos para llegar al 100%.</div>
+    </div>
+    <div class="form-field"><label>Responsable <span class="req-star">*</span></label><input id="as_responsable" value="${SESSION.nombre}"></div>
+    <div class="toggle-list" style="margin-top:12px;">${checksHtml}</div>
+    <div class="form-field" style="margin-top:8px;">
+      <label>El área queda completamente lista <span class="req-star">*</span></label>
+      <div class="toggle-yn" id="as_readyRow" style="margin-top:5px;">
+        <button type="button" class="yn-btn yes" id="as_readyYes" onclick="aseoAreaSetReady('Cumple')">Sí, lista</button>
+        <button type="button" class="yn-btn no" id="as_readyNo" onclick="aseoAreaSetReady('No cumple')">No, con pendientes</button>
+      </div>
+    </div>
+    <div class="form-field" style="margin-top:8px;">
+      <label>Observaciones generales</label>
+      <textarea id="as_observaciones" rows="2" maxlength="500" placeholder="Opcional"></textarea>
+    </div>
+    </div>
+    <button class="btn-primary" style="width:auto;padding:11px 22px;margin-top:14px;" onclick="guardarAseoArea('${itemId}')">Completar checklist</button>
+    <div id="as_msg"></div>
+    <h3 style="margin:24px 0 10px;font-size:15px;">Historial</h3>
+    ${historialHtml}
+  `;
+}
+
+function guardarAseoArea(itemId){
+  const responsable = document.getElementById('as_responsable').value.trim();
+  const observaciones = document.getElementById('as_observaciones').value.trim();
+  const items = ASEO_AREA_ITEMS[itemId] || [];
+
+  if(!responsable){ showMsg('as_msg','Escribe el responsable.','rojo'); return; }
+  if(!aseoAreaReady){ showMsg('as_msg','Indica si el área queda lista.','rojo'); return; }
+
+  const itemsGuardados = items.map(it => {
+    const val = aseoAreaValues[it.id] || 'N/A';
+    const extra = aseoAreaExtra[it.id] || {};
+    return {
+      id: it.id, label: it.label, frecuencia: it.frecuencia, val,
+      observacion: val==='No cumple' ? (extra.observacion||'') : '',
+      responsableCorregir: val==='No cumple' ? (extra.responsableCorregir||'') : '',
+      accionCorrectiva: val==='No cumple' ? (extra.accionCorrectiva||'') : ''
+    };
+  });
+  const itemsOk = itemsGuardados.filter(i=>i.val==='Cumple').length;
+  const registro = {
+    area: itemId, sede: sedeParaGuardar(), usuario: SESSION.usuario, nombre: SESSION.nombre,
+    fecha: hoyStr(), hora: horaStr(),
+    responsable,
+    items: itemsGuardados, itemsOk, itemsTotal: items.length,
+    listo: aseoAreaReady === 'Cumple',
+    observaciones
+  };
+  DB.push('aseo_area', registro);
+  aseoAreaValues = {};
+  aseoAreaExtra = {};
+  aseoAreaReady = null;
+  showMsg('as_msg','Checklist guardado correctamente.','verde');
+  aseoAreaSetTab('checklist');
 }
 
 /* ==================================================================
@@ -4165,7 +4872,29 @@ const INCUMPLIMIENTOS_DEFINICIONES = [
       tipo: 'mise_cocina', estacion: estKey, checkpointMin: horario.minutos, checkpointLabel: horario.label,
       motivoFaltante: 'No se registró la mise en place de ' + MISE_COCINA_ESTACIONES[estKey].label + ' antes del checkpoint de las ' + horario.label + '.'
     }))
-  )
+  ),
+  // Checklists de aseo (8 zonas) y prueba de preparaciones diarias, cargados
+  // desde el Excel de Harol. "area" aquí es el id del ítem del NAV (llave
+  // única dentro de la colección aseo_area), no el área operativa — esa se
+  // resuelve aparte en checklist360AreaDeDef() para las estadísticas.
+  { id:'aseo_periferica', label:'Aseo del área periférica', tipo:'area_listo', coleccion:'aseo_area', area:'chk_aseo_periferica',
+    motivoFaltante:'No se registró el checklist de aseo del área periférica ese día.' },
+  { id:'aseo_banos_internos', label:'Aseo de baños internos', tipo:'area_listo', coleccion:'aseo_area', area:'chk_aseo_banos_internos',
+    motivoFaltante:'No se registró el checklist de aseo de baños internos ese día.' },
+  { id:'aseo_banos_publicos', label:'Aseo de baños públicos', tipo:'area_listo', coleccion:'aseo_area', area:'chk_aseo_banos_publicos',
+    motivoFaltante:'No se registró el checklist de aseo de baños públicos ese día.' },
+  { id:'aseo_traperos', label:'Aseo de zona de traperos', tipo:'area_listo', coleccion:'aseo_area', area:'chk_aseo_traperos',
+    motivoFaltante:'No se registró el checklist de aseo de la zona de traperos ese día.' },
+  { id:'aseo_salon', label:'Aseo del salón', tipo:'area_listo', coleccion:'aseo_area', area:'chk_aseo_salon',
+    motivoFaltante:'No se registró el checklist de aseo del salón ese día.' },
+  { id:'aseo_cocina', label:'Aseo de cocina', tipo:'area_listo', coleccion:'aseo_area', area:'chk_higiene',
+    motivoFaltante:'No se registró el checklist de aseo de cocina ese día.' },
+  { id:'aseo_bar', label:'Aseo del bar', tipo:'area_listo', coleccion:'aseo_area', area:'chk_aseo_bar',
+    motivoFaltante:'No se registró el checklist de aseo del bar ese día.' },
+  { id:'aseo_cp', label:'Aseo de centro de producción', tipo:'area_listo', coleccion:'aseo_area', area:'chk_aseo_cp',
+    motivoFaltante:'No se registró el checklist de aseo de centro de producción ese día.' },
+  { id:'prueba_diaria', label:'Prueba de preparaciones diarias', tipo:'area_listo', coleccion:'aseo_area', area:'chk_prueba_prep',
+    motivoFaltante:'No se registró la prueba de preparaciones diarias ese día.' }
 ];
 
 // Busca, dentro de una colección, el último registro de esa fecha (y de
@@ -4607,6 +5336,713 @@ function renderFotosPlatosModule(sec, group, item, ruta){
 }
 
 /* ==================================================================
+   COMIDA DEL PERSONAL — pestaña "Menú semanal" (descargar plantilla
+   .xlsx, llenarla y volver a subirla queda como el menú vigente) y
+   pestaña "Verificación de cumplimiento" (confirma que el almuerzo se
+   sirvió a las 11:00 am y la comida/cena a las 5:30 pm, y si coincidió
+   con el menú cargado). Usa la misma librería SheetJS ya incluida en
+   la app (ver módulo de Pagos). Colecciones: comida_personal_menus,
+   comida_personal_verificacion.
+   ================================================================== */
+let comidaPersonalLastRuta = '';
+let comidaPersonalActiveTab = 'menu';
+let comidaPersonalMenuPreview = null;
+let comidaPersonalValores = { almuerzoCumplioHorario:null, almuerzoCumplioMenu:null, cenaCumplioHorario:null, cenaCumplioMenu:null };
+
+function renderComidaPersonalModule(sec, group, item, ruta){
+  if(ruta) comidaPersonalLastRuta = ruta;
+  renderComidaPersonalTabs(comidaPersonalActiveTab);
+}
+function comidaPersonalSetTab(tabId){
+  renderComidaPersonalTabs(tabId);
+}
+function renderComidaPersonalTabs(activeId){
+  comidaPersonalActiveTab = activeId;
+  const meta = AREA_META['cocina'];
+  const tabs = [
+    { id:'menu', label:'Menú semanal', icon:'chef' },
+    { id:'verificacion', label:'Verificación de cumplimiento', icon:'checklist' }
+  ];
+  const tabsHtml = tabs.map(t =>
+    `<button class="tab-btn ${t.id===activeId?'active':''}" onclick="comidaPersonalSetTab('${t.id}')">${ic(t.icon,14)}${t.label}</button>`
+  ).join('');
+  const bodyHtml = activeId==='menu' ? comidaPersonalMenuTabHtml() : comidaPersonalVerificacionTabHtml();
+  const html = `
+    <div class="panel">
+      <div class="panel-header">
+        <div class="icon-circle" style="background:${hexToRgba(meta.color,0.14)}; color:${meta.color};">${ic('chef',21)}</div>
+        <div><h2>Comida del personal</h2><div class="path">${comidaPersonalLastRuta}</div></div>
+      </div>
+      <div class="tab-bar">${tabsHtml}</div>
+      <div>${bodyHtml}</div>
+    </div>`;
+  document.getElementById('content').innerHTML = html;
+  if(window.innerWidth <= 820) document.getElementById('sidebar').classList.remove('open');
+}
+
+function comidaPersonalMenuVigente(){
+  const todos = filtrarPorSede(DB.get('comida_personal_menus', []));
+  return todos.length ? todos[todos.length-1] : null;
+}
+function comidaPersonalNormalizar(s){
+  return String(s||'').trim().toLowerCase().normalize('NFD').replace(/\p{Diacritic}/gu,'');
+}
+function comidaPersonalDiaHoyNombre(){
+  const nombres = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
+  return nombres[new Date().getDay()];
+}
+function comidaPersonalMenuHoy(){
+  const menu = comidaPersonalMenuVigente();
+  if(!menu) return null;
+  const hoy = comidaPersonalNormalizar(comidaPersonalDiaHoyNombre());
+  return menu.dias.find(d => comidaPersonalNormalizar(d.dia) === hoy) || null;
+}
+
+function comidaPersonalDescargarPlantilla(){
+  const dias = ['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo'];
+  const aoa = [
+    ['Día', 'Almuerzo (11:00 am)', 'Comida / Cena (5:30 pm)'],
+    ...dias.map(d => [d, '', ''])
+  ];
+  const ws = XLSX.utils.aoa_to_sheet(aoa);
+  ws['!cols'] = [{wch:12},{wch:42},{wch:42}];
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Menu comida personal');
+  const wbout = XLSX.write(wb, {bookType:'xlsx', type:'array'});
+  const blob = new Blob([wbout], {type:'application/octet-stream'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'Plantilla_menu_comida_personal_Cordova.xlsx';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 4000);
+}
+
+function comidaPersonalArchivoSeleccionado(input){
+  const file = input.files && input.files[0];
+  const box = document.getElementById('cp_menuPreviewBox');
+  if(!file) return;
+  if(box) box.innerHTML = '<p style="font-size:12.5px;color:var(--text-light);">Leyendo archivo...</p>';
+  const reader = new FileReader();
+  reader.onload = function(e){
+    try{
+      const data = new Uint8Array(e.target.result);
+      const wb = XLSX.read(data, {type:'array', cellDates:true});
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(ws, {header:1, raw:false, defval:''});
+      const diasValidos = ['lunes','martes','miercoles','jueves','viernes','sabado','domingo'];
+      const dias = [];
+      rows.forEach(r => {
+        const nombreDia = String((r && r[0]) || '').trim();
+        const key = comidaPersonalNormalizar(nombreDia);
+        if(diasValidos.includes(key)){
+          dias.push({ dia: nombreDia, almuerzo: String((r&&r[1])||'').trim(), cena: String((r&&r[2])||'').trim() });
+        }
+      });
+      if(!dias.length){
+        if(box) box.innerHTML = '<div class="verif-box bad">No se encontraron días reconocibles (Lunes a Domingo) en la primera columna. Usa la plantilla descargable para no tener problemas de formato.</div>';
+        return;
+      }
+      comidaPersonalMenuPreview = { archivo: file.name, dias };
+      comidaPersonalRenderMenuPreview();
+    }catch(err){
+      if(box) box.innerHTML = '<div class="verif-box bad">No se pudo leer el archivo. Verifica que sea un .xlsx válido. ('+(err && err.message ? err.message : err)+')</div>';
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+function comidaPersonalRenderMenuPreview(){
+  const box = document.getElementById('cp_menuPreviewBox');
+  if(!box || !comidaPersonalMenuPreview) return;
+  box.innerHTML = `
+    <div class="verif-box ok" style="flex-direction:column;align-items:flex-start;gap:6px;">
+      <div><b>${comidaPersonalMenuPreview.archivo}</b> — se detectaron ${comidaPersonalMenuPreview.dias.length} día(s).</div>
+    </div>
+    <table class="mini-table" style="margin-top:8px;">
+      <thead><tr><th>Día</th><th>Almuerzo (11:00 am)</th><th>Comida (5:30 pm)</th></tr></thead>
+      <tbody>${comidaPersonalMenuPreview.dias.map(d=>`<tr><td>${d.dia}</td><td>${d.almuerzo||'-'}</td><td>${d.cena||'-'}</td></tr>`).join('')}</tbody>
+    </table>
+    <button class="btn-primary" style="width:auto;padding:10px 20px;margin-top:10px;" onclick="comidaPersonalConfirmarMenu()">Cargar este menú</button>
+  `;
+}
+function comidaPersonalConfirmarMenu(){
+  if(!comidaPersonalMenuPreview) return;
+  DB.push('comida_personal_menus', {
+    archivo: comidaPersonalMenuPreview.archivo,
+    dias: comidaPersonalMenuPreview.dias,
+    sede: sedeParaGuardar(), usuario: SESSION.usuario, nombre: SESSION.nombre,
+    fecha: hoyStr(), hora: horaStr()
+  });
+  comidaPersonalMenuPreview = null;
+  showMsg('cp_menuMsg','Menú de comida del personal cargado correctamente.','verde');
+  comidaPersonalSetTab('menu');
+}
+
+function comidaPersonalMenuTabHtml(){
+  const menu = comidaPersonalMenuVigente();
+  const menuHtml = menu ? `
+    <p style="font-size:12.5px;color:var(--text-light);margin-bottom:8px;">Menú vigente, cargado el ${menu.fecha} por ${menu.nombre} (${menu.archivo}).</p>
+    <table class="mini-table">
+      <thead><tr><th>Día</th><th>Almuerzo (11:00 am)</th><th>Comida (5:30 pm)</th></tr></thead>
+      <tbody>${menu.dias.map(d=>`<tr><td>${d.dia}</td><td>${d.almuerzo||'-'}</td><td>${d.cena||'-'}</td></tr>`).join('')}</tbody>
+    </table>` : `<p style="color:var(--text-light);font-size:13px;">Todavía no se ha cargado un menú.</p>`;
+
+  return `
+    <div style="margin-bottom:18px;">
+      <button class="btn-primary" style="width:auto;padding:10px 20px;" onclick="comidaPersonalDescargarPlantilla()">Descargar plantilla de menú</button>
+      <span style="font-size:12px;color:var(--text-light);margin-left:10px;">Descárgala, llénala con el menú de la semana (almuerzo y comida de cada día) y súbela abajo.</span>
+    </div>
+    <div class="form-field"><label>Subir menú lleno (.xlsx)</label>
+      <input type="file" id="cp_menuArchivo" accept=".xlsx,.xls" onchange="comidaPersonalArchivoSeleccionado(this)">
+    </div>
+    <div id="cp_menuPreviewBox" style="margin-top:8px;"></div>
+    <div id="cp_menuMsg"></div>
+    <h3 style="margin:24px 0 10px;font-size:15px;">Menú vigente</h3>
+    ${menuHtml}
+  `;
+}
+
+function comidaPersonalSetValor(campo, val, btnEl){
+  comidaPersonalValores[campo] = val;
+  if(btnEl){
+    const row = btnEl.parentElement;
+    row.querySelectorAll('.yn-btn').forEach(b=>b.classList.remove('active'));
+    btnEl.classList.add('active');
+  }
+}
+
+function comidaPersonalVerificacionTabHtml(){
+  const menuHoy = comidaPersonalMenuHoy();
+  const historial = filtrarPorSede(DB.get('comida_personal_verificacion', [])).slice(-10).reverse();
+  const historialHtml = historial.length ? `
+    <table class="mini-table">
+      <thead><tr><th>Fecha</th><th>Almuerzo 11am</th><th>Comida 5:30pm</th><th>Responsable</th></tr></thead>
+      <tbody>${historial.map(h=>`<tr>
+        <td>${h.fecha}</td>
+        <td>${h.almuerzoCumplioHorario==='Sí'?'<span class="badge badge-verde">Sí</span>':'<span class="badge badge-rojo">No</span>'}</td>
+        <td>${h.cenaCumplioHorario==='Sí'?'<span class="badge badge-verde">Sí</span>':'<span class="badge badge-rojo">No</span>'}</td>
+        <td>${h.responsable}</td>
+      </tr>`).join('')}</tbody>
+    </table>` : `<p style="color:var(--text-light);font-size:13px;">Todavía no hay verificaciones registradas.</p>`;
+
+  return `
+    <div class="compact-form">
+    ${!menuHoy ? '<div class="verif-box bad" style="margin-bottom:14px;">No hay un menú cargado para el día de hoy — revisa la pestaña "Menú semanal".</div>' : ''}
+    <div class="form-field"><label>Responsable de la verificación <span class="req-star">*</span></label><input id="cp_responsable" value="${SESSION.nombre}"></div>
+
+    <h3 style="margin:18px 0 8px;font-size:14px;">Almuerzo — 11:00 am${menuHoy && menuHoy.almuerzo ? ' (menú: '+menuHoy.almuerzo+')' : ''}</h3>
+    <div class="form-field"><label>¿Se sirvió a las 11:00 am? <span class="req-star">*</span></label>
+      <div class="toggle-yn" id="cp_almHorarioRow">
+        <button type="button" class="yn-btn yes" onclick="comidaPersonalSetValor('almuerzoCumplioHorario','Sí',this)">Sí</button>
+        <button type="button" class="yn-btn no" onclick="comidaPersonalSetValor('almuerzoCumplioHorario','No',this)">No</button>
+      </div>
+    </div>
+    <div class="form-field"><label>¿Coincidió con el menú?</label>
+      <div class="toggle-yn" id="cp_almMenuRow">
+        <button type="button" class="yn-btn yes" onclick="comidaPersonalSetValor('almuerzoCumplioMenu','Sí',this)">Sí</button>
+        <button type="button" class="yn-btn no" onclick="comidaPersonalSetValor('almuerzoCumplioMenu','No',this)">No</button>
+      </div>
+    </div>
+    <div class="form-field"><label>¿Qué se sirvió?</label><input id="cp_almServido" placeholder="Opcional, si difiere del menú"></div>
+
+    <h3 style="margin:18px 0 8px;font-size:14px;">Comida / Cena — 5:30 pm${menuHoy && menuHoy.cena ? ' (menú: '+menuHoy.cena+')' : ''}</h3>
+    <div class="form-field"><label>¿Se sirvió a las 5:30 pm? <span class="req-star">*</span></label>
+      <div class="toggle-yn" id="cp_cenHorarioRow">
+        <button type="button" class="yn-btn yes" onclick="comidaPersonalSetValor('cenaCumplioHorario','Sí',this)">Sí</button>
+        <button type="button" class="yn-btn no" onclick="comidaPersonalSetValor('cenaCumplioHorario','No',this)">No</button>
+      </div>
+    </div>
+    <div class="form-field"><label>¿Coincidió con el menú?</label>
+      <div class="toggle-yn" id="cp_cenMenuRow">
+        <button type="button" class="yn-btn yes" onclick="comidaPersonalSetValor('cenaCumplioMenu','Sí',this)">Sí</button>
+        <button type="button" class="yn-btn no" onclick="comidaPersonalSetValor('cenaCumplioMenu','No',this)">No</button>
+      </div>
+    </div>
+    <div class="form-field"><label>¿Qué se sirvió?</label><input id="cp_cenServido" placeholder="Opcional, si difiere del menú"></div>
+
+    <div class="form-field" style="margin-top:8px;"><label>Observaciones</label><textarea id="cp_observaciones" rows="2" maxlength="400" placeholder="Opcional"></textarea></div>
+    </div>
+    <button class="btn-primary" style="width:auto;padding:11px 22px;margin-top:14px;" onclick="guardarComidaPersonalVerificacion()">Guardar verificación de hoy</button>
+    <div id="cp_verifMsg"></div>
+    <h3 style="margin:24px 0 10px;font-size:15px;">Historial</h3>
+    ${historialHtml}
+  `;
+}
+
+function guardarComidaPersonalVerificacion(){
+  const responsable = document.getElementById('cp_responsable').value.trim();
+  if(!responsable){ showMsg('cp_verifMsg','Escribe el responsable de la verificación.','rojo'); return; }
+  if(!comidaPersonalValores.almuerzoCumplioHorario || !comidaPersonalValores.cenaCumplioHorario){
+    showMsg('cp_verifMsg','Marca si se cumplió el horario de las 11:00 am y de las 5:30 pm.','rojo'); return;
+  }
+  const registro = {
+    sede: sedeParaGuardar(), usuario: SESSION.usuario, nombre: SESSION.nombre,
+    fecha: hoyStr(), hora: horaStr(), responsable,
+    almuerzoCumplioHorario: comidaPersonalValores.almuerzoCumplioHorario,
+    almuerzoCumplioMenu: comidaPersonalValores.almuerzoCumplioMenu || 'N/A',
+    almuerzoServido: (document.getElementById('cp_almServido').value||'').trim(),
+    cenaCumplioHorario: comidaPersonalValores.cenaCumplioHorario,
+    cenaCumplioMenu: comidaPersonalValores.cenaCumplioMenu || 'N/A',
+    cenaServido: (document.getElementById('cp_cenServido').value||'').trim(),
+    observaciones: (document.getElementById('cp_observaciones').value||'').trim()
+  };
+  DB.push('comida_personal_verificacion', registro);
+  comidaPersonalValores = { almuerzoCumplioHorario:null, almuerzoCumplioMenu:null, cenaCumplioHorario:null, cenaCumplioMenu:null };
+  showMsg('cp_verifMsg','Verificación guardada correctamente.','verde');
+  comidaPersonalSetTab('verificacion');
+}
+
+/* ==================================================================
+   MANTENIMIENTO — un solo módulo con 3 pestañas (los 3 ítems del NAV
+   de Mantenimiento apuntan aquí, cada uno con su pestaña de entrada
+   vía item.tab): (1) Equipos, con su factura, hoja de vida y su propio
+   historial de mantenimiento; (2) Reporte de daños y solicitud de
+   mantenimiento correctivo/preventivo, con estado (abierta/en
+   proceso/cerrada); (3) Proveedores de mantenimiento, con sus
+   cotizaciones adjuntas y un resumen de cuántos hay cotizados por área
+   (la meta son al menos 3 por área). Colecciones: mant_equipos,
+   mant_equipo_historial, mant_solicitudes, mant_proveedores.
+   ================================================================== */
+let mantLastRuta = '';
+let mantActiveTab = 'equipos';
+let mantEquipoFacturaData = null;
+let mantCotizacionArchivoData = null;
+let mantDetalleEquipoId = null;
+let mantDetalleProveedorId = null;
+
+const MANT_AREAS = [
+  { id:'contabilidad', label:'Caja' },
+  { id:'servicio_cliente', label:'Servicio al cliente' },
+  { id:'cocina', label:'Cocina' },
+  { id:'bar', label:'Bar' },
+  { id:'centro_produccion', label:'Centro de producción' },
+  { id:'general', label:'Áreas comunes / general' }
+];
+function mantAreaLabel(id){ const a = MANT_AREAS.find(x=>x.id===id); return a ? a.label : (id||'-'); }
+
+function renderMantenimientoModule(sec, group, item, ruta){
+  if(ruta) mantLastRuta = ruta;
+  mantDetalleEquipoId = null;
+  mantDetalleProveedorId = null;
+  renderMantTabs((item && item.tab) || 'equipos');
+}
+function mantSetTab(tabId){
+  mantDetalleEquipoId = null;
+  mantDetalleProveedorId = null;
+  renderMantTabs(tabId);
+}
+function renderMantTabs(activeId){
+  mantActiveTab = activeId;
+  const color = '#6B4E9E';
+  const tabs = [
+    { id:'equipos', label:'Equipos', icon:'wrench' },
+    { id:'solicitudes', label:'Daños y solicitudes', icon:'bell' },
+    { id:'proveedores', label:'Proveedores', icon:'truck' }
+  ];
+  const tabsHtml = tabs.map(t =>
+    `<button class="tab-btn ${t.id===activeId?'active':''}" onclick="mantSetTab('${t.id}')">${ic(t.icon,14)}${t.label}</button>`
+  ).join('');
+  let bodyHtml;
+  if(activeId==='equipos') bodyHtml = mantDetalleEquipoId ? mantEquipoDetalleHtml(mantDetalleEquipoId) : mantEquiposTabHtml();
+  else if(activeId==='solicitudes') bodyHtml = mantSolicitudesTabHtml();
+  else bodyHtml = mantDetalleProveedorId ? mantProveedorDetalleHtml(mantDetalleProveedorId) : mantProveedoresTabHtml();
+  const html = `
+    <div class="panel">
+      <div class="panel-header">
+        <div class="icon-circle" style="background:${hexToRgba(color,0.14)}; color:${color};">${ic('wrench',21)}</div>
+        <div><h2>Mantenimiento</h2><div class="path">${mantLastRuta}</div></div>
+      </div>
+      <div class="tab-bar">${tabsHtml}</div>
+      <div>${bodyHtml}</div>
+    </div>`;
+  document.getElementById('content').innerHTML = html;
+  if(window.innerWidth <= 820) document.getElementById('sidebar').classList.remove('open');
+}
+
+/* ---- Pestaña: Equipos ---- */
+function mantEquiposTabHtml(){
+  const equipos = filtrarPorSede(DB.get('mant_equipos', [])).slice().reverse();
+  const filasHtml = equipos.map(eq => {
+    const hist = DB.get('mant_equipo_historial', []).filter(h=>h.equipoId===eq.id);
+    return `<tr>
+      <td>${eq.nombre}</td>
+      <td>${mantAreaLabel(eq.area)}</td>
+      <td>${eq.marca||'-'} ${eq.modelo||''}</td>
+      <td>${eq.factura ? `<a href="${eq.factura}" target="_blank" rel="noopener">Ver factura</a>` : '-'}</td>
+      <td>${hist.length}</td>
+      <td><button class="btn-secondary" style="padding:6px 12px;font-size:12px;" onclick="mantVerEquipo('${eq.id}')">Ver / agregar historial</button></td>
+    </tr>`;
+  }).join('');
+  const tablaHtml = equipos.length ? `
+    <table class="mini-table">
+      <thead><tr><th>Equipo</th><th>Área</th><th>Marca / modelo</th><th>Factura</th><th>Historial</th><th></th></tr></thead>
+      <tbody>${filasHtml}</tbody>
+    </table>` : `<p style="color:var(--text-light);font-size:13px;">Todavía no hay equipos registrados.</p>`;
+
+  return `
+    <h3 style="margin:0 0 10px;font-size:15px;">Agregar equipo</h3>
+    <div class="form-grid">
+      <div class="form-field"><label>Nombre del equipo <span class="req-star">*</span></label><input id="mant_eqNombre" placeholder="Ej: Horno Rational cocina"></div>
+      <div class="form-field"><label>Área</label>
+        <select id="mant_eqArea">${MANT_AREAS.map(a=>`<option value="${a.id}">${a.label}</option>`).join('')}</select>
+      </div>
+      <div class="form-field"><label>Marca</label><input id="mant_eqMarca" placeholder="Opcional"></div>
+      <div class="form-field"><label>Modelo</label><input id="mant_eqModelo" placeholder="Opcional"></div>
+      <div class="form-field"><label>Ubicación</label><input id="mant_eqUbicacion" placeholder="Opcional"></div>
+      <div class="form-field"><label>Fecha de compra</label><input type="date" id="mant_eqFechaCompra"></div>
+    </div>
+    <div class="form-field" style="margin-top:10px;"><label>Notas de hoja de vida</label><textarea id="mant_eqHojaVida" rows="2" maxlength="500" placeholder="Especificaciones, garantía, condiciones, etc. (opcional)"></textarea></div>
+    <div class="form-field" style="margin-top:10px;"><label>Factura (foto o PDF)</label>
+      <input type="file" id="mant_eqFactura" accept="image/*,application/pdf" onchange="onFacturaEquipoChange(this)">
+      <div id="mant_eqFacturaPreview" style="margin-top:6px;"></div>
+    </div>
+    <button class="btn-primary" style="width:auto;padding:11px 22px;margin-top:14px;" onclick="guardarMantEquipo()">Guardar equipo</button>
+    <div id="mant_eqMsg"></div>
+    <h3 style="margin:24px 0 10px;font-size:15px;">Equipos registrados</h3>
+    ${tablaHtml}
+  `;
+}
+function onFacturaEquipoChange(input){
+  mantEquipoFacturaData = null;
+  const preview = document.getElementById('mant_eqFacturaPreview');
+  const file = input.files && input.files[0];
+  if(!file){ if(preview) preview.innerHTML=''; return; }
+  if(preview) preview.innerHTML = '<span style="font-size:11px;color:var(--text-light);">Procesando...</span>';
+  if(file.type && file.type.indexOf('image') === 0){
+    const reader = new FileReader();
+    reader.onload = function(e){
+      const img = new Image();
+      img.onload = function(){
+        const maxW = 480;
+        const scale = Math.min(1, maxW / img.width);
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.max(1, Math.round(img.width * scale));
+        canvas.height = Math.max(1, Math.round(img.height * scale));
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        mantEquipoFacturaData = canvas.toDataURL('image/jpeg', 0.6);
+        if(preview) preview.innerHTML = '<img src="'+mantEquipoFacturaData+'" style="max-width:110px;border-radius:6px;border:1px solid var(--border);display:block;">';
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  } else {
+    const reader = new FileReader();
+    reader.onload = function(e){
+      mantEquipoFacturaData = e.target.result;
+      if(preview) preview.innerHTML = '<span style="font-size:11px;color:var(--verde);">Archivo listo: '+file.name+'</span>';
+    };
+    reader.readAsDataURL(file);
+  }
+}
+function guardarMantEquipo(){
+  const nombre = document.getElementById('mant_eqNombre').value.trim();
+  if(!nombre){ showMsg('mant_eqMsg','Escribe el nombre del equipo.','rojo'); return; }
+  DB.push('mant_equipos', {
+    nombre,
+    area: document.getElementById('mant_eqArea').value,
+    marca: document.getElementById('mant_eqMarca').value.trim(),
+    modelo: document.getElementById('mant_eqModelo').value.trim(),
+    ubicacion: document.getElementById('mant_eqUbicacion').value.trim(),
+    fechaCompra: document.getElementById('mant_eqFechaCompra').value,
+    hojaVida: document.getElementById('mant_eqHojaVida').value.trim(),
+    factura: mantEquipoFacturaData,
+    sede: sedeParaGuardar(), creadoPor: SESSION.nombre, fecha: hoyStr()
+  });
+  mantEquipoFacturaData = null;
+  showMsg('mant_eqMsg','Equipo guardado correctamente.','verde');
+  renderMantTabs('equipos');
+}
+function mantVerEquipo(id){ mantDetalleEquipoId = id; renderMantTabs('equipos'); }
+function mantVolverEquipos(){ mantDetalleEquipoId = null; renderMantTabs('equipos'); }
+function mantEquipoDetalleHtml(id){
+  const eq = DB.get('mant_equipos', []).find(e=>e.id===id);
+  if(!eq) return '<p style="color:var(--text-light);font-size:13px;">Equipo no encontrado.</p>';
+  const hist = DB.get('mant_equipo_historial', []).filter(h=>h.equipoId===id).slice().reverse();
+  const histHtml = hist.length ? `
+    <table class="mini-table">
+      <thead><tr><th>Fecha</th><th>Tipo</th><th>Descripción</th><th>Responsable</th><th>Costo</th></tr></thead>
+      <tbody>${hist.map(h=>`<tr>
+        <td>${h.fecha}</td>
+        <td><span class="badge ${h.tipo==='preventivo'?'badge-azul':'badge-dorado'}">${h.tipo==='preventivo'?'Preventivo':'Correctivo'}</span></td>
+        <td>${h.descripcion}</td><td>${h.responsable}</td><td>${h.costo?fmtMoney(h.costo):'-'}</td>
+      </tr>`).join('')}</tbody>
+    </table>` : `<p style="color:var(--text-light);font-size:13px;">Todavía no hay entradas de historial para este equipo.</p>`;
+
+  return `
+    <button class="btn-secondary" style="padding:6px 12px;font-size:12px;margin-bottom:14px;" onclick="mantVolverEquipos()">&larr; Volver a equipos</button>
+    <div class="panel" style="padding:16px;">
+      <h3 style="margin:0 0 6px;font-size:16px;">${eq.nombre}</h3>
+      <p style="font-size:12.5px;color:var(--text-light);margin:0 0 10px;">${mantAreaLabel(eq.area)} · ${eq.marca||''} ${eq.modelo||''} · ${eq.ubicacion||'Sin ubicación registrada'}</p>
+      ${eq.hojaVida ? `<p style="font-size:12.5px;"><b>Hoja de vida:</b> ${eq.hojaVida}</p>` : ''}
+      ${eq.factura ? `<p style="font-size:12.5px;"><a href="${eq.factura}" target="_blank" rel="noopener">Ver factura</a></p>` : ''}
+    </div>
+    <h3 style="margin:20px 0 10px;font-size:15px;">Agregar entrada de historial de mantenimiento</h3>
+    <div class="form-grid">
+      <div class="form-field"><label>Tipo <span class="req-star">*</span></label>
+        <select id="mant_histTipo"><option value="preventivo">Preventivo</option><option value="correctivo">Correctivo</option></select>
+      </div>
+      <div class="form-field"><label>Fecha</label><input type="date" id="mant_histFecha" value="${hoyStr()}"></div>
+      <div class="form-field"><label>Responsable</label><input id="mant_histResponsable" value="${SESSION.nombre}"></div>
+      <div class="form-field"><label>Costo</label><input type="number" id="mant_histCosto" placeholder="Opcional"></div>
+    </div>
+    <div class="form-field" style="margin-top:8px;"><label>Descripción <span class="req-star">*</span></label><textarea id="mant_histDescripcion" rows="2" maxlength="400" placeholder="Qué se hizo"></textarea></div>
+    <button class="btn-primary" style="width:auto;padding:11px 22px;margin-top:12px;" onclick="guardarMantHistorial('${id}')">Guardar entrada</button>
+    <div id="mant_histMsg"></div>
+    <h3 style="margin:24px 0 10px;font-size:15px;">Historial</h3>
+    ${histHtml}
+  `;
+}
+function guardarMantHistorial(equipoId){
+  const tipo = document.getElementById('mant_histTipo').value;
+  const fecha = document.getElementById('mant_histFecha').value || hoyStr();
+  const responsable = document.getElementById('mant_histResponsable').value.trim();
+  const costo = parseFloat(document.getElementById('mant_histCosto').value) || 0;
+  const descripcion = document.getElementById('mant_histDescripcion').value.trim();
+  if(!descripcion){ showMsg('mant_histMsg','Describe qué se hizo.','rojo'); return; }
+  DB.push('mant_equipo_historial', { equipoId, tipo, fecha, responsable, costo, descripcion, sede: sedeParaGuardar() });
+  showMsg('mant_histMsg','Entrada de historial guardada.','verde');
+  renderMantTabs('equipos');
+}
+
+/* ---- Pestaña: Reporte de daños y solicitudes ---- */
+function mantSolicitudesTabHtml(){
+  const equipos = filtrarPorSede(DB.get('mant_equipos', []));
+  const solicitudes = filtrarPorSede(DB.get('mant_solicitudes', [])).slice().reverse();
+  const equipoOptions = '<option value="">— Ninguno / no aplica —</option>' + equipos.map(e=>`<option value="${e.id}">${e.nombre}</option>`).join('');
+  const prioridadBadge = p => p==='alta' ? 'badge-rojo' : (p==='media' ? 'badge-dorado' : 'badge-gris');
+  const prioridadLabel = p => p==='alta' ? 'Alta' : (p==='media' ? 'Media' : 'Baja');
+
+  const filasHtml = solicitudes.map(s => {
+    const eq = equipos.find(e=>e.id===s.equipoId);
+    return `<tr>
+      <td>${s.fecha}</td>
+      <td>${mantAreaLabel(s.area)}</td>
+      <td>${eq ? eq.nombre : '-'}</td>
+      <td><span class="badge ${s.tipo==='preventivo'?'badge-azul':'badge-dorado'}">${s.tipo==='preventivo'?'Preventivo':'Correctivo'}</span></td>
+      <td style="max-width:220px;">${s.descripcionDano}</td>
+      <td><span class="badge ${prioridadBadge(s.prioridad)}">${prioridadLabel(s.prioridad)}</span></td>
+      <td>
+        <select onchange="mantSolicitudCambiarEstado('${s.id}', this.value)" style="font-size:11.5px;padding:4px 6px;border-radius:6px;border:1px solid var(--border);background:var(--white);color:var(--text);">
+          <option value="abierta" ${s.estado==='abierta'?'selected':''}>Abierta</option>
+          <option value="en_proceso" ${s.estado==='en_proceso'?'selected':''}>En proceso</option>
+          <option value="cerrada" ${s.estado==='cerrada'?'selected':''}>Cerrada</option>
+        </select>
+      </td>
+      <td>${s.reportadoPor}</td>
+    </tr>`;
+  }).join('');
+  const tablaHtml = solicitudes.length ? `
+    <table class="mini-table">
+      <thead><tr><th>Fecha</th><th>Área</th><th>Equipo</th><th>Tipo</th><th>Descripción</th><th>Prioridad</th><th>Estado</th><th>Reportado por</th></tr></thead>
+      <tbody>${filasHtml}</tbody>
+    </table>` : `<p style="color:var(--text-light);font-size:13px;">Todavía no hay reportes de daños ni solicitudes.</p>`;
+
+  return `
+    <h3 style="margin:0 0 10px;font-size:15px;">Reportar daño / solicitar mantenimiento</h3>
+    <div class="form-grid">
+      <div class="form-field"><label>Área <span class="req-star">*</span></label>
+        <select id="mant_solArea">${MANT_AREAS.map(a=>`<option value="${a.id}">${a.label}</option>`).join('')}</select>
+      </div>
+      <div class="form-field"><label>Equipo relacionado</label>
+        <select id="mant_solEquipo">${equipoOptions}</select>
+      </div>
+      <div class="form-field"><label>Tipo <span class="req-star">*</span></label>
+        <select id="mant_solTipo"><option value="correctivo">Correctivo (algo se dañó)</option><option value="preventivo">Preventivo (mantenimiento programado)</option></select>
+      </div>
+      <div class="form-field"><label>Prioridad</label>
+        <select id="mant_solPrioridad"><option value="media">Media</option><option value="alta">Alta</option><option value="baja">Baja</option></select>
+      </div>
+      <div class="form-field"><label>Reportado por</label><input id="mant_solReportadoPor" value="${SESSION.nombre}"></div>
+    </div>
+    <div class="form-field" style="margin-top:8px;"><label>Descripción del daño o necesidad <span class="req-star">*</span></label><textarea id="mant_solDescripcion" rows="2" maxlength="500" placeholder="Qué pasó o qué se necesita"></textarea></div>
+    <button class="btn-primary" style="width:auto;padding:11px 22px;margin-top:12px;" onclick="guardarMantSolicitud()">Guardar solicitud</button>
+    <div id="mant_solMsg"></div>
+    <h3 style="margin:24px 0 10px;font-size:15px;">Solicitudes registradas</h3>
+    ${tablaHtml}
+  `;
+}
+function guardarMantSolicitud(){
+  const area = document.getElementById('mant_solArea').value;
+  const equipoId = document.getElementById('mant_solEquipo').value || null;
+  const tipo = document.getElementById('mant_solTipo').value;
+  const prioridad = document.getElementById('mant_solPrioridad').value;
+  const reportadoPor = document.getElementById('mant_solReportadoPor').value.trim();
+  const descripcionDano = document.getElementById('mant_solDescripcion').value.trim();
+  if(!descripcionDano){ showMsg('mant_solMsg','Describe el daño o la necesidad.','rojo'); return; }
+  if(!reportadoPor){ showMsg('mant_solMsg','Escribe quién reporta.','rojo'); return; }
+  DB.push('mant_solicitudes', {
+    area, equipoId, tipo, prioridad, reportadoPor, descripcionDano,
+    estado: 'abierta', fecha: hoyStr(), hora: horaStr(), sede: sedeParaGuardar()
+  });
+  showMsg('mant_solMsg','Solicitud guardada correctamente.','verde');
+  renderMantTabs('solicitudes');
+}
+function mantSolicitudCambiarEstado(id, nuevoEstado){
+  const arr = DB.get('mant_solicitudes', []);
+  const reg = arr.find(r=>r.id===id);
+  if(reg){
+    reg.estado = nuevoEstado;
+    if(nuevoEstado==='cerrada') reg.fechaCierre = hoyStr();
+    DB.set('mant_solicitudes', arr);
+  }
+  renderMantTabs('solicitudes');
+}
+
+/* ---- Pestaña: Proveedores ---- */
+function mantProveedoresTabHtml(){
+  const proveedores = filtrarPorSede(DB.get('mant_proveedores', [])).slice().reverse();
+  const porArea = {};
+  proveedores.forEach(p => { porArea[p.area] = (porArea[p.area]||0) + 1; });
+  const resumenHtml = MANT_AREAS.map(a => {
+    const n = porArea[a.id] || 0;
+    const ok = n >= 3;
+    return `<div class="module-card" style="cursor:default;">
+      <div class="icon-circle" style="background:${hexToRgba(ok?'#2E7D32':'#C0392B',0.14)}; color:${ok?'#2E7D32':'#C0392B'};">${ic('truck',22)}</div>
+      <h3>${n}</h3><p>${a.label}${!ok ? ' — faltan cotizar' : ''}</p>
+    </div>`;
+  }).join('');
+
+  const filasHtml = proveedores.map(p => {
+    const cots = p.cotizaciones || [];
+    return `<tr>
+      <td>${p.nombre}</td>
+      <td>${mantAreaLabel(p.area)}</td>
+      <td>${p.telefono||'-'}</td>
+      <td>${cots.length}</td>
+      <td><button class="btn-secondary" style="padding:6px 12px;font-size:12px;" onclick="mantVerProveedor('${p.id}')">Ver / agregar cotización</button></td>
+    </tr>`;
+  }).join('');
+  const tablaHtml = proveedores.length ? `
+    <table class="mini-table">
+      <thead><tr><th>Proveedor</th><th>Área</th><th>Teléfono</th><th>Cotizaciones</th><th></th></tr></thead>
+      <tbody>${filasHtml}</tbody>
+    </table>` : `<p style="color:var(--text-light);font-size:13px;">Todavía no hay proveedores registrados.</p>`;
+
+  return `
+    <p style="font-size:12.5px;color:var(--text-light);margin-bottom:12px;">Meta recomendada: al menos 3 proveedores cotizados por área.</p>
+    <div class="module-grid" style="margin-bottom:22px;">${resumenHtml}</div>
+    <h3 style="margin:0 0 10px;font-size:15px;">Agregar proveedor</h3>
+    <div class="form-grid">
+      <div class="form-field"><label>Nombre <span class="req-star">*</span></label><input id="mant_provNombre" placeholder="Nombre o empresa"></div>
+      <div class="form-field"><label>Área / especialidad</label>
+        <select id="mant_provArea">${MANT_AREAS.map(a=>`<option value="${a.id}">${a.label}</option>`).join('')}</select>
+      </div>
+      <div class="form-field"><label>Teléfono</label><input id="mant_provTelefono" placeholder="Opcional"></div>
+      <div class="form-field"><label>Email</label><input id="mant_provEmail" placeholder="Opcional"></div>
+    </div>
+    <div class="form-field" style="margin-top:8px;"><label>Notas</label><textarea id="mant_provNotas" rows="2" maxlength="300" placeholder="Opcional"></textarea></div>
+    <button class="btn-primary" style="width:auto;padding:11px 22px;margin-top:12px;" onclick="guardarMantProveedor()">Guardar proveedor</button>
+    <div id="mant_provMsg"></div>
+    <h3 style="margin:24px 0 10px;font-size:15px;">Proveedores registrados</h3>
+    ${tablaHtml}
+  `;
+}
+function guardarMantProveedor(){
+  const nombre = document.getElementById('mant_provNombre').value.trim();
+  if(!nombre){ showMsg('mant_provMsg','Escribe el nombre del proveedor.','rojo'); return; }
+  DB.push('mant_proveedores', {
+    nombre,
+    area: document.getElementById('mant_provArea').value,
+    telefono: document.getElementById('mant_provTelefono').value.trim(),
+    email: document.getElementById('mant_provEmail').value.trim(),
+    notas: document.getElementById('mant_provNotas').value.trim(),
+    cotizaciones: [],
+    sede: sedeParaGuardar(), creadoPor: SESSION.nombre, fecha: hoyStr()
+  });
+  showMsg('mant_provMsg','Proveedor guardado correctamente.','verde');
+  renderMantTabs('proveedores');
+}
+function mantVerProveedor(id){ mantDetalleProveedorId = id; renderMantTabs('proveedores'); }
+function mantVolverProveedores(){ mantDetalleProveedorId = null; renderMantTabs('proveedores'); }
+function onCotizacionArchivoChange(input){
+  mantCotizacionArchivoData = null;
+  const preview = document.getElementById('mant_cotArchivoPreview');
+  const file = input.files && input.files[0];
+  if(!file){ if(preview) preview.innerHTML=''; return; }
+  if(preview) preview.innerHTML = '<span style="font-size:11px;color:var(--text-light);">Procesando...</span>';
+  if(file.type && file.type.indexOf('image') === 0){
+    const reader = new FileReader();
+    reader.onload = function(e){
+      const img = new Image();
+      img.onload = function(){
+        const maxW = 480;
+        const scale = Math.min(1, maxW / img.width);
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.max(1, Math.round(img.width * scale));
+        canvas.height = Math.max(1, Math.round(img.height * scale));
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        mantCotizacionArchivoData = canvas.toDataURL('image/jpeg', 0.6);
+        if(preview) preview.innerHTML = '<img src="'+mantCotizacionArchivoData+'" style="max-width:110px;border-radius:6px;border:1px solid var(--border);display:block;">';
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  } else {
+    const reader = new FileReader();
+    reader.onload = function(e){
+      mantCotizacionArchivoData = e.target.result;
+      if(preview) preview.innerHTML = '<span style="font-size:11px;color:var(--verde);">Archivo listo: '+file.name+'</span>';
+    };
+    reader.readAsDataURL(file);
+  }
+}
+function mantProveedorDetalleHtml(id){
+  const proveedores = DB.get('mant_proveedores', []);
+  const p = proveedores.find(x=>x.id===id);
+  if(!p) return '<p style="color:var(--text-light);font-size:13px;">Proveedor no encontrado.</p>';
+  const cots = (p.cotizaciones || []).slice().reverse();
+  const cotsHtml = cots.length ? `
+    <table class="mini-table">
+      <thead><tr><th>Fecha</th><th>Monto</th><th>Descripción</th><th>Archivo</th></tr></thead>
+      <tbody>${cots.map(c=>`<tr>
+        <td>${c.fecha}</td><td>${c.monto?fmtMoney(c.monto):'-'}</td><td>${c.descripcion||'-'}</td>
+        <td>${c.archivo ? `<a href="${c.archivo}" target="_blank" rel="noopener">Ver</a>` : '-'}</td>
+      </tr>`).join('')}</tbody>
+    </table>` : `<p style="color:var(--text-light);font-size:13px;">Todavía no hay cotizaciones para este proveedor.</p>`;
+
+  return `
+    <button class="btn-secondary" style="padding:6px 12px;font-size:12px;margin-bottom:14px;" onclick="mantVolverProveedores()">&larr; Volver a proveedores</button>
+    <div class="panel" style="padding:16px;">
+      <h3 style="margin:0 0 6px;font-size:16px;">${p.nombre}</h3>
+      <p style="font-size:12.5px;color:var(--text-light);margin:0;">${mantAreaLabel(p.area)}${p.telefono?' · '+p.telefono:''}${p.email?' · '+p.email:''}</p>
+      ${p.notas ? `<p style="font-size:12.5px;margin-top:6px;">${p.notas}</p>` : ''}
+    </div>
+    <h3 style="margin:20px 0 10px;font-size:15px;">Agregar cotización</h3>
+    <div class="form-grid">
+      <div class="form-field"><label>Monto</label><input type="number" id="mant_cotMonto" placeholder="Opcional"></div>
+      <div class="form-field"><label>Fecha</label><input type="date" id="mant_cotFecha" value="${hoyStr()}"></div>
+    </div>
+    <div class="form-field" style="margin-top:8px;"><label>Descripción</label><input id="mant_cotDescripcion" placeholder="Qué incluye la cotización"></div>
+    <div class="form-field" style="margin-top:8px;"><label>Archivo (foto o PDF)</label>
+      <input type="file" id="mant_cotArchivo" accept="image/*,application/pdf" onchange="onCotizacionArchivoChange(this)">
+      <div id="mant_cotArchivoPreview" style="margin-top:6px;"></div>
+    </div>
+    <button class="btn-primary" style="width:auto;padding:11px 22px;margin-top:12px;" onclick="guardarMantCotizacion('${id}')">Guardar cotización</button>
+    <div id="mant_cotMsg"></div>
+    <h3 style="margin:24px 0 10px;font-size:15px;">Cotizaciones</h3>
+    ${cotsHtml}
+  `;
+}
+function guardarMantCotizacion(proveedorId){
+  const monto = parseFloat(document.getElementById('mant_cotMonto').value) || 0;
+  const fecha = document.getElementById('mant_cotFecha').value || hoyStr();
+  const descripcion = document.getElementById('mant_cotDescripcion').value.trim();
+  const proveedores = DB.get('mant_proveedores', []);
+  const p = proveedores.find(x=>x.id===proveedorId);
+  if(!p){ showMsg('mant_cotMsg','Proveedor no encontrado.','rojo'); return; }
+  if(!p.cotizaciones) p.cotizaciones = [];
+  p.cotizaciones.push({
+    id: Date.now() + '_' + Math.random().toString(36).slice(2,7),
+    monto, fecha, descripcion, archivo: mantCotizacionArchivoData
+  });
+  DB.set('mant_proveedores', proveedores);
+  mantCotizacionArchivoData = null;
+  showMsg('mant_cotMsg','Cotización guardada.','verde');
+  renderMantTabs('proveedores');
+}
+
+/* ==================================================================
    INSPECCIÓN DE ÁREA — módulo del área de Inspecciones: verifica el
    cumplimiento de cada área de dos formas: (1) un checklist paralelo,
    espejo del checklist real de esa área, que llena quien inspecciona
@@ -5018,19 +6454,29 @@ function renderReporteHallazgosGerencia(sec, group, item, ruta){
    los resultados.
    ================================================================== */
 const CHECKLIST360_SIN_SEGUIMIENTO = [
-  { label:'Aseo del salón', area:'servicio_cliente' },
-  { label:'Aseo de cocina', area:'cocina' },
-  { label:'Prueba de preparaciones diarias', area:'cocina' },
-  { label:'Briefing de bar', area:'bar' },
-  { label:'Aseo del bar', area:'bar' },
-  { label:'Aseo de centro de producción', area:'centro_produccion' },
-  { label:'Aseo del área periférica', area:null },
-  { label:'Aseo de baños internos', area:null },
-  { label:'Aseo de baños públicos', area:null },
-  { label:'Aseo de zona de traperos', area:null }
+  { label:'Briefing de bar', area:'bar' }
 ];
 
+// Para la mayoría de definiciones, def.area ya es el área operativa real
+// (contabilidad, servicio_cliente, cocina, bar, centro_produccion...) y
+// sirve tal cual para agrupar las estadísticas del 360. Pero en los
+// checklists de aseo / prueba diaria, def.area guarda el id del ítem del
+// NAV (para poder buscar su registro en la colección aseo_area sin que
+// choque con otro checklist de la misma área), así que aquí se traduce
+// explícitamente a su área operativa real para las tablas de "por área".
+const CHECKLIST360_AREA_POR_DEF_ID = {
+  aseo_salon: 'servicio_cliente',
+  aseo_cocina: 'cocina',
+  aseo_bar: 'bar',
+  aseo_cp: 'centro_produccion',
+  prueba_diaria: 'cocina',
+  aseo_periferica: null,
+  aseo_banos_internos: null,
+  aseo_banos_publicos: null,
+  aseo_traperos: null
+};
 function checklist360AreaDeDef(def){
+  if(Object.prototype.hasOwnProperty.call(CHECKLIST360_AREA_POR_DEF_ID, def.id)) return CHECKLIST360_AREA_POR_DEF_ID[def.id];
   if(def.area) return def.area;
   if(def.id === 'apertura_caja') return 'contabilidad';
   if(def.id === 'briefing_cocina') return 'cocina';
