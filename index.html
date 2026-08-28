@@ -249,6 +249,23 @@
   }
   #topbar .crumb{ font-size:13px; color:var(--text-light); }
   #topbar .crumb b{ color:var(--espresso); }
+
+  /* Popup de tutorial propio por pantalla — aparece antes de entrar a
+     cada módulo, con Cancelar/Continuar. Cada pantalla tiene su propio
+     contenido (ver TIPS_ITEM en el JS), nunca se mezcla con otra. */
+  .tutorial-modal-overlay{
+    position:fixed; inset:0; background:rgba(31,22,15,.55); z-index:200;
+    display:flex; align-items:center; justify-content:center; padding:20px;
+  }
+  .tutorial-modal-card{
+    background: var(--marfil); border-radius:var(--radius-lg); box-shadow:var(--shadow-lg);
+    max-width:420px; width:100%; padding:26px 24px 22px; text-align:center;
+  }
+  .tutorial-modal-emoji{ font-size:34px; line-height:1; margin-bottom:10px; }
+  .tutorial-modal-card h3{ font-size:16.5px; color:var(--espresso); margin-bottom:8px; }
+  .tutorial-modal-card p{ font-size:13.5px; line-height:1.55; color:var(--text-light); }
+  .tutorial-modal-actions{ display:flex; gap:10px; justify-content:center; margin-top:20px; }
+  .tutorial-modal-cancel{ border:1px solid var(--border) !important; padding:9px 16px !important; }
   .user-chip{
     display:flex; align-items:center; gap:10px; background:var(--white);
     border:1px solid var(--border); border-radius:999px; padding:6px 14px 6px 6px; font-size:12.5px;
@@ -716,7 +733,7 @@ input:focus,select:focus,textarea:focus{outline:3px solid rgba(169,133,69,.12)!i
   .g360-login-stage{min-height:auto;padding:24px 16px 42px;align-items:flex-start;}
   .login-card{padding:28px 22px;box-shadow:none;}
   #sidebar{width:min(290px,88vw);}
-  #topbar{padding:10px 14px;}main#content{padding:18px 14px 32px;}
+  #topbar{padding:10px 14px;}main#content{padding:18px 14px 32px;}.tutorial-modal-card{padding:22px 18px 18px;}
 }
 </style>
 <script>
@@ -948,6 +965,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     <main id="content"></main>
   </div>
 </div>
+<div id="tutorialModalOverlay" class="tutorial-modal-overlay hidden"></div>
 
 <script>
 /* ==================================================================
@@ -1141,7 +1159,7 @@ const ROLES_PERMISOS_SEED = {
   aux_compras: ['cf_compras','cf_pagos','mant_proveedores','ast_chat'],
   inspector: ['chk_alistamiento','chk_cierre_caja','chk_briefing','chk_mise_servicio','chk_aseo_salon','chk_cierre_servicio','chk_briefing_cocina','chk_mise_cocina_parrilla','chk_mise_cocina_fritos','chk_mise_cocina_armado','chk_mise_cocina_corrientes','chk_mise_cocina_pastas','chk_higiene','chk_prueba_prep','chk_alistamiento_steward','chk_cierre_cocina','chk_cierre_steward','chk_mise_bar','chk_aseo_bar','chk_cierre_bar','chk_aseo_cp','chk_aseo_periferica','chk_aseo_banos_internos','chk_aseo_banos_publicos','chk_aseo_traperos','coc_inspeccion','sc_inspeccion','bar_inspeccion','cf_inspeccion_caja','ast_chat'],
   gerente_operativa: ['chk_alistamiento','chk_cierre_caja','chk_briefing','chk_mise_servicio','chk_aseo_salon','chk_cierre_servicio','chk_briefing_cocina','chk_mise_cocina_parrilla','chk_mise_cocina_fritos','chk_mise_cocina_armado','chk_mise_cocina_corrientes','chk_mise_cocina_pastas','chk_higiene','chk_prueba_prep','chk_alistamiento_steward','chk_cierre_cocina','chk_cierre_steward','chk_mise_bar','chk_aseo_bar','chk_cierre_bar','chk_aseo_cp','chk_aseo_periferica','chk_aseo_banos_internos','chk_aseo_banos_publicos','chk_aseo_traperos','cf_caja','cf_inventarios','cf_inspeccion_caja','cf_planificacion_tareas','sc_comprobantes','sc_encuesta','sc_inspeccion','coc_comida_personal','coc_ordenes','coc_bajas','coc_mejora','coc_inventario','coc_fotos_platos','coc_inspeccion','bar_inventario','bar_inspeccion','mant_equipos','mant_preventivo','mant_solicitudes','mant_proveedores','ger_reporte_general360','ast_chat'],
-  gerente_financiera: ['chk_alistamiento','chk_cierre_caja','cf_caja','cf_inventarios','cf_compras','cf_propina','cf_horarios','cf_prevision','cf_pagos','cf_planificacion_tareas','ger_reporte_general360','cfg_parametros','ast_chat'],
+  gerente_financiera: ['chk_alistamiento','chk_cierre_caja','cf_caja','cf_inventarios','cf_compras','cf_propina','cf_horarios','cf_prevision','cf_pagos','cf_planificacion_tareas','ger_reporte_general360','ast_chat'],
   otros: []
 };
 if(!DB.get('roles_permisos')){ DB.set('roles_permisos', ROLES_PERMISOS_SEED); }
@@ -1681,16 +1699,15 @@ const NAV = [
         { id:'cfg_usuarios', label:'Usuarios y permisos', icon:'users', roles:['gerencia'], customRender:'renderUsuariosPermisosModule' },
         { id:'cfg_roles', label:'Roles y tareas', icon:'shield', roles:['gerencia'], customRender:'renderRolesPermisosModule' },
         { id:'cfg_sedes', label:'Sedes', icon:'pin', roles:['gerencia'], customRender:'renderSedesModule' },
-        { id:'cfg_parametros', label:'Parámetros', icon:'sliders', roles:['administracion','gerencia'] },
         { id:'cfg_areas_activas', label:'Áreas activas de la app', icon:'sliders', roles:['gerencia'], customRender:'renderConfigAreasActivas' },
-        { id:'cfg_faq_sonia', label:'Preguntas frecuentes de Harol-IA', icon:'chat', roles:['gerencia'], customRender:'renderFaqSoniaModule' }
+        { id:'cfg_faq_sonia', label:'Preguntas frecuentes de HJ-IA', icon:'chat', roles:['gerencia'], customRender:'renderFaqSoniaModule' }
       ]}
     ]},
-  { id:'asistente', label:'Harol-IA', icon:'chat', color:'#D9B54C',
+  { id:'asistente', label:'HJ-IA', icon:'chat', color:'#D9B54C',
     desc:'Resuelve dudas de trabajo diario y de gestión de restaurantes, con IA.',
     groups:[
       { id:'chat', label:'Preguntas y respuestas', matchArea:null, items:[
-        { id:'ast_chat', label:'Hablar con Harol-IA', icon:'chat', roles:['empleado','administracion','gerencia'], customRender:'renderAsistenteModule' }
+        { id:'ast_chat', label:'Hablar con HJ-IA', icon:'chat', roles:['empleado','administracion','gerencia'], customRender:'renderAsistenteModule' }
       ]}
     ]}
 ];
@@ -1913,7 +1930,7 @@ function visibleGroupsOf(sec){
 }
 // Filtro por sede (Configuración → Sedes): cada sede puede tener su propia
 // lista de módulos operativos activos (modulosActivos). Solo aplica a
-// Checklists/Operación — Gerencia y Harol-IA quedan siempre disponibles
+// Checklists/Operación — Gerencia y HJ-IA quedan siempre disponibles
 // para cualquier cuenta con rol gerencia/administración, sin importar la
 // sede, porque son pantallas de gestión/soporte, no módulos operativos.
 // Una sede sin modulosActivos configurado (como Chinú y Montería, creadas
@@ -2358,7 +2375,113 @@ document.addEventListener('click', function(e){
 /* ==================================================================
    RENDER: PANEL DE MÓDULO (placeholder — próxima fase)
    ================================================================== */
+/* ==================================================================
+   TUTORIAL PROPIO POR PANTALLA — un popup didáctico (emoji + título +
+   explicación específica de esa tarea, nada de otras áreas mezcladas)
+   que aparece ANTES de entrar a cada pantalla del menú, con botones de
+   Cancelar y Continuar. Cada ítem del NAV tiene su propio contenido en
+   TIPS_ITEM, con la clave = item.id, así que nunca se mezcla con el de
+   otra pantalla. Cancelar no navega a ningún lado (te deja donde
+   estabas); Continuar cierra el popup y recién ahí entra al módulo.
+   ================================================================== */
+const TIPS_ITEM = {
+  // — Checklists —
+  chk_alistamiento: { emoji:'💰', titulo:'Alistamiento inicial de caja', texto:'Revisa la base de caja, el datáfono y el cambio antes de abrir. Marca cada punto a medida que lo verificas en persona.' },
+  chk_cierre_caja: { emoji:'💰', titulo:'Cierre de caja', texto:'Al terminar el turno, verifica el cuadre de caja y los comprobantes. Lo que no cumpla queda registrado como incumplimiento para Gerencia.' },
+  chk_briefing: { emoji:'📣', titulo:'Briefing de servicio', texto:'Antes de abrir, alinea al equipo de salón: promociones del día, mesas reservadas, novedades. Toma un par de minutos.' },
+  chk_mise_servicio: { emoji:'🍽️', titulo:'Mise en place de servicio', texto:'Deja el salón listo para recibir: mesas montadas, menús a mano, estación de meseros surtida. Revísalo antes de abrir.' },
+  chk_aseo_salon: { emoji:'🧹', titulo:'Aseo del salón', texto:'Checklist de limpieza del salón — repásalo antes de abrir o durante el turno, según te corresponda.' },
+  chk_cierre_servicio: { emoji:'🍽️', titulo:'Cierre de servicio', texto:'Al terminar el turno de salón, deja constancia de que todo quedó en orden para el siguiente turno.' },
+  chk_briefing_cocina: { emoji:'📣', titulo:'Briefing de cocina', texto:'Alinea al equipo de cocina antes de abrir: platos del día, insumos agotados, novedades de producción.' },
+  chk_mise_cocina_parrilla: { emoji:'🔥', titulo:'Mise en place: Parrilla', texto:'Verifica que la estación de parrilla esté lista: insumos, temperatura y utensilios, antes del servicio.' },
+  chk_mise_cocina_fritos: { emoji:'🍟', titulo:'Mise en place: Fritos', texto:'Revisa la estación de fritos: aceite en buen estado, empanizados listos, freidora a temperatura.' },
+  chk_mise_cocina_armado: { emoji:'🍽️', titulo:'Mise en place: Armado / Cantador', texto:'Confirma que la estación de armado y cantado de platos esté lista para coordinar la salida de pedidos.' },
+  chk_mise_cocina_corrientes: { emoji:'🍲', titulo:'Mise en place: Corrientes / Sopas / Mote', texto:'Verifica que los insumos de corrientes, sopas y mote estén listos antes de abrir.' },
+  chk_mise_cocina_pastas: { emoji:'🍝', titulo:'Mise en place: Pastas y Mariscos', texto:'Revisa la estación de pastas y mariscos: insumos frescos, agua hirviendo, utensilios listos.' },
+  chk_higiene: { emoji:'🧹', titulo:'Aseo de cocina', texto:'Checklist de limpieza de la cocina: superficies, equipos y zonas de preparación.' },
+  chk_prueba_prep: { emoji:'👅', titulo:'Prueba de preparaciones diarias', texto:'Prueba las preparaciones del día antes de servir, para verificar sabor y calidad.' },
+  chk_alistamiento_steward: { emoji:'🍽️', titulo:'Alistamiento de steward / lavado de platos', texto:'Revisa que la zona de lavado esté lista: loza limpia disponible, jabón, agua caliente.' },
+  chk_cierre_cocina: { emoji:'👨‍🍳', titulo:'Cierre de cocina', texto:'Al terminar el turno de cocina, deja constancia de que todo quedó en orden y guardado.' },
+  chk_cierre_steward: { emoji:'🍽️', titulo:'Cierre – Steward / lavado de platos', texto:'Verifica que la zona de lavado quedó limpia y organizada al cerrar el turno.' },
+  chk_mise_bar: { emoji:'🍹', titulo:'Mise en place de bar', texto:'Deja la barra lista antes de abrir: hielo, garnish, licores e insumos en su lugar.' },
+  chk_aseo_bar: { emoji:'🧹', titulo:'Aseo del bar', texto:'Checklist de limpieza de la barra y sus superficies.' },
+  chk_cierre_bar: { emoji:'🍹', titulo:'Cierre de bar', texto:'Al terminar el turno, deja constancia de que la barra quedó en orden.' },
+  chk_aseo_cp: { emoji:'🏭', titulo:'Aseo de centro de producción', texto:'Registra el aseo del centro de producción una vez lo termines de limpiar.' },
+  chk_aseo_periferica: { emoji:'🧹', titulo:'Aseo del área periférica', texto:'Checklist de limpieza del área periférica del restaurante.' },
+  chk_aseo_banos_internos: { emoji:'🚻', titulo:'Aseo de baños internos', texto:'Checklist de limpieza de los baños de uso interno del personal.' },
+  chk_aseo_banos_publicos: { emoji:'🚻', titulo:'Aseo de baños públicos', texto:'Checklist de limpieza de los baños para clientes.' },
+  chk_aseo_traperos: { emoji:'🧹', titulo:'Aseo de zona de traperos', texto:'Checklist de limpieza y organización de la zona de traperos.' },
+  // — Operación —
+  cf_caja: { emoji:'💰', titulo:'Caja (cierre y comprobantes)', texto:'Consulta y gestiona los cierres de caja y los comprobantes registrados por el equipo.' },
+  cf_inventarios: { emoji:'📦', titulo:'Inventarios', texto:'Lleva el conteo del inventario general por departamento: cantidades, costos y sesiones de conteo.' },
+  cf_compras: { emoji:'🛒', titulo:'Compras', texto:'Arma listas de compras con presupuesto estimado y compáralas contra lo gastado.' },
+  cf_propina: { emoji:'💵', titulo:'Propina', texto:'Liquida la propina del periodo (semanal en Montería, quincenal en Chinú): descuentos, ajustes y reparto entre el equipo.' },
+  cf_horarios: { emoji:'🕐', titulo:'Horarios', texto:'Organiza y consulta los horarios del personal por sede.' },
+  cf_prevision: { emoji:'📊', titulo:'Previsión y planificación', texto:'Proyecta ventas y necesidades de personal con base en el historial del restaurante.' },
+  cf_pagos: { emoji:'💳', titulo:'Pagos a proveedores', texto:'Lleva el control de los pagos pendientes y realizados a proveedores.' },
+  cf_planificacion_tareas: { emoji:'✅', titulo:'Planificación y asignación de tareas', texto:'Asigna tareas al equipo y da seguimiento a su cumplimiento.' },
+  sc_comprobantes: { emoji:'📸', titulo:'Comprobantes de transferencias', texto:'Sube los comprobantes de transferencia que te envíen los clientes.' },
+  sc_comandas: { emoji:'🖨️', titulo:'Comandas por persona', texto:'Imprime la comanda de cada persona en la mesa, para que cocina sepa exactamente qué preparar.' },
+  sc_encuesta: { emoji:'⭐', titulo:'Encuesta de satisfacción', texto:'Revisa cómo está calificando la gente al restaurante y detecta reseñas negativas a tiempo.' },
+  coc_comida_personal: { emoji:'🍛', titulo:'Comida del personal', texto:'Registra qué comió cada persona del equipo durante el turno.' },
+  coc_ordenes: { emoji:'📋', titulo:'Órdenes de producción', texto:'Este módulo todavía está en desarrollo — por ahora no tiene funcionalidad activa.' },
+  coc_bajas: { emoji:'🗑️', titulo:'Reporte de bajas', texto:'Reporta producto que se dañó, venció o se botó, para llevar control de mermas.' },
+  coc_mejora: { emoji:'🎯', titulo:'Prueba, desarrollo y mejora constante', texto:'Este módulo todavía está en desarrollo — por ahora no tiene funcionalidad activa.' },
+  coc_inventario: { emoji:'📦', titulo:'Inventario de cocina', texto:'Lleva el conteo del inventario específico de cocina.' },
+  coc_fotos_platos: { emoji:'📸', titulo:'Fotos de platos', texto:'Sube fotos de los platos que van saliendo, para control de calidad y presentación.' },
+  bar_inventario: { emoji:'🍹', titulo:'Inventario de bar', texto:'Este módulo todavía está en desarrollo — por ahora no tiene funcionalidad activa.' },
+  coc_inspeccion: { emoji:'🔍', titulo:'Inspección de cocina', texto:'Inspección cruzada de cocina, aparte del checklist diario del equipo — un segundo par de ojos.' },
+  sc_inspeccion: { emoji:'🔍', titulo:'Inspección de servicio al cliente', texto:'Inspección cruzada del salón, aparte del checklist diario del equipo.' },
+  bar_inspeccion: { emoji:'🔍', titulo:'Inspección de bar', texto:'Inspección cruzada de la barra, aparte del checklist diario del equipo.' },
+  cf_inspeccion_caja: { emoji:'🔍', titulo:'Inspección de caja', texto:'Inspección cruzada de caja, aparte del checklist diario del equipo.' },
+  mant_equipos: { emoji:'🔧', titulo:'Equipos', texto:'Hoja de vida de cada equipo: factura, historial de reparaciones y fotos.' },
+  mant_preventivo: { emoji:'📅', titulo:'Mantenimiento preventivo', texto:'Calendario para saber cuándo toca revisar cada equipo antes de que falle.' },
+  mant_solicitudes: { emoji:'🔔', titulo:'Reporte de daños y solicitudes', texto:'Repórtalo aquí en cuanto un equipo se dañe, para darle seguimiento.' },
+  mant_proveedores: { emoji:'🔧', titulo:'Proveedores de mantenimiento', texto:'Lista de proveedores de servicio técnico a los que puedes llamar.' },
+  // — Gerencia —
+  ger_reporte_general360: { emoji:'📊', titulo:'Reporte general 360', texto:'Tablero principal: reúne el desempeño de checklists, servicio, calidad y mantenimiento en un solo lugar.' },
+  ger_control_sedes: { emoji:'📍', titulo:'Control de sedes externas', texto:'Compara cómo va cada sede, una junto a la otra.' },
+  cfg_usuarios: { emoji:'👥', titulo:'Usuarios y permisos', texto:'Administra quién puede entrar a la app y qué puede ver cada persona.' },
+  cfg_roles: { emoji:'🛡️', titulo:'Roles y tareas', texto:'Define qué pantallas puede ver cada rol (mesero, cocina, gerencia, etc.).' },
+  cfg_sedes: { emoji:'📍', titulo:'Sedes', texto:'Crea y autoriza sedes nuevas, y define qué módulos usa cada una.' },
+  cfg_areas_activas: { emoji:'⚙️', titulo:'Áreas activas de la app', texto:'Activa o desactiva partes de la app según en qué quieras enfocar el trabajo del equipo.' },
+  cfg_faq_sonia: { emoji:'💬', titulo:'Preguntas frecuentes de HJ-IA', texto:'Edita las respuestas que usa HJ-IA para resolver dudas frecuentes del equipo.' },
+  // — HJ-IA —
+  ast_chat: { emoji:'💬', titulo:'HJ-IA', texto:'Pregúntale cualquier duda operativa o de gestión, como le preguntarías a un compañero con experiencia.' }
+};
+
+let _tutorialPendiente = null;
+function mostrarPopupTutorial(sec, group, item, ruta, continuarFn){
+  const tip = TIPS_ITEM[item.id];
+  if(!tip){ continuarFn(); return; }
+  _tutorialPendiente = continuarFn;
+  const overlay = document.getElementById('tutorialModalOverlay');
+  overlay.innerHTML = `
+    <div class="tutorial-modal-card">
+      <div class="tutorial-modal-emoji">${tip.emoji}</div>
+      <h3>${tip.titulo}</h3>
+      <p>${tip.texto}</p>
+      <div class="tutorial-modal-actions">
+        <button type="button" class="tab-btn tutorial-modal-cancel" onclick="cerrarPopupTutorial(false)">Cancelar</button>
+        <button type="button" class="btn-primary" style="width:auto;padding:9px 20px;" onclick="cerrarPopupTutorial(true)">Continuar</button>
+      </div>
+    </div>`;
+  overlay.classList.remove('hidden');
+}
+function cerrarPopupTutorial(continuar){
+  const overlay = document.getElementById('tutorialModalOverlay');
+  overlay.classList.add('hidden');
+  overlay.innerHTML = '';
+  const fn = _tutorialPendiente;
+  _tutorialPendiente = null;
+  if(continuar && typeof fn === 'function') fn();
+}
+
 function openModule(sec, group, item){
+  mostrarPopupTutorial(sec, group, item, null, function(){ entrarModulo(sec, group, item); });
+}
+
+function entrarModulo(sec, group, item){
   if(typeof fp360LiberarCamara === 'function') fp360LiberarCamara();
   if(typeof fp360DetenerPollingTemperatura === 'function') fp360DetenerPollingTemperatura();
   navEmpujarHash(navHashDe(sec.id, group.id, item.id));
@@ -5656,7 +5779,7 @@ function escuelaTemaPorId(id){ return escuelaTodosLosTemas().find(t=>t.id===id) 
    /api/chat, que vive en Vercel y tiene la clave como variable de
    entorno del lado del servidor.
    ================================================================== */
-let asistenteLastRuta = 'Harol-IA';
+let asistenteLastRuta = 'HJ-IA';
 let asistenteEnviando = false;
 
 // Arma un texto compacto con el contenido de ESCUELA_TEMAS para dárselo
@@ -9970,11 +10093,11 @@ const ASISTENTE_SUGERENCIAS = [
   '¿Qué es PEPS y por qué importa en el inventario?'
 ];
 
-// "Harol-IA" con las dos últimas letras ("IA") resaltadas — el nombre lleva
+// "HJ-IA" con las dos últimas letras ("IA") resaltadas — el nombre lleva
 // adentro, a propósito, la sigla de Inteligencia Artificial.
-const SONIA_NOMBRE_HTML = 'Harol-<span style="color:var(--dorado);">IA</span>';
+const SONIA_NOMBRE_HTML = 'HJ-<span style="color:var(--dorado);">IA</span>';
 
-// Emblema circular de Harol-IA: una chispa/estrella con tres puntos conectados,
+// Emblema circular de HJ-IA: una chispa/estrella con tres puntos conectados,
 // usado en el avatar de cada burbuja de respuesta y en la cabecera "hero".
 const SONIA_EMBLEM_HTML = `<svg viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
   <path d="M24 6 L27 20 L41 24 L27 28 L24 42 L21 28 L7 24 L21 20 Z" stroke-linejoin="round" stroke-linecap="round"/>
@@ -10014,7 +10137,7 @@ function asistenteActualizarBotonMic(){
   if(!btn) return;
   btn.style.background = asistenteReconociendo ? 'var(--dorado)' : 'var(--white)';
   btn.style.color = asistenteReconociendo ? '#fff' : 'var(--text)';
-  btn.title = asistenteReconociendo ? 'Escuchando… toca para detener' : 'Hablarle a Harol-IA';
+  btn.title = asistenteReconociendo ? 'Escuchando… toca para detener' : 'Hablarle a HJ-IA';
 }
 function asistenteMicToggle(){
   if(!asistenteMicSoportado()){
@@ -10051,37 +10174,41 @@ function asistenteToggleVoz(){
   asistenteRefrescarVista();
 }
 
-/* ---- Selección de voz de respaldo para Harol-IA. El navegador carga la lista
+/* ---- Selección de voz de respaldo para HJ-IA. El navegador carga la lista
    de voces de forma asíncrona (a veces está vacía al inicio), por eso se
    cachea y se vuelve a intentar tanto al cargar como cuando el navegador
-   avisa que ya tiene la lista lista (evento 'voiceschanged'). ---- */
+   avisa que ya tiene la lista lista (evento 'voiceschanged'). Se prefiere
+   una voz MASCULINA — esta es solo la voz de respaldo del navegador,
+   mientras no esté configurada la voz clonada real de Harol en
+   ELEVENLABS_VOICE_ID (ver api/tts.js), que es la que de verdad suena
+   como él. ---- */
 let asistenteVozCache = null;
-function asistenteElegirVozFemenina(){
+function asistenteElegirVozMasculina(){
   if(!window.speechSynthesis) return null;
   const voces = window.speechSynthesis.getVoices() || [];
   if(!voces.length) return null;
   const esVoces = voces.filter(v => (v.lang || '').toLowerCase().startsWith('es'));
   const candidatas = esVoces.length ? esVoces : voces;
-  // Nombres de voces femeninas en español comunes en Windows/Chrome/Edge/macOS.
+  // Nombres de voces masculinas en español comunes en Windows/Chrome/Edge/macOS.
+  const nombresMasculinos = ['jorge','diego','carlos','miguel','pablo','enrique','raul','raúl','juan','andres','andrés','alonso','felipe','male','hombre'];
   const nombresFemeninos = ['mónica','monica','paulina','sabina','helena','lucia','lucía','camila','esperanza','francisca','isabela','soledad','laura','elvira','marisol','victoria','samantha','female','mujer'];
-  const nombresMasculinos = ['jorge','diego','carlos','miguel','pablo','male','hombre','enrique','raul','raúl'];
-  let elegida = candidatas.find(v => nombresFemeninos.some(n => v.name.toLowerCase().includes(n)));
-  if(!elegida) elegida = candidatas.find(v => !nombresMasculinos.some(n => v.name.toLowerCase().includes(n)));
+  let elegida = candidatas.find(v => nombresMasculinos.some(n => v.name.toLowerCase().includes(n)));
+  if(!elegida) elegida = candidatas.find(v => !nombresFemeninos.some(n => v.name.toLowerCase().includes(n)));
   return elegida || candidatas[0] || null;
 }
 function asistenteObtenerVoz(){
-  if(!asistenteVozCache) asistenteVozCache = asistenteElegirVozFemenina();
+  if(!asistenteVozCache) asistenteVozCache = asistenteElegirVozMasculina();
   return asistenteVozCache;
 }
 if(window.speechSynthesis){
   try {
-    window.speechSynthesis.addEventListener('voiceschanged', function(){ asistenteVozCache = asistenteElegirVozFemenina(); });
+    window.speechSynthesis.addEventListener('voiceschanged', function(){ asistenteVozCache = asistenteElegirVozMasculina(); });
   } catch(e){ /* algunos navegadores viejos no soportan el evento, no pasa nada */ }
 }
 
 // Limpia el texto antes de leerlo en voz alta: quita marcado (asteriscos,
 // guiones bajos, encabezados, viñetas, enlaces, código) y símbolos sueltos
-// para que Harol-IA lea solo palabras naturales, sin nombrar signos.
+// para que HJ-IA lea solo palabras naturales, sin nombrar signos.
 function asistenteLimpiarTextoParaVoz(texto){
   return (texto || '')
     .replace(/\*\*(.*?)\*\*/g, '$1')
@@ -10116,8 +10243,8 @@ function asistenteHablarConVozNavegador(limpio){
     u.lang = 'es-CO';
     const voz = asistenteObtenerVoz();
     if(voz) u.voice = voz;
-    u.pitch = 1.08; // un poco más agudo, para un timbre más femenino
-    u.rate = 1.1;   // un poco más rápida que el ritmo natural, sin sonar robótica
+    u.pitch = 0.92; // un poco más grave, para un timbre masculino
+    u.rate = 1.05;  // ritmo natural, un poco ágil, sin sonar robótica
     window.speechSynthesis.speak(u);
   } catch(e){ /* si falla la síntesis de voz, no interrumpe el chat */ }
 }
@@ -10152,7 +10279,7 @@ function asistenteHablarBurbuja(idBurbuja){
 }
 
 // Widget del asistente, compartido entre Inicio (embebido, debajo de las 3
-// columnas) y la pantalla completa "Hablar con Harol-IA" del menú — para que
+// columnas) y la pantalla completa "Hablar con HJ-IA" del menú — para que
 // la conversación se vea y se sienta igual en los dos lugares. opts.ruta
 // muestra la miguita de pan (solo tiene sentido en la pantalla completa).
 function asistenteWidgetHtml(opts){
@@ -10179,11 +10306,11 @@ function asistenteWidgetHtml(opts){
         </div>
         <div class="sonia-learning">¿Sobre qué quieres aprender?</div>
         <div class="sonia-composer">
-          <button type="button" id="ast_mic_btn" class="sonia-icon-btn" onclick="asistenteMicToggle()" title="Hablarle a Harol-IA">${ic('mic',18)}</button>
-          <textarea id="ast_input" rows="1" placeholder="Pregúntale a Harol-IA sobre la operación del restaurante…" onkeydown="asistenteTeclaInput(event)"></textarea>
+          <button type="button" id="ast_mic_btn" class="sonia-icon-btn" onclick="asistenteMicToggle()" title="Hablarle a HJ-IA">${ic('mic',18)}</button>
+          <textarea id="ast_input" rows="1" placeholder="Pregúntale a HJ-IA sobre la operación del restaurante…" onkeydown="asistenteTeclaInput(event)"></textarea>
           <button type="button" class="sonia-send" onclick="asistenteEnviar()" ${asistenteEnviando?'disabled':''}>→</button>
         </div>
-        <div id="ast_estado" class="sonia-state">${asistenteEnviando ? 'Harol-IA está escribiendo…' : 'Presiona Enter para enviar'}</div>
+        <div id="ast_estado" class="sonia-state">${asistenteEnviando ? 'HJ-IA está escribiendo…' : 'Presiona Enter para enviar'}</div>
         <div class="sonia-tools">
           <a href="#" class="sonia-voice" onclick="asistenteToggleVoz();return false;">${ic('speaker',12)}${asistenteVozActiva() ? 'Voz activada' : 'Voz silenciada'}</a>
         </div>
@@ -10216,10 +10343,10 @@ function asistenteBorrarConversacion(){
   asistenteRefrescarVista();
 }
 
-/* ---- Preguntas frecuentes: cada pregunta que alguien le hace a Harol-IA
+/* ---- Preguntas frecuentes: cada pregunta que alguien le hace a HJ-IA
    queda registrada (texto + normalizada + si se respondió con la IA real
    o con el respaldo sin conexión), para que gerencia pueda revisar en
-   "Preguntas frecuentes de Harol-IA" cuáles se repiten y escribirles una
+   "Preguntas frecuentes de HJ-IA" cuáles se repiten y escribirles una
    respuesta oficial ya perfeccionada. Esa respuesta oficial, guardada en
    asistente_faq_oficial, se usa después con prioridad tanto en el modo
    sin conexión como en el system prompt que recibe la IA real. ---- */
@@ -10336,13 +10463,13 @@ function asistenteRespuestaLocalRespaldo(pregunta){
     if(puntaje > mejorPuntaje){ mejorPuntaje = puntaje; mejor = t; }
   });
   if(mejor && mejorPuntaje > 0){
-    return `(Harol-IA en modo sin conexión) Esto puede servirte — "${mejor.titulo}":\n` + mejor.contenido.map(c=>'• '+c).join('\n');
+    return `(HJ-IA en modo sin conexión) Esto puede servirte — "${mejor.titulo}":\n` + mejor.contenido.map(c=>'• '+c).join('\n');
   }
   return 'No pude conectarme con el asistente en este momento (esta función solo funciona en la versión publicada de la app, no al abrir el archivo directamente). Intenta de nuevo más tarde, o pregúntale a tu líder de área.';
 }
 
 /* ==================================================================
-   GERENCIA: Preguntas frecuentes de Harol-IA. Agrupa las preguntas ya
+   GERENCIA: Preguntas frecuentes de HJ-IA. Agrupa las preguntas ya
    registradas (asistente_preguntas) por texto normalizado, ordenadas de
    la más repetida a la menos repetida, y deja escribir/editar la
    respuesta oficial de cada una (asistente_faq_oficial) — esa respuesta
@@ -10368,7 +10495,7 @@ function faqSoniaGrupos(){
   return [...mapa.values()].sort((a,b) => b.count - a.count);
 }
 
-let faqSoniaLastRuta = 'Preguntas frecuentes de Harol-IA';
+let faqSoniaLastRuta = 'Preguntas frecuentes de HJ-IA';
 function renderFaqSoniaModule(sec, group, item, ruta){
   if(ruta) faqSoniaLastRuta = ruta;
   const oficial = asistenteFaqOficialGet();
@@ -10416,10 +10543,10 @@ function renderFaqSoniaModule(sec, group, item, ruta){
     <div class="panel">
       <div class="panel-header">
         <div class="icon-circle" style="background:${hexToRgba('#6B4A8A',0.14)}; color:#6B4A8A;">${ic('chat',21)}</div>
-        <div><h2>Preguntas frecuentes de Harol-IA</h2><div class="path">${faqSoniaLastRuta}</div></div>
+        <div><h2>Preguntas frecuentes de HJ-IA</h2><div class="path">${faqSoniaLastRuta}</div></div>
       </div>
       <p style="font-size:12.5px;color:var(--text-light);margin-bottom:14px;">
-        Aquí aparecen, de la más repetida a la menos repetida, las preguntas reales que el equipo le ha hecho a Harol-IA. Escríbele una respuesta oficial a las que más se repiten — esa respuesta queda disponible aunque no haya conexión, y la IA la usa con prioridad cuando le vuelvan a preguntar algo parecido.
+        Aquí aparecen, de la más repetida a la menos repetida, las preguntas reales que el equipo le ha hecho a HJ-IA. Escríbele una respuesta oficial a las que más se repiten — esa respuesta queda disponible aunque no haya conexión, y la IA la usa con prioridad cuando le vuelvan a preguntar algo parecido.
       </p>
       ${kpisHtml}
       <input type="text" placeholder="Buscar entre las preguntas..." value="${faqSoniaBusqueda}" oninput="faqSoniaSetBusqueda(this.value)" style="margin-bottom:14px;">
@@ -12137,7 +12264,7 @@ function sedeGenerarPass(){
   return out;
 }
 // Solo Checklists y Operación entran al selector de módulos por sede —
-// Gerencia y Harol-IA son pantallas de gestión/soporte, no se restringen
+// Gerencia y HJ-IA son pantallas de gestión/soporte, no se restringen
 // por sede (ver sedeItemActivo, más arriba en el bloque de permisos).
 function sedeItemsOperativos(){
   return todosLosGruposConItems().filter(x => x.sec.id === 'operacion' || x.sec.id === 'checklists');
@@ -12249,7 +12376,7 @@ function sedesFormNuevaHtml(){
     </div>
     <div class="form-section-title" style="margin-top:18px;">Módulos, áreas y tareas que va a controlar esta sede</div>
     <p style="font-size:12px;color:var(--text-light);margin:2px 0 8px;">
-      Marca los checklists y módulos de Operación que aplican a esta sede. Lo que dejes sin marcar queda oculto para el equipo de esa sede (Gerencia y Harol-IA siempre quedan disponibles). Puedes ajustarlo después volviendo a crear/editar.
+      Marca los checklists y módulos de Operación que aplican a esta sede. Lo que dejes sin marcar queda oculto para el equipo de esa sede (Gerencia y HJ-IA siempre quedan disponibles). Puedes ajustarlo después volviendo a crear/editar.
     </p>
     <div style="border:1px solid var(--border);border-radius:10px;padding:12px 16px;max-height:360px;overflow:auto;">
       ${sedesAgruparItemsHtml(sedeItemsOperativos())}
