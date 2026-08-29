@@ -13235,10 +13235,13 @@ async function guardarUsuarioPermisos(usuarioIdOriginal){
     if(idx === -1){ showMsg('up_msg', 'No se encontró el usuario original.', 'rojo'); return; }
     const actual = usuarios[idx];
     const cambianPermisos = actual.rol !== rol || actual.sede !== sede || actual.activo !== activo;
-    if(cambianPermisos && typeof window._fsActualizarClaimsUsuario === 'function'){
-      showMsg('up_msg', 'Sincronizando permisos con la cuenta real, un momento...', '');
+    const cambiaClave = !!pass; // si se escribió algo en "Clave", es porque se quiere cambiar
+    if((cambianPermisos || cambiaClave) && typeof window._fsActualizarClaimsUsuario === 'function'){
+      showMsg('up_msg', cambiaClave ? 'Sincronizando clave y permisos con la cuenta real, un momento...' : 'Sincronizando permisos con la cuenta real, un momento...', '');
       try{
-        await window._fsActualizarClaimsUsuario({ usuario: usuarioIdOriginal, rol, sede, activo });
+        const datosClaims = { usuario: usuarioIdOriginal, rol, sede, activo };
+        if(cambiaClave) datosClaims.passOriginal = pass;
+        await window._fsActualizarClaimsUsuario(datosClaims);
       }catch(err){
         showMsg('up_msg', 'No se pudo sincronizar la cuenta real: ' + (err && err.message ? err.message : 'error desconocido') + '. No se guardaron los cambios.', 'rojo');
         return;
