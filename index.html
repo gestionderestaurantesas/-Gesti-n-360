@@ -547,13 +547,19 @@
   .verif-box.ok{ background:var(--tint-verde); color:var(--verde); }
   .verif-box.bad{ background:var(--tint-rojo); color:var(--rojo); }
 
+  /* FIX: esta regla base con display:none DEBE ir antes de la media query
+     de abajo. Antes estaba después y, por tener la misma especificidad
+     (#mobileMenuBtn), siempre ganaba en cascada y ocultaba el botón de
+     menú en celular sin importar el ancho de pantalla — el menú lateral
+     quedaba inaccesible en cualquier teléfono. */
+  #mobileMenuBtn{ display:none; align-items:center; justify-content:center; width:38px; height:38px; border:1px solid var(--border); background:var(--white); border-radius:9px; }
+
   @media(max-width:820px){
     #sidebar{ position:fixed; left:-285px; z-index:40; transition:left .2s; box-shadow:0 0 30px rgba(0,0,0,.3); }
     #sidebar.open{ left:0; }
     #mobileMenuBtn{ display:flex; }
     #topbarSearchWrap{ display:none; }
   }
-  #mobileMenuBtn{ display:none; align-items:center; justify-content:center; width:38px; height:38px; border:1px solid var(--border); background:var(--white); border-radius:9px; }
 
   #temaToggleBtn{
     width:38px; height:38px; border:1px solid var(--border); background:var(--white);
@@ -863,27 +869,47 @@ https://github.com/nodeca/pako/blob/main/LICENSE
   </div>
 </div>
 
-<!-- Firebase Authentication (proveedor Google) — mismo proyecto "controlcord"
-     que ya usa la app de Horarios. Para que el botón funcione de verdad hace
-     falta: 1) publicar este archivo en un dominio http(s) real (no funciona
-     abierto como archivo local), y 2) tener habilitado el proveedor "Google"
-     en Firebase Console → Authentication → Sign-in method, con ese dominio
-     agregado en "Authorized domains". Mientras tanto, el acceso con usuario
-     y contraseña sigue funcionando normalmente como respaldo. -->
+<!-- Firebase Authentication (proveedor Google) — proyecto propio y dedicado
+     "app-de-gestion-de-restaurantes" (app web "Ecosistema Córdova"),
+     separado a propósito del proyecto "controlcord" que usa la app de
+     Horarios, para que no se mezclen. Para que el botón funcione de
+     verdad hace falta: 1) publicar este archivo en un dominio http(s)
+     real (no funciona abierto como archivo local), y 2) tener habilitado
+     el proveedor "Google" en Firebase Console → Authentication →
+     Sign-in method, con ese dominio agregado en "Authorized domains".
+     Mientras tanto, el acceso con usuario y contraseña sigue funcionando
+     normalmente como respaldo.
+
+     FASE 1 DE LA MIGRACIÓN A LA NUBE (sincronización entre Chinú y
+     Montería): además de Auth, este bloque ahora también inicializa
+     Firestore y abre sesión anónima automáticamente (Firebase Anonymous
+     Authentication) para que las reglas de seguridad de Firestore puedan
+     exigir "debe estar autenticado" en vez de dejar la base de datos
+     completamente abierta. Esto NO es todavía la autenticación real por
+     usuario (eso es la Fase 2, con Firebase Auth de verdad para cada uno
+     de los ~40 usuarios) — es un primer cierre razonable mientras tanto.
+     Expone funciones en window para que el script principal (clásico,
+     no-módulo, donde vive el resto de la app) pueda usarlas sin tener
+     que convertirse él mismo en módulo. -->
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-app.js";
-  import { getAuth, GoogleAuthProvider, signInWithPopup, signOut } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-auth.js";
+  import { getAuth, GoogleAuthProvider, signInWithPopup, signInAnonymously, signOut } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-auth.js";
+  import { getFirestore, doc, setDoc, collection, onSnapshot, serverTimestamp, enableIndexedDbPersistence } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore.js";
 
   const firebaseConfig = {
-    apiKey: "AIzaSyB5cI5TFAhy3DveiwQFjAORSroo45P29d8",
-    authDomain: "controlcord.firebaseapp.com",
-    projectId: "controlcord",
-    storageBucket: "controlcord.firebasestorage.app",
-    messagingSenderId: "475286348786",
-    appId: "1:475286348786:web:6228eb68cc61af6f74016b"
+    apiKey: "AIzaSyDpWliFuDJViwRon3o_EETrqF5-J1rpjD0",
+    authDomain: "app-de-gestion-de-restaurantes.firebaseapp.com",
+    projectId: "app-de-gestion-de-restaurantes",
+    storageBucket: "app-de-gestion-de-restaurantes.firebasestorage.app",
+    messagingSenderId: "157618661483",
+    appId: "1:157618661483:web:24e4beaab403fbcfeca92e"
   };
   const fbApp = initializeApp(firebaseConfig);
   const fbAuth = getAuth(fbApp);
+  const fbDb = getFirestore(fbApp);
+  const FS_COLECCION = 'ch_cordova_datos';
+
+  try { enableIndexedDbPersistence(fbDb); } catch(e) { /* varias pestañas abiertas a la vez, o navegador sin soporte: sigue funcionando, solo sin caché offline avanzada */ }
 
   window.iniciarSesionGoogle = async function(){
     const errBox = document.getElementById('loginErrorBox');
@@ -900,6 +926,54 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     }
   };
   window.cerrarSesionGoogle = function(){ try{ signOut(fbAuth); }catch(e){} };
+
+  /* ---- Sincronización en la nube (Firestore) ----
+     window._fsCache: última copia conocida de cada colección, la misma
+     forma que ya devuelve DB.get() (arreglo, objeto, etc.), para que la
+     capa DB del script principal la use como si fuera localStorage.
+     window._fsListo: true una vez llegó la primera respuesta de
+     Firestore (aunque esté vacía) — antes de eso, DB sigue usando
+     localStorage sin arriesgarse a pisar datos con "todavía no sé". ---- */
+  window._fsCache = {};
+  window._fsListo = false;
+  window._fsSesionLista = false;
+  let fsListoCallbacks = [];
+  window._fsAlListo = function(fn){ if(window._fsListo) fn(); else fsListoCallbacks.push(fn); };
+
+  window._fsEscribir = async function(col, valor){
+    if(!window._fsSesionLista) return; // sin sesión (ni anónima) no hay permiso para escribir
+    try{
+      await setDoc(doc(fbDb, FS_COLECCION, col), { valor: valor, actualizadoEn: serverTimestamp() });
+    }catch(e){ console.warn('No se pudo sincronizar "' + col + '" con la nube (queda guardado localmente en este dispositivo):', e); }
+  };
+
+  function fsEmpezarEscucha(){
+    onSnapshot(collection(fbDb, FS_COLECCION), function(snap){
+      snap.docChanges().forEach(function(change){
+        window._fsCache[change.doc.id] = (change.doc.data() || {}).valor;
+      });
+      if(!window._fsListo){
+        window._fsListo = true;
+        fsListoCallbacks.forEach(function(fn){ try{ fn(); }catch(e){ console.error(e); } });
+        fsListoCallbacks = [];
+      }
+    }, function(err){
+      console.warn('No se pudo conectar con la sincronización en la nube (la app sigue funcionando con el respaldo local de este dispositivo):', err);
+    });
+  }
+
+  // Sesión anónima automática: no pide nada al usuario, solo le da a este
+  // dispositivo un "carnet" válido ante Firestore para poder leer/escribir
+  // según las reglas de seguridad (ver nota a Harol). Si el usuario luego
+  // entra con Google, esa sesión de Google reemplaza a la anónima sin
+  // pedir nada adicional.
+  signInAnonymously(fbAuth).catch(function(err){
+    console.warn('No se pudo abrir sesión anónima con Firebase (revisa que esté habilitada en la consola). La app sigue funcionando solo con el respaldo local:', err);
+  });
+  fbAuth.onAuthStateChanged(function(user){
+    window._fsSesionLista = !!user;
+    if(user) fsEmpezarEscucha();
+  });
 </script>
 
 <!-- ================= APP PRINCIPAL ================= -->
@@ -978,15 +1052,49 @@ const LOGO_B64 = "/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAQDAwMDAgQDAwMEBAQFBgoGBgUFBg
    Hoy: localStorage. FASE 2: reemplazar por Firebase Firestore
    manteniendo los mismos nombres de función (get/set/push).
    ================================================================== */
+// Colecciones que son del dispositivo/navegador en sí, no del negocio —
+// nunca se sincronizan a la nube (no tendría sentido: la sesión de un
+// celular, el tema claro/oscuro, o a qué estación de cocina está atado
+// ese dispositivo, son cosas de cada aparato, no del restaurante).
+const DB_COLECCIONES_LOCALES = ['sesion_actual', 'tema', 'mise_cocina_estacion_dispositivo', 'asistente_voz_activa', 'google_link'];
+
+/* ==================================================================
+   CAPA DE DATOS (DB) — FASE 1 DE LA MIGRACIÓN A FIRESTORE.
+   Antes: todo vivía solo en localStorage (cada dispositivo con su
+   propia copia). Ahora: localStorage sigue siendo el respaldo
+   instantáneo (para que la app nunca se sienta lenta ni se rompa sin
+   internet), pero además cada DB.set()/DB.push() manda una copia a
+   Firestore en segundo plano, y DB.get() prefiere lo último que llegó
+   de la nube (window._fsCache, alimentado por un listener en tiempo
+   real — ver el <script type="module"> del login). Así, lo que se
+   guarda en el dispositivo de Chinú aparece también en el de Montería.
+   La API (get/set/push) no cambió, así que ningún otro módulo de la
+   app tuvo que tocarse para esta migración.
+   Limitación conocida de esta primera versión: si alguien tiene una
+   pantalla abierta y otra sede guarda algo nuevo, no se actualiza sola
+   en vivo — aparece la próxima vez que se entra o se recarga esa
+   pantalla. Migrar a actualización instantánea es un ajuste aparte.
+   ================================================================== */
 const DB = {
   _key(col){ return 'ch_cordova__' + col; },
+  _esLocal(col){ return DB_COLECCIONES_LOCALES.indexOf(col) !== -1; },
   get(col, fallback){
     try{
+      if(!this._esLocal(col) && window._fsCache && Object.prototype.hasOwnProperty.call(window._fsCache, col)){
+        const nube = window._fsCache[col];
+        return nube !== undefined && nube !== null ? nube : (fallback !== undefined ? fallback : null);
+      }
       const raw = localStorage.getItem(this._key(col));
       return raw ? JSON.parse(raw) : (fallback !== undefined ? fallback : null);
     }catch(e){ return fallback; }
   },
-  set(col, value){ localStorage.setItem(this._key(col), JSON.stringify(value)); },
+  set(col, value){
+    localStorage.setItem(this._key(col), JSON.stringify(value));
+    if(!this._esLocal(col)){
+      if(window._fsCache) window._fsCache[col] = value;
+      if(window._fsEscribir) window._fsEscribir(col, value);
+    }
+  },
   push(col, item){
     const arr = this.get(col, []);
     item.id = item.id || (Date.now() + '_' + Math.random().toString(36).slice(2,7));
@@ -996,6 +1104,31 @@ const DB = {
     return item;
   }
 };
+
+/* ---- Migración automática, una sola vez por dispositivo: si Firestore
+   todavía no tiene una colección (nadie la ha subido desde ningún
+   dispositivo) pero este aparato sí tiene datos guardados localmente,
+   los sube. Así, el primer dispositivo que abra la app después de
+   activar esto (debería ser el de Chinú, que es el que tiene los datos
+   reales de verdad hoy) puebla la nube; los demás dispositivos, al
+   entrar después, ya encuentran esos datos ahí y no suben nada encima. */
+function dbMigrarLocalANubeSiHaceFalta(){
+  const claves = [];
+  for(let i = 0; i < localStorage.length; i++){
+    const k = localStorage.key(i);
+    if(k && k.indexOf('ch_cordova__') === 0) claves.push(k.slice('ch_cordova__'.length));
+  }
+  claves.forEach(function(col){
+    if(DB._esLocal(col)) return;
+    if(window._fsCache && Object.prototype.hasOwnProperty.call(window._fsCache, col)) return; // ya existe en la nube, no se pisa
+    let valor;
+    try{ valor = JSON.parse(localStorage.getItem('ch_cordova__' + col)); }catch(e){ return; }
+    if(valor === null || valor === undefined) return;
+    if(Array.isArray(valor) && valor.length === 0) return; // no vale la pena subir listas vacías
+    window._fsCache[col] = valor;
+    if(window._fsEscribir) window._fsEscribir(col, valor);
+  });
+}
 
 /* ==================================================================
    TEMA CLARO / OSCURO — se aplica lo antes posible (antes de pintar
@@ -1451,6 +1584,15 @@ const INV_PRODUCTOS_SEED = [
 ];
 
 const PROV_MATCHES = {};
+
+// FIX URGENTE: al reconstruir el catálogo de inventario (corte 31 de
+// julio) se reemplazó este bloque y, por un error mío, PROVEEDORES_SEED
+// quedó sin declarar — solo se usaba más abajo. En un dispositivo nuevo
+// (o con caché recién borrado) eso lanzaba un error de JavaScript apenas
+// cargaba la página y cortaba el resto del script, incluido el botón de
+// login. Se restaura aquí vacía para que la app no se rompa mientras se
+// recupera la lista real de proveedores (ver nota a Harol).
+const PROVEEDORES_SEED = [];
 
 if((DB.get('inv_catalogo_version', 1)) < 2){
   DB.set('inv_productos', INV_PRODUCTOS_SEED.map(function(p){
@@ -2616,6 +2758,17 @@ function enterApp(){
   alarmaMiseServicioIniciar();
   if(typeof miseCocinaAlarmaMasterIniciar === 'function') miseCocinaAlarmaMasterIniciar();
   tourOfrecerSiPendiente();
+  // Fase 1 de la migración a la nube: en cuanto Firestore confirme que ya
+  // sincronizó (window._fsAlListo), sube lo que este dispositivo tenga
+  // localmente y todavía no exista en la nube. No se fuerza a refrescar
+  // la pantalla actual (para no interrumpir con el tutorial emergente
+  // apenas se acaba de entrar) — los datos combinados se ven solos la
+  // próxima vez que se abre o se recarga una pantalla.
+  if(typeof window._fsAlListo === 'function'){
+    window._fsAlListo(function(){
+      if(typeof dbMigrarLocalANubeSiHaceFalta === 'function') dbMigrarLocalANubeSiHaceFalta();
+    });
+  }
 }
 
 /* ==================================================================
