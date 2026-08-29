@@ -2830,15 +2830,35 @@ const TIPS_ITEM = {
   ast_chat: { emoji:'💬', titulo:'HJ-IA', texto:'Pregúntale cualquier duda operativa o de gestión, como le preguntarías a un compañero con experiencia.' }
 };
 
+/* ---- Popup instructivo: se muestra solo la primera vez que cada usuario
+   abre una pantalla dada — no en cada visita. Queda guardado por usuario
+   (se sincroniza con la nube), así que un mesero nuevo lo ve una vez por
+   pantalla y un mesero de siempre no lo vuelve a ver. ---- */
+function tutorialYaVisto(itemId){
+  const vistos = DB.get('tutoriales_vistos', {});
+  const propios = vistos[SESSION.usuario] || [];
+  return propios.indexOf(itemId) !== -1;
+}
+function tutorialMarcarVisto(itemId){
+  const vistos = DB.get('tutoriales_vistos', {});
+  const propios = vistos[SESSION.usuario] || [];
+  if(propios.indexOf(itemId) === -1){
+    propios.push(itemId);
+    vistos[SESSION.usuario] = propios;
+    DB.set('tutoriales_vistos', vistos);
+  }
+}
+
 let _tutorialPendiente = null;
 function mostrarPopupTutorial(sec, group, item, ruta, continuarFn){
   const tip = TIPS_ITEM[item.id];
-  if(!tip){ continuarFn(); return; }
+  if(!tip || tutorialYaVisto(item.id)){ continuarFn(); return; }
+  tutorialMarcarVisto(item.id);
   _tutorialPendiente = continuarFn;
   const overlay = document.getElementById('tutorialModalOverlay');
   overlay.innerHTML = `
     <div class="tutorial-modal-card">
-      <div class="tutorial-modal-emoji">${tip.emoji}</div>
+      <div class="icon-circle" style="width:52px;height:52px;display:flex;align-items:center;justify-content:center;background:${hexToRgba(sec.color,0.14)}; color:${sec.color}; margin:0 auto 10px;">${ic(item.icon || 'checklist', 26)}</div>
       <h3>${tip.titulo}</h3>
       <p>${tip.texto}</p>
       <div class="tutorial-modal-actions">
