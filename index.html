@@ -1362,7 +1362,13 @@ if((DB.get('pagos_sede_version', 1)) < 2){
 
   const urlsExistentes = DB.get('pagos_sheet_url_por_sede', {});
   if(!urlsExistentes.monteria){
-    urlsExistentes.monteria = PAGOS_SHEET_URL_MONTERIA_ORIGINAL;
+    // Nota: se usa el literal directamente (en vez de la constante
+    // PAGOS_SHEET_URL_MONTERIA_ORIGINAL, definida más abajo junto al resto
+    // del módulo de Pagos) porque este bloque de migración corre al cargar
+    // la página, antes de que esa constante exista — referenciarla aquí
+    // causaba un error de "Cannot access before initialization" que
+    // impedía que la app abriera.
+    urlsExistentes.monteria = 'https://docs.google.com/spreadsheets/d/16ZyjS7jGHEGM7Lrqml2wtuqXfNsj-lC7/gviz/tq?tqx=out:csv&gid=0';
     DB.set('pagos_sheet_url_por_sede', urlsExistentes);
   }
   DB.set('pagos_sede_version', 2);
