@@ -828,7 +828,14 @@ https://github.com/nodeca/pako/blob/main/LICENSE
 
     <div id="loginErrorBox"></div>
 
-    <button type="button" class="btn-google" id="googleLoginBtn" onclick="iniciarSesionGoogle()">
+    <!-- Entrada con Google pausada temporalmente: hoy no sincroniza bien
+         con la nube para cuentas ya vinculadas (la cuenta de Google queda
+         separada de la cuenta real y sin permisos), así que se oculta
+         mientras se rediseña ese flujo como corresponde (vincularla a la
+         MISMA cuenta real de Firebase, no a una aparte). El botón y su
+         lógica siguen en el código, listos para reactivarse cuando esté
+         resuelto — solo hay que quitarles la clase "hidden". -->
+    <button type="button" class="btn-google hidden" id="googleLoginBtn" onclick="iniciarSesionGoogle()">
       <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.6 29.3 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.9 1.2 8 3.1l5.7-5.7C34.6 6.1 29.6 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.2-.1-2.4-.4-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.6 15.9 18.9 13 24 13c3.1 0 5.9 1.2 8 3.1l5.7-5.7C34.6 6.1 29.6 4 24 4c-7.4 0-13.8 4.1-17.1 10.7z"/><path fill="#4CAF50" d="M24 44c5.5 0 10.4-1.9 14.3-5.1l-6.6-5.5C29.7 35.1 27 36 24 36c-5.3 0-9.7-3.4-11.3-8.1l-6.6 5.1C9.5 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.3-2.3 4.3-4.2 5.7l6.6 5.5C41.4 35.9 44 30.4 44 24c0-1.2-.1-2.4-.4-3.5z"/></svg>
       Continuar con Google
     </button>
@@ -846,10 +853,10 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       <button type="button" class="btn-primary" onclick="vincularCuentaGoogle()">Vincular y entrar</button>
     </div>
 
-    <div class="login-divider"><span>o continúa con</span></div>
-    <a href="#" class="login-toggle-link" id="togglePassLoginLink" onclick="togglePassLoginForm(event)">Ingresar con usuario y contraseña</a>
+    <div class="login-divider hidden" id="loginDividerGoogle"><span>o continúa con</span></div>
+    <a href="#" class="login-toggle-link hidden" id="togglePassLoginLink" onclick="togglePassLoginForm(event)">Ingresar con usuario y contraseña</a>
 
-    <div id="passLoginFields" class="hidden">
+    <div id="passLoginFields">
       <div class="field">
         <label for="loginUser">Usuario</label>
         <input type="text" id="loginUser" placeholder="ej. nombre.apellido">
@@ -1197,47 +1204,47 @@ aplicarTema(temaActual());
    desde la propia app (agregar, desactivar, cambiar clave, etc.)
    ================================================================== */
 const USUARIOS_SEED = [
-{"usuario": "harol", "pass": "cordova", "nombre": "Harol (Propietario)", "cargo": "Propietario", "sede": "todas", "area": "todas", "rol": "gerencia", "activo": true, "rolPuesto": "", "itemsExtra": []},
-{"usuario": "deimer.villadiego", "pass": "562", "nombre": "Deimer Alfonso Zapata Villadiego", "cargo": "Vigilancia", "sede": "chinu", "area": "inspecciones", "rol": "empleado", "activo": true, "rolPuesto": "inspector", "itemsExtra": []},
-{"usuario": "leidis.vergara", "pass": "788", "nombre": "Leidis Ester Sarmiento Vergara", "cargo": "Líder General", "sede": "chinu", "area": "todas", "rol": "gerencia", "activo": true, "rolPuesto": "", "itemsExtra": []},
-{"usuario": "heriberto.urdaneta", "pass": "392", "nombre": "Heriberto De Jesus Sarmiento Urdaneta", "cargo": "Aux. Cocina", "sede": "chinu", "area": "cocina", "rol": "empleado", "activo": true, "rolPuesto": "cocina", "itemsExtra": []},
-{"usuario": "yoenys.bello", "pass": "251", "nombre": "Yoenys Yanith Humanez Bello", "cargo": "Servicio Cliente", "sede": "chinu", "area": "servicio_cliente", "rol": "empleado", "activo": true, "rolPuesto": "mesero", "itemsExtra": []},
-{"usuario": "luisana.bello", "pass": "168", "nombre": "Luisana Monterroza Bello", "cargo": "Servicio Cliente", "sede": "chinu", "area": "servicio_cliente", "rol": "empleado", "activo": true, "rolPuesto": "mesero", "itemsExtra": []},
-{"usuario": "julio.simanca", "pass": "954", "nombre": "Julio Eduardo Garcia Simanca", "cargo": "Aux. Bar", "sede": "chinu", "area": "bar", "rol": "empleado", "activo": true, "rolPuesto": "bar", "itemsExtra": []},
-{"usuario": "alberto.moteroza", "pass": "299", "nombre": "Alberto Lobo Moteroza", "cargo": "Aux. Cocina", "sede": "chinu", "area": "cocina", "rol": "empleado", "activo": true, "rolPuesto": "cocina", "itemsExtra": []},
-{"usuario": "beatriz.monterroza", "pass": "403", "nombre": "Beatriz Elena Sarmiento Monterroza", "cargo": "Aux. Cocina", "sede": "chinu", "area": "cocina", "rol": "empleado", "activo": true, "rolPuesto": "cocina", "itemsExtra": []},
-{"usuario": "juan.mendoza", "pass": "765", "nombre": "Juan Sebastian Perez Mendoza", "cargo": "Aux. Cocina", "sede": "chinu", "area": "cocina", "rol": "empleado", "activo": true, "rolPuesto": "cocina", "itemsExtra": []},
-{"usuario": "valentina.dias", "pass": "244", "nombre": "Valentina Alvarez Dias", "cargo": "Aux. Cocina", "sede": "chinu", "area": "cocina", "rol": "empleado", "activo": true, "rolPuesto": "cocina", "itemsExtra": []},
-{"usuario": "sandy.soto", "pass": "129", "nombre": "Sandy Torres Soto", "cargo": "Líder de Servicio", "sede": "chinu", "area": "servicio_cliente", "rol": "administracion", "activo": true, "rolPuesto": "lider_servicio_reservas", "itemsExtra": []},
-{"usuario": "adrian.velez", "pass": "899", "nombre": "Adrian Jose Machado Velez", "cargo": "Aux. Cocina", "sede": "monteria", "area": "cocina", "rol": "empleado", "activo": true, "rolPuesto": "cocina", "itemsExtra": []},
-{"usuario": "andy.ruiz", "pass": "608", "nombre": "Andy Yesid Hernandez Ruiz", "cargo": "Servicio Cliente", "sede": "monteria", "area": "servicio_cliente", "rol": "empleado", "activo": true, "rolPuesto": "mesero", "itemsExtra": []},
-{"usuario": "angelica.oliva", "pass": "325", "nombre": "Angelica Maria Rodriguez Oliva", "cargo": "Sup. Serv. Cliente", "sede": "monteria", "area": "servicio_cliente", "rol": "administracion", "activo": true, "rolPuesto": "lider_servicio_reservas", "itemsExtra": []},
-{"usuario": "dagleisis.rojas", "pass": "339", "nombre": "Dagleisis Guerrero Rojas", "cargo": "Steward", "sede": "monteria", "area": "cocina", "rol": "empleado", "activo": true, "rolPuesto": "steward", "itemsExtra": []},
-{"usuario": "daniel.argumedo", "pass": "360", "nombre": "Daniel Dario Negrete Argumedo", "cargo": "Aux. Cocina", "sede": "monteria", "area": "cocina", "rol": "empleado", "activo": true, "rolPuesto": "cocina", "itemsExtra": []},
-{"usuario": "david.cassab", "pass": "177", "nombre": "David Camilo Durango Cassab", "cargo": "Líder Compras", "sede": "monteria", "area": "contabilidad", "rol": "administracion", "activo": true, "rolPuesto": "aux_compras", "itemsExtra": []},
-{"usuario": "eduar.suarez", "pass": "909", "nombre": "Eduar Enrique Buelvas Suarez", "cargo": "Aux. Cocina (retirado)", "sede": "monteria", "area": "cocina", "rol": "empleado", "activo": false, "rolPuesto": "cocina", "itemsExtra": []},
-{"usuario": "elizabeth.correa", "pass": "372", "nombre": "Elizabeth Florez Correa", "cargo": "Aux. Bar", "sede": "monteria", "area": "bar", "rol": "empleado", "activo": true, "rolPuesto": "bar", "itemsExtra": []},
-{"usuario": "harol.agresott", "pass": "493", "nombre": "Harol Javier Palacios Agresott", "cargo": "Gerente", "sede": "monteria", "area": "todas", "rol": "gerencia", "activo": true, "rolPuesto": "", "itemsExtra": []},
-{"usuario": "hernando.padilla", "pass": "965", "nombre": "Hernando Jose Arrieta Padilla", "cargo": "Aux. Cocina", "sede": "monteria", "area": "cocina", "rol": "empleado", "activo": true, "rolPuesto": "cocina", "itemsExtra": []},
-{"usuario": "ivan.oquendo", "pass": "426", "nombre": "Ivan Alberto Oyola Oquendo", "cargo": "Aux. Cocina", "sede": "monteria", "area": "cocina", "rol": "empleado", "activo": true, "rolPuesto": "cocina", "itemsExtra": []},
-{"usuario": "ivana.hernandez", "pass": "687", "nombre": "Ivana Medina Hernandez", "cargo": "Aux. Música", "sede": "monteria", "area": "servicio_cliente", "rol": "empleado", "activo": true, "rolPuesto": "otros", "itemsExtra": []},
-{"usuario": "jose.diaz", "pass": "189", "nombre": "Jose Armando Gonzalez Diaz", "cargo": "Aux. Administrativo", "sede": "monteria", "area": "contabilidad", "rol": "administracion", "activo": true, "rolPuesto": "otros", "itemsExtra": []},
-{"usuario": "juan.rosa", "pass": "947", "nombre": "Juan Manuel Urango De La Rosa", "cargo": "Vigilante", "sede": "monteria", "area": "inspecciones", "rol": "empleado", "activo": true, "rolPuesto": "inspector", "itemsExtra": []},
-{"usuario": "lina.montoya", "pass": "305", "nombre": "Lina Marcela Alvarez Montoya", "cargo": "Aux. Contable y Admon", "sede": "monteria", "area": "contabilidad", "rol": "administracion", "activo": true, "rolPuesto": "otros", "itemsExtra": []},
-{"usuario": "lina.diaz", "pass": "313", "nombre": "Lina Marcela Padilla Diaz", "cargo": "Aux. Serv. Cliente", "sede": "monteria", "area": "servicio_cliente", "rol": "empleado", "activo": true, "rolPuesto": "mesero", "itemsExtra": []},
-{"usuario": "maira.villamil", "pass": "523", "nombre": "Maira Alejandra Villalobos Villamil", "cargo": "Líder Cocina", "sede": "monteria", "area": "cocina", "rol": "administracion", "activo": true, "rolPuesto": "lider_cocina", "itemsExtra": []},
-{"usuario": "mairon.pantoja", "pass": "800", "nombre": "Mairon Dario Osorio Pantoja", "cargo": "Servicio Cliente", "sede": "monteria", "area": "servicio_cliente", "rol": "empleado", "activo": true, "rolPuesto": "mesero", "itemsExtra": []},
-{"usuario": "maria.galeano", "pass": "290", "nombre": "Maria Carmela Soto Galeano", "cargo": "Subgerente", "sede": "monteria", "area": "todas", "rol": "gerencia", "activo": true, "rolPuesto": "", "itemsExtra": []},
-{"usuario": "marielena.martinez", "pass": "342", "nombre": "Marielena Nieto Martinez", "cargo": "Servicio Cliente", "sede": "monteria", "area": "servicio_cliente", "rol": "empleado", "activo": true, "rolPuesto": "mesero", "itemsExtra": []},
-{"usuario": "michael.cordoba", "pass": "616", "nombre": "Michael Castillo Cordoba", "cargo": "Líder Cocina", "sede": "monteria", "area": "cocina", "rol": "administracion", "activo": true, "rolPuesto": "lider_cocina", "itemsExtra": []},
-{"usuario": "miguel.guerrero", "pass": "217", "nombre": "Miguel Alberto Suarez Guerrero", "cargo": "Aux. Cocina", "sede": "monteria", "area": "cocina", "rol": "empleado", "activo": true, "rolPuesto": "cocina", "itemsExtra": []},
-{"usuario": "pedro.cantillo", "pass": "668", "nombre": "Pedro Luis Lopez Cantillo", "cargo": "Aux. Serv. Cliente", "sede": "monteria", "area": "servicio_cliente", "rol": "empleado", "activo": true, "rolPuesto": "mesero", "itemsExtra": []},
-{"usuario": "reinaldo.jimenez", "pass": "377", "nombre": "Reinaldo Jose Tapia Jimenez", "cargo": "Servicio Cliente", "sede": "monteria", "area": "servicio_cliente", "rol": "empleado", "activo": true, "rolPuesto": "mesero", "itemsExtra": []},
-{"usuario": "ysidoro.romero", "pass": "471", "nombre": "Ysidoro Alberto Prieto Romero", "cargo": "Aux. Cocina", "sede": "monteria", "area": "cocina", "rol": "empleado", "activo": true, "rolPuesto": "cocina", "itemsExtra": []},
-{"usuario": "yudis.galeano", "pass": "091", "nombre": "Yudis Maria Soto Galeano", "cargo": "Líder Administrativo", "sede": "monteria", "area": "contabilidad", "rol": "administracion", "activo": true, "rolPuesto": "otros", "itemsExtra": []},
-{"usuario": "kiara.espitia", "pass": "496", "nombre": "Kiara Marcela Arias Espitia", "cargo": "Aux. Contable", "sede": "monteria", "area": "contabilidad", "rol": "administracion", "activo": true, "rolPuesto": "otros", "itemsExtra": []},
-{"usuario": "misael.nunez", "pass": "493", "nombre": "Misael Alfonso Martinez Nuñez", "cargo": "Aux. Bar", "sede": "monteria", "area": "bar", "rol": "empleado", "activo": true, "rolPuesto": "bar", "itemsExtra": []},
-{"usuario": "chinu", "pass": "chinu2026", "nombre": "Sede Chinú (pruebas)", "cargo": "Cuenta de pruebas de sede", "sede": "chinu", "area": "todas", "rol": "gerencia", "activo": true, "rolPuesto": "", "itemsExtra": []}
+{"usuario": "harol", "pass": "", "nombre": "Harol (Propietario)", "cargo": "Propietario", "sede": "todas", "area": "todas", "rol": "gerencia", "activo": true, "rolPuesto": "", "itemsExtra": []},
+{"usuario": "deimer.villadiego", "pass": "", "nombre": "Deimer Alfonso Zapata Villadiego", "cargo": "Vigilancia", "sede": "chinu", "area": "inspecciones", "rol": "empleado", "activo": true, "rolPuesto": "inspector", "itemsExtra": []},
+{"usuario": "leidis.vergara", "pass": "", "nombre": "Leidis Ester Sarmiento Vergara", "cargo": "Líder General", "sede": "chinu", "area": "todas", "rol": "gerencia", "activo": true, "rolPuesto": "", "itemsExtra": []},
+{"usuario": "heriberto.urdaneta", "pass": "", "nombre": "Heriberto De Jesus Sarmiento Urdaneta", "cargo": "Aux. Cocina", "sede": "chinu", "area": "cocina", "rol": "empleado", "activo": true, "rolPuesto": "cocina", "itemsExtra": []},
+{"usuario": "yoenys.bello", "pass": "", "nombre": "Yoenys Yanith Humanez Bello", "cargo": "Servicio Cliente", "sede": "chinu", "area": "servicio_cliente", "rol": "empleado", "activo": true, "rolPuesto": "mesero", "itemsExtra": []},
+{"usuario": "luisana.bello", "pass": "", "nombre": "Luisana Monterroza Bello", "cargo": "Servicio Cliente", "sede": "chinu", "area": "servicio_cliente", "rol": "empleado", "activo": true, "rolPuesto": "mesero", "itemsExtra": []},
+{"usuario": "julio.simanca", "pass": "", "nombre": "Julio Eduardo Garcia Simanca", "cargo": "Aux. Bar", "sede": "chinu", "area": "bar", "rol": "empleado", "activo": true, "rolPuesto": "bar", "itemsExtra": []},
+{"usuario": "alberto.moteroza", "pass": "", "nombre": "Alberto Lobo Moteroza", "cargo": "Aux. Cocina", "sede": "chinu", "area": "cocina", "rol": "empleado", "activo": true, "rolPuesto": "cocina", "itemsExtra": []},
+{"usuario": "beatriz.monterroza", "pass": "", "nombre": "Beatriz Elena Sarmiento Monterroza", "cargo": "Aux. Cocina", "sede": "chinu", "area": "cocina", "rol": "empleado", "activo": true, "rolPuesto": "cocina", "itemsExtra": []},
+{"usuario": "juan.mendoza", "pass": "", "nombre": "Juan Sebastian Perez Mendoza", "cargo": "Aux. Cocina", "sede": "chinu", "area": "cocina", "rol": "empleado", "activo": true, "rolPuesto": "cocina", "itemsExtra": []},
+{"usuario": "valentina.dias", "pass": "", "nombre": "Valentina Alvarez Dias", "cargo": "Aux. Cocina", "sede": "chinu", "area": "cocina", "rol": "empleado", "activo": true, "rolPuesto": "cocina", "itemsExtra": []},
+{"usuario": "sandy.soto", "pass": "", "nombre": "Sandy Torres Soto", "cargo": "Líder de Servicio", "sede": "chinu", "area": "servicio_cliente", "rol": "administracion", "activo": true, "rolPuesto": "lider_servicio_reservas", "itemsExtra": []},
+{"usuario": "adrian.velez", "pass": "", "nombre": "Adrian Jose Machado Velez", "cargo": "Aux. Cocina", "sede": "monteria", "area": "cocina", "rol": "empleado", "activo": true, "rolPuesto": "cocina", "itemsExtra": []},
+{"usuario": "andy.ruiz", "pass": "", "nombre": "Andy Yesid Hernandez Ruiz", "cargo": "Servicio Cliente", "sede": "monteria", "area": "servicio_cliente", "rol": "empleado", "activo": true, "rolPuesto": "mesero", "itemsExtra": []},
+{"usuario": "angelica.oliva", "pass": "", "nombre": "Angelica Maria Rodriguez Oliva", "cargo": "Sup. Serv. Cliente", "sede": "monteria", "area": "servicio_cliente", "rol": "administracion", "activo": true, "rolPuesto": "lider_servicio_reservas", "itemsExtra": []},
+{"usuario": "dagleisis.rojas", "pass": "", "nombre": "Dagleisis Guerrero Rojas", "cargo": "Steward", "sede": "monteria", "area": "cocina", "rol": "empleado", "activo": true, "rolPuesto": "steward", "itemsExtra": []},
+{"usuario": "daniel.argumedo", "pass": "", "nombre": "Daniel Dario Negrete Argumedo", "cargo": "Aux. Cocina", "sede": "monteria", "area": "cocina", "rol": "empleado", "activo": true, "rolPuesto": "cocina", "itemsExtra": []},
+{"usuario": "david.cassab", "pass": "", "nombre": "David Camilo Durango Cassab", "cargo": "Líder Compras", "sede": "monteria", "area": "contabilidad", "rol": "administracion", "activo": true, "rolPuesto": "aux_compras", "itemsExtra": []},
+{"usuario": "eduar.suarez", "pass": "", "nombre": "Eduar Enrique Buelvas Suarez", "cargo": "Aux. Cocina (retirado)", "sede": "monteria", "area": "cocina", "rol": "empleado", "activo": false, "rolPuesto": "cocina", "itemsExtra": []},
+{"usuario": "elizabeth.correa", "pass": "", "nombre": "Elizabeth Florez Correa", "cargo": "Aux. Bar", "sede": "monteria", "area": "bar", "rol": "empleado", "activo": true, "rolPuesto": "bar", "itemsExtra": []},
+{"usuario": "harol.agresott", "pass": "", "nombre": "Harol Javier Palacios Agresott", "cargo": "Gerente", "sede": "monteria", "area": "todas", "rol": "gerencia", "activo": true, "rolPuesto": "", "itemsExtra": []},
+{"usuario": "hernando.padilla", "pass": "", "nombre": "Hernando Jose Arrieta Padilla", "cargo": "Aux. Cocina", "sede": "monteria", "area": "cocina", "rol": "empleado", "activo": true, "rolPuesto": "cocina", "itemsExtra": []},
+{"usuario": "ivan.oquendo", "pass": "", "nombre": "Ivan Alberto Oyola Oquendo", "cargo": "Aux. Cocina", "sede": "monteria", "area": "cocina", "rol": "empleado", "activo": true, "rolPuesto": "cocina", "itemsExtra": []},
+{"usuario": "ivana.hernandez", "pass": "", "nombre": "Ivana Medina Hernandez", "cargo": "Aux. Música", "sede": "monteria", "area": "servicio_cliente", "rol": "empleado", "activo": true, "rolPuesto": "otros", "itemsExtra": []},
+{"usuario": "jose.diaz", "pass": "", "nombre": "Jose Armando Gonzalez Diaz", "cargo": "Aux. Administrativo", "sede": "monteria", "area": "contabilidad", "rol": "administracion", "activo": true, "rolPuesto": "otros", "itemsExtra": []},
+{"usuario": "juan.rosa", "pass": "", "nombre": "Juan Manuel Urango De La Rosa", "cargo": "Vigilante", "sede": "monteria", "area": "inspecciones", "rol": "empleado", "activo": true, "rolPuesto": "inspector", "itemsExtra": []},
+{"usuario": "lina.montoya", "pass": "", "nombre": "Lina Marcela Alvarez Montoya", "cargo": "Aux. Contable y Admon", "sede": "monteria", "area": "contabilidad", "rol": "administracion", "activo": true, "rolPuesto": "otros", "itemsExtra": []},
+{"usuario": "lina.diaz", "pass": "", "nombre": "Lina Marcela Padilla Diaz", "cargo": "Aux. Serv. Cliente", "sede": "monteria", "area": "servicio_cliente", "rol": "empleado", "activo": true, "rolPuesto": "mesero", "itemsExtra": []},
+{"usuario": "maira.villamil", "pass": "", "nombre": "Maira Alejandra Villalobos Villamil", "cargo": "Líder Cocina", "sede": "monteria", "area": "cocina", "rol": "administracion", "activo": true, "rolPuesto": "lider_cocina", "itemsExtra": []},
+{"usuario": "mairon.pantoja", "pass": "", "nombre": "Mairon Dario Osorio Pantoja", "cargo": "Servicio Cliente", "sede": "monteria", "area": "servicio_cliente", "rol": "empleado", "activo": true, "rolPuesto": "mesero", "itemsExtra": []},
+{"usuario": "maria.galeano", "pass": "", "nombre": "Maria Carmela Soto Galeano", "cargo": "Subgerente", "sede": "monteria", "area": "todas", "rol": "gerencia", "activo": true, "rolPuesto": "", "itemsExtra": []},
+{"usuario": "marielena.martinez", "pass": "", "nombre": "Marielena Nieto Martinez", "cargo": "Servicio Cliente", "sede": "monteria", "area": "servicio_cliente", "rol": "empleado", "activo": true, "rolPuesto": "mesero", "itemsExtra": []},
+{"usuario": "michael.cordoba", "pass": "", "nombre": "Michael Castillo Cordoba", "cargo": "Líder Cocina", "sede": "monteria", "area": "cocina", "rol": "administracion", "activo": true, "rolPuesto": "lider_cocina", "itemsExtra": []},
+{"usuario": "miguel.guerrero", "pass": "", "nombre": "Miguel Alberto Suarez Guerrero", "cargo": "Aux. Cocina", "sede": "monteria", "area": "cocina", "rol": "empleado", "activo": true, "rolPuesto": "cocina", "itemsExtra": []},
+{"usuario": "pedro.cantillo", "pass": "", "nombre": "Pedro Luis Lopez Cantillo", "cargo": "Aux. Serv. Cliente", "sede": "monteria", "area": "servicio_cliente", "rol": "empleado", "activo": true, "rolPuesto": "mesero", "itemsExtra": []},
+{"usuario": "reinaldo.jimenez", "pass": "", "nombre": "Reinaldo Jose Tapia Jimenez", "cargo": "Servicio Cliente", "sede": "monteria", "area": "servicio_cliente", "rol": "empleado", "activo": true, "rolPuesto": "mesero", "itemsExtra": []},
+{"usuario": "ysidoro.romero", "pass": "", "nombre": "Ysidoro Alberto Prieto Romero", "cargo": "Aux. Cocina", "sede": "monteria", "area": "cocina", "rol": "empleado", "activo": true, "rolPuesto": "cocina", "itemsExtra": []},
+{"usuario": "yudis.galeano", "pass": "", "nombre": "Yudis Maria Soto Galeano", "cargo": "Líder Administrativo", "sede": "monteria", "area": "contabilidad", "rol": "administracion", "activo": true, "rolPuesto": "otros", "itemsExtra": []},
+{"usuario": "kiara.espitia", "pass": "", "nombre": "Kiara Marcela Arias Espitia", "cargo": "Aux. Contable", "sede": "monteria", "area": "contabilidad", "rol": "administracion", "activo": true, "rolPuesto": "otros", "itemsExtra": []},
+{"usuario": "misael.nunez", "pass": "", "nombre": "Misael Alfonso Martinez Nuñez", "cargo": "Aux. Bar", "sede": "monteria", "area": "bar", "rol": "empleado", "activo": true, "rolPuesto": "bar", "itemsExtra": []},
+{"usuario": "chinu", "pass": "", "nombre": "Sede Chinú (pruebas)", "cargo": "Cuenta de pruebas de sede", "sede": "chinu", "area": "todas", "rol": "gerencia", "activo": true, "rolPuesto": "", "itemsExtra": []}
 ];
 if(!DB.get('usuarios')){ DB.set('usuarios', USUARIOS_SEED); }
 
@@ -1248,10 +1255,30 @@ if(!DB.get('usuarios')){ DB.set('usuarios', USUARIOS_SEED); }
 if((DB.get('usuarios_version', 1)) < 2){
   const listaUsuariosAct = DB.get('usuarios', USUARIOS_SEED) || [];
   if(!listaUsuariosAct.some(function(u){ return u.usuario === 'chinu'; })){
-    listaUsuariosAct.push({usuario:'chinu', pass:'chinu2026', nombre:'Sede Chinú (pruebas)', cargo:'Cuenta de pruebas de sede', sede:'chinu', area:'todas', rol:'gerencia', activo:true, rolPuesto:'', itemsExtra:[]});
+    listaUsuariosAct.push({usuario:'chinu', pass:'', nombre:'Sede Chinú (pruebas)', cargo:'Cuenta de pruebas de sede', sede:'chinu', area:'todas', rol:'gerencia', activo:false, rolPuesto:'', itemsExtra:[]});
     DB.set('usuarios', listaUsuariosAct);
   }
   DB.set('usuarios_version', 2);
+}
+
+// Seguridad: hasta esta versión, la contraseña de cada usuario quedaba
+// guardada en texto plano dentro de la colección "usuarios" (visible para
+// cualquiera con sesión real, y sincronizada a la nube). El login real ya
+// no la necesita — corre 100% contra Firebase Authentication desde la
+// Fase 2 — así que se limpia de aquí (sin tocar nombre, rol, sede ni el
+// resto de los datos de cada persona). También se desactiva "chinu"
+// (cuenta de pruebas con contraseña adivinable y rol gerencia) por si ya
+// existía activa de antes. Las contraseñas reales de Firebase se rotan
+// aparte, con el script rotar-contrasenas.js.
+if((DB.get('usuarios_seguridad_version', 1)) < 2){
+  const usuariosSinClave = DB.get('usuarios', []);
+  let huboCambioClaves = false;
+  usuariosSinClave.forEach(function(u){
+    if(u.pass){ u.pass = ''; huboCambioClaves = true; }
+    if(u.usuario === 'chinu' && u.activo !== false){ u.activo = false; huboCambioClaves = true; }
+  });
+  if(huboCambioClaves) DB.set('usuarios', usuariosSinClave);
+  DB.set('usuarios_seguridad_version', 2);
 }
 
 // Migración: Ventas 360 (v360_dias / v360_detalle) y su cruce en Encuesta
@@ -2176,21 +2203,27 @@ function poblarSelectVinculacionGoogle(){
   const sel = document.getElementById('linkUsuario');
   sel.innerHTML = '<option value="">Selecciona tu nombre...</option>' + usuarios.map(u => `<option value="${u.usuario}">${u.nombre}</option>`).join('');
 }
-function vincularCuentaGoogle(){
+async function vincularCuentaGoogle(){
   const errBox = document.getElementById('loginErrorBox');
   errBox.innerHTML = '';
   if(!window.pendingGoogleLink){ errBox.innerHTML = '<div class="login-error">Vuelve a intentar con el botón de Google.</div>'; return; }
   const usuarioCode = document.getElementById('linkUsuario').value;
   const pass = document.getElementById('linkPass').value.trim();
   if(!usuarioCode){ errBox.innerHTML = '<div class="login-error">Selecciona tu usuario.</div>'; return; }
+  if(!pass){ errBox.innerHTML = '<div class="login-error">Escribe tu contraseña actual.</div>'; return; }
+  // La contraseña ya no se guarda en texto plano en ningún lado, así que
+  // se verifica contra la cuenta real de Firebase (lo mismo que hace el
+  // login normal), no comparándola contra un campo local.
+  if(typeof window.iniciarSesionReal !== 'function'){ errBox.innerHTML = '<div class="login-error">No se pudo verificar la contraseña (revisa tu conexión) — intenta de nuevo.</div>'; return; }
+  const resultado = await window.iniciarSesionReal(usuarioCode, pass);
+  if(!resultado.ok){ errBox.innerHTML = '<div class="login-error">' + resultado.mensaje + '</div>'; return; }
   const usuarios = DB.get('usuarios', []);
-  const found = usuarios.find(x => x.usuario === usuarioCode && x.pass === pass);
-  if(!found){ errBox.innerHTML = '<div class="login-error">Contraseña incorrecta para ese usuario.</div>'; return; }
-  if(found.activo === false){ errBox.innerHTML = '<div class="login-error">Este usuario está inactivo. Contacta a tu administrador.</div>'; return; }
+  const found = usuarios.find(x => x.usuario === usuarioCode);
+  if(!found){ errBox.innerHTML = '<div class="login-error">No se encontró la información de este usuario.</div>'; return; }
   const enlaces = DB.get('google_link', {});
   enlaces[window.pendingGoogleLink.email] = found.usuario;
   DB.set('google_link', enlaces);
-  SESSION = { usuario: found.usuario, nombre: found.nombre, cargo: found.cargo, rol: found.rol, area: found.area, sede: found.sede, rolPuesto: found.rolPuesto || '', itemsExtra: found.itemsExtra || [], loginAt: new Date().toISOString(), googleEmail: window.pendingGoogleLink.email };
+  SESSION = { usuario: found.usuario, nombre: found.nombre, cargo: found.cargo, rol: resultado.rol, area: found.area, sede: resultado.sede, rolPuesto: found.rolPuesto || '', itemsExtra: found.itemsExtra || [], loginAt: new Date().toISOString(), googleEmail: window.pendingGoogleLink.email };
   DB.set('sesion_actual', SESSION);
   registrarUltimoAcceso(found.usuario);
   window.pendingGoogleLink = null;
@@ -13381,8 +13414,11 @@ async function sedeAutorizar(sedeId){
   }
 
   const usuarios = DB.get('usuarios', []);
+  // La contraseña ya quedó en la cuenta real de Firebase (arriba) y se
+  // muestra una sola vez en pantalla (sedesUltimaCreada, abajo) — no se
+  // guarda una copia en texto plano en esta colección.
   usuarios.push({
-    usuario: usuarioGerente, pass, nombre: nombreGerente, cargo: 'Gerente de sede',
+    usuario: usuarioGerente, pass:'', nombre: nombreGerente, cargo: 'Gerente de sede',
     sede: sede.id, area: 'todas', rol: 'gerencia', rolPuesto: '', itemsExtra: [], activo: true,
     tourPendiente: true
   });
@@ -13881,7 +13917,9 @@ async function guardarUsuarioPermisos(usuarioIdOriginal){
         return;
       }
     }
-    usuarios.push({ usuario:usuarioNuevo, pass, nombre, cargo, sede, area, rol, rolPuesto, itemsExtra, activo });
+    // La contraseña ya quedó guardada en la cuenta real de Firebase (arriba);
+    // no se guarda una copia en texto plano aquí.
+    usuarios.push({ usuario:usuarioNuevo, pass:'', nombre, cargo, sede, area, rol, rolPuesto, itemsExtra, activo });
   } else {
     const idx = usuarios.findIndex(x => x.usuario === usuarioIdOriginal);
     if(idx === -1){ showMsg('up_msg', 'No se encontró el usuario original.', 'rojo'); return; }
@@ -13899,7 +13937,10 @@ async function guardarUsuarioPermisos(usuarioIdOriginal){
         return;
       }
     }
-    usuarios[idx] = { ...actual, usuario:usuarioNuevo, nombre, cargo, sede, area, rol, rolPuesto, itemsExtra, activo, pass: pass ? pass : actual.pass };
+    // La contraseña nueva (si se escribió) ya se sincronizó con la cuenta
+    // real de Firebase arriba; nunca se guarda en texto plano en esta
+    // colección, ni siquiera la que ya tuviera de antes.
+    usuarios[idx] = { ...actual, usuario:usuarioNuevo, nombre, cargo, sede, area, rol, rolPuesto, itemsExtra, activo, pass:'' };
   }
   DB.set('usuarios', usuarios);
 
