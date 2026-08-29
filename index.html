@@ -1193,9 +1193,23 @@ const USUARIOS_SEED = [
 {"usuario": "ysidoro.romero", "pass": "471", "nombre": "Ysidoro Alberto Prieto Romero", "cargo": "Aux. Cocina", "sede": "monteria", "area": "cocina", "rol": "empleado", "activo": true, "rolPuesto": "cocina", "itemsExtra": []},
 {"usuario": "yudis.galeano", "pass": "091", "nombre": "Yudis Maria Soto Galeano", "cargo": "Líder Administrativo", "sede": "monteria", "area": "contabilidad", "rol": "administracion", "activo": true, "rolPuesto": "otros", "itemsExtra": []},
 {"usuario": "kiara.espitia", "pass": "496", "nombre": "Kiara Marcela Arias Espitia", "cargo": "Aux. Contable", "sede": "monteria", "area": "contabilidad", "rol": "administracion", "activo": true, "rolPuesto": "otros", "itemsExtra": []},
-{"usuario": "misael.nunez", "pass": "493", "nombre": "Misael Alfonso Martinez Nuñez", "cargo": "Aux. Bar", "sede": "monteria", "area": "bar", "rol": "empleado", "activo": true, "rolPuesto": "bar", "itemsExtra": []}
+{"usuario": "misael.nunez", "pass": "493", "nombre": "Misael Alfonso Martinez Nuñez", "cargo": "Aux. Bar", "sede": "monteria", "area": "bar", "rol": "empleado", "activo": true, "rolPuesto": "bar", "itemsExtra": []},
+{"usuario": "chinu", "pass": "chinu2026", "nombre": "Sede Chinú (pruebas)", "cargo": "Cuenta de pruebas de sede", "sede": "chinu", "area": "todas", "rol": "gerencia", "activo": true, "rolPuesto": "", "itemsExtra": []}
 ];
 if(!DB.get('usuarios')){ DB.set('usuarios', USUARIOS_SEED); }
+
+// Cuenta de pruebas "chinu" (sede fija, no "todas") para que Harol pueda
+// probar el comportamiento con sede bloqueada sin usar su propio usuario
+// gerencial. Migración versionada para que también llegue a los
+// dispositivos que ya tenían la lista de usuarios guardada antes de esto.
+if((DB.get('usuarios_version', 1)) < 2){
+  const listaUsuariosAct = DB.get('usuarios', USUARIOS_SEED) || [];
+  if(!listaUsuariosAct.some(function(u){ return u.usuario === 'chinu'; })){
+    listaUsuariosAct.push({usuario:'chinu', pass:'chinu2026', nombre:'Sede Chinú (pruebas)', cargo:'Cuenta de pruebas de sede', sede:'chinu', area:'todas', rol:'gerencia', activo:true, rolPuesto:'', itemsExtra:[]});
+    DB.set('usuarios', listaUsuariosAct);
+  }
+  DB.set('usuarios_version', 2);
+}
 
 // Migración suave: a los usuarios que ya estaban guardados en el
 // localStorage de un dispositivo (de antes de que existiera el rol de
@@ -2708,6 +2722,21 @@ function navEmpujarHash(hash){
   if((location.hash || '#') === hash) return;
   history.pushState(null, '', hash);
 }
+// Repinta la pantalla actual con los datos ya cargados (sin pasar por el
+// popup de tutorial, a diferencia de navAplicarHash/openModule). Se usa
+// solo para "ponerse al día" en cuanto llegan los datos de la nube justo
+// después de entrar — nunca para navegación normal del usuario.
+function navRefrescarSilencioso(){
+  if(!SESSION) return;
+  navSuprimirPush = true;
+  try {
+    const resuelto = navResolverHash(location.hash);
+    if(resuelto) entrarModulo(resuelto.sec, resuelto.group, resuelto.item);
+    else goHome();
+  } finally {
+    navSuprimirPush = false;
+  }
+}
 function navResolverHash(hash){
   const partes = (hash || '').replace(/^#/, '').split('/').filter(Boolean);
   if(partes.length !== 3) return null;
@@ -2760,13 +2789,17 @@ function enterApp(){
   tourOfrecerSiPendiente();
   // Fase 1 de la migración a la nube: en cuanto Firestore confirme que ya
   // sincronizó (window._fsAlListo), sube lo que este dispositivo tenga
-  // localmente y todavía no exista en la nube. No se fuerza a refrescar
-  // la pantalla actual (para no interrumpir con el tutorial emergente
-  // apenas se acaba de entrar) — los datos combinados se ven solos la
-  // próxima vez que se abre o se recarga una pantalla.
+  // localmente y todavía no exista en la nube, y repinta la pantalla
+  // actual (sin el popup de tutorial) para que se vean los datos ya
+  // combinados con la nube. La primera pantalla se dibuja al toque con
+  // lo que hay en este dispositivo (para que se sienta rápido), y este
+  // segundo repintado — normalmente menos de un segundo después — es el
+  // que corrige cualquier dato creado desde otro dispositivo/sede que
+  // todavía no hubiera llegado a este.
   if(typeof window._fsAlListo === 'function'){
     window._fsAlListo(function(){
       if(typeof dbMigrarLocalANubeSiHaceFalta === 'function') dbMigrarLocalANubeSiHaceFalta();
+      if(typeof navRefrescarSilencioso === 'function') navRefrescarSilencioso();
     });
   }
 }
