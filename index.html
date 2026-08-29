@@ -1282,6 +1282,92 @@ if((DB.get('v360_sede_version', 1)) < 2){
   DB.set('v360_sede_version', 2);
 }
 
+// Migración: Inventario general (catálogo, conteos, sesiones) e Inventario
+// de cocina tampoco tenían sede — todo lo que ya existía es de Montería
+// (incluida la carga base del corte a 31 de julio de 2026). Se etiqueta
+// una sola vez; Chinú arranca su propio catálogo desde cero.
+if((DB.get('inv_sede_version', 1)) < 2){
+  const invProdSinSede = DB.get('inv_productos', []);
+  let cambioProd = false;
+  invProdSinSede.forEach(function(p){ if(!p.sede){ p.sede = 'monteria'; cambioProd = true; } });
+  if(cambioProd) DB.set('inv_productos', invProdSinSede);
+
+  const invConteosSinSede = DB.get('inv_conteos', []);
+  let cambioConteos = false;
+  invConteosSinSede.forEach(function(c){ if(!c.sede){ c.sede = 'monteria'; cambioConteos = true; } });
+  if(cambioConteos) DB.set('inv_conteos', invConteosSinSede);
+
+  const invSesionesSinSede = DB.get('inv_sesiones', []);
+  let cambioSesiones = false;
+  invSesionesSinSede.forEach(function(s){ if(!s.sede){ s.sede = 'monteria'; cambioSesiones = true; } });
+  if(cambioSesiones) DB.set('inv_sesiones', invSesionesSinSede);
+
+  const invCocinaSinSede = DB.get('inv_cocina_items', []);
+  let cambioCocinaItems = false;
+  invCocinaSinSede.forEach(function(it){ if(!it.sede){ it.sede = 'monteria'; cambioCocinaItems = true; } });
+  if(cambioCocinaItems) DB.set('inv_cocina_items', invCocinaSinSede);
+
+  DB.set('inv_sede_version', 2);
+}
+
+// Migración: Compras (presupuesto + listas) tampoco tenía sede. El
+// presupuesto pasa de ser un solo número a un objeto por sede; lo que ya
+// existía se etiqueta como de Montería.
+if((DB.get('compras_sede_version', 1)) < 2){
+  const presupuestoViejo = DB.get('compras_presupuesto', {});
+  if(typeof presupuestoViejo === 'number'){
+    DB.set('compras_presupuesto', { monteria: presupuestoViejo });
+  }
+  const listasSinSede = DB.get('compras_listas', []);
+  let cambioListas = false;
+  listasSinSede.forEach(function(l){ if(!l.sede){ l.sede = 'monteria'; cambioListas = true; } });
+  if(cambioListas) DB.set('compras_listas', listasSinSede);
+  DB.set('compras_sede_version', 2);
+}
+
+// Migración: Previsión (umbral + notas) tampoco tenía sede. El umbral pasa
+// de ser un solo número a un objeto por sede; lo que ya existía se
+// etiqueta como de Montería.
+if((DB.get('prevision_sede_version', 1)) < 2){
+  const umbralViejo = DB.get('prevision_umbral', null);
+  if(typeof umbralViejo === 'number'){
+    DB.set('prevision_umbral', { monteria: umbralViejo });
+  }
+  const notasSinSede = DB.get('prevision_notas', []);
+  let cambioNotas = false;
+  notasSinSede.forEach(function(n){ if(!n.sede){ n.sede = 'monteria'; cambioNotas = true; } });
+  if(cambioNotas) DB.set('prevision_notas', notasSinSede);
+  DB.set('prevision_sede_version', 2);
+}
+
+// Migración: Pagos a proveedores — antes una sola hoja de Google Sheets
+// compartida, ahora una hoja distinta por sede. Lo que ya existía (items,
+// lotes, y la hoja de Google Sheets original) se etiqueta/asigna a
+// Montería; Chinú debe configurar su propio enlace desde el módulo.
+if((DB.get('pagos_sede_version', 1)) < 2){
+  const pagosItemsSinSede = DB.get('pagos_items', []);
+  let cambioItems = false;
+  pagosItemsSinSede.forEach(function(it){ if(!it.sede){ it.sede = 'monteria'; cambioItems = true; } });
+  if(cambioItems) DB.set('pagos_items', pagosItemsSinSede);
+
+  const pagosLotesSinSede = DB.get('pagos_lotes', []);
+  let cambioLotes = false;
+  pagosLotesSinSede.forEach(function(l){ if(!l.sede){ l.sede = 'monteria'; cambioLotes = true; } });
+  if(cambioLotes) DB.set('pagos_lotes', pagosLotesSinSede);
+
+  const syncViejo = DB.get('pagos_ultima_sync', null);
+  if(typeof syncViejo === 'string'){
+    DB.set('pagos_ultima_sync', { monteria: syncViejo });
+  }
+
+  const urlsExistentes = DB.get('pagos_sheet_url_por_sede', {});
+  if(!urlsExistentes.monteria){
+    urlsExistentes.monteria = PAGOS_SHEET_URL_MONTERIA_ORIGINAL;
+    DB.set('pagos_sheet_url_por_sede', urlsExistentes);
+  }
+  DB.set('pagos_sede_version', 2);
+}
+
 // Migración suave: a los usuarios que ya estaban guardados en el
 // localStorage de un dispositivo (de antes de que existiera el rol de
 // puesto) les completamos rolPuesto/itemsExtra por defecto, para que el
@@ -1316,8 +1402,7 @@ const NAV_ITEMS_DESACTIVADOS_SEED = [
   'operacion::administracion::cf_propina',
   'operacion::administracion::cf_prevision',
   'operacion::administracion::cf_pagos',
-  'operacion::servicio_cliente::sc_comprobantes',
-  'operacion::cocina::coc_ordenes'
+  'operacion::servicio_cliente::sc_comprobantes'
 ];
 if(!DB.get('nav_grupos_desactivados')){ DB.set('nav_grupos_desactivados', NAV_GRUPOS_DESACTIVADOS_SEED); }
 if(!DB.get('nav_items_desactivados')){ DB.set('nav_items_desactivados', NAV_ITEMS_DESACTIVADOS_SEED); }
@@ -1368,15 +1453,15 @@ function rolPuestoLabel(id){ const r = ROLES_PUESTO.find(x=>x.id===id); return r
 const ROLES_PERMISOS_SEED = {
   caja: ['chk_alistamiento','chk_cierre_caja','cf_caja','sc_comprobantes','ast_chat'],
   mesero: ['chk_briefing','chk_mise_servicio','chk_aseo_salon','chk_cierre_servicio','sc_comprobantes','ast_chat'],
-  cocina: ['chk_briefing_cocina','chk_mise_cocina_parrilla','chk_mise_cocina_fritos','chk_mise_cocina_armado','chk_mise_cocina_corrientes','chk_mise_cocina_pastas','chk_higiene','chk_prueba_prep','chk_cierre_cocina','coc_comida_personal','coc_ordenes','coc_bajas','coc_mejora','coc_inventario','coc_fotos_platos','ast_chat'],
+  cocina: ['chk_briefing_cocina','chk_mise_cocina_parrilla','chk_mise_cocina_fritos','chk_mise_cocina_armado','chk_mise_cocina_corrientes','chk_mise_cocina_pastas','chk_higiene','chk_prueba_prep','chk_cierre_cocina','coc_comida_personal','coc_bajas','coc_mejora','coc_fotos_platos','ast_chat'],
   steward: ['chk_alistamiento_steward','chk_cierre_steward','ast_chat'],
-  bar: ['chk_mise_bar','chk_aseo_bar','chk_cierre_bar','bar_inventario','ast_chat'],
+  bar: ['chk_mise_bar','chk_aseo_bar','chk_cierre_bar','ast_chat'],
   produccion: ['chk_aseo_cp','ast_chat'],
   lider_servicio_reservas: ['chk_briefing','chk_mise_servicio','chk_aseo_salon','chk_cierre_servicio','sc_comprobantes','sc_encuesta','ast_chat'],
-  lider_cocina: ['chk_briefing_cocina','chk_mise_cocina_parrilla','chk_mise_cocina_fritos','chk_mise_cocina_armado','chk_mise_cocina_corrientes','chk_mise_cocina_pastas','chk_higiene','chk_prueba_prep','chk_alistamiento_steward','chk_cierre_cocina','chk_cierre_steward','coc_comida_personal','coc_ordenes','coc_bajas','coc_mejora','coc_inventario','coc_fotos_platos','ast_chat'],
+  lider_cocina: ['chk_briefing_cocina','chk_mise_cocina_parrilla','chk_mise_cocina_fritos','chk_mise_cocina_armado','chk_mise_cocina_corrientes','chk_mise_cocina_pastas','chk_higiene','chk_prueba_prep','chk_alistamiento_steward','chk_cierre_cocina','chk_cierre_steward','coc_comida_personal','coc_bajas','coc_mejora','coc_fotos_platos','ast_chat'],
   aux_compras: ['cf_compras','cf_pagos','mant_proveedores','ast_chat'],
   inspector: ['chk_alistamiento','chk_cierre_caja','chk_briefing','chk_mise_servicio','chk_aseo_salon','chk_cierre_servicio','chk_briefing_cocina','chk_mise_cocina_parrilla','chk_mise_cocina_fritos','chk_mise_cocina_armado','chk_mise_cocina_corrientes','chk_mise_cocina_pastas','chk_higiene','chk_prueba_prep','chk_alistamiento_steward','chk_cierre_cocina','chk_cierre_steward','chk_mise_bar','chk_aseo_bar','chk_cierre_bar','chk_aseo_cp','chk_aseo_periferica','chk_aseo_banos_internos','chk_aseo_banos_publicos','chk_aseo_traperos','coc_inspeccion','sc_inspeccion','bar_inspeccion','cf_inspeccion_caja','ast_chat'],
-  gerente_operativa: ['chk_alistamiento','chk_cierre_caja','chk_briefing','chk_mise_servicio','chk_aseo_salon','chk_cierre_servicio','chk_briefing_cocina','chk_mise_cocina_parrilla','chk_mise_cocina_fritos','chk_mise_cocina_armado','chk_mise_cocina_corrientes','chk_mise_cocina_pastas','chk_higiene','chk_prueba_prep','chk_alistamiento_steward','chk_cierre_cocina','chk_cierre_steward','chk_mise_bar','chk_aseo_bar','chk_cierre_bar','chk_aseo_cp','chk_aseo_periferica','chk_aseo_banos_internos','chk_aseo_banos_publicos','chk_aseo_traperos','cf_caja','cf_inventarios','cf_inspeccion_caja','cf_planificacion_tareas','sc_comprobantes','sc_encuesta','sc_inspeccion','coc_comida_personal','coc_ordenes','coc_bajas','coc_mejora','coc_inventario','coc_fotos_platos','coc_inspeccion','bar_inventario','bar_inspeccion','mant_equipos','mant_preventivo','mant_solicitudes','mant_proveedores','ger_reporte_general360','ast_chat'],
+  gerente_operativa: ['chk_alistamiento','chk_cierre_caja','chk_briefing','chk_mise_servicio','chk_aseo_salon','chk_cierre_servicio','chk_briefing_cocina','chk_mise_cocina_parrilla','chk_mise_cocina_fritos','chk_mise_cocina_armado','chk_mise_cocina_corrientes','chk_mise_cocina_pastas','chk_higiene','chk_prueba_prep','chk_alistamiento_steward','chk_cierre_cocina','chk_cierre_steward','chk_mise_bar','chk_aseo_bar','chk_cierre_bar','chk_aseo_cp','chk_aseo_periferica','chk_aseo_banos_internos','chk_aseo_banos_publicos','chk_aseo_traperos','cf_caja','cf_inventarios','cf_inspeccion_caja','cf_planificacion_tareas','sc_comprobantes','sc_encuesta','sc_inspeccion','coc_comida_personal','coc_bajas','coc_mejora','coc_fotos_platos','coc_inspeccion','bar_inspeccion','mant_equipos','mant_preventivo','mant_solicitudes','mant_proveedores','ger_reporte_general360','ast_chat'],
   gerente_financiera: ['chk_alistamiento','chk_cierre_caja','cf_caja','cf_inventarios','cf_compras','cf_propina','cf_horarios','cf_prevision','cf_pagos','cf_planificacion_tareas','ger_reporte_general360','ast_chat'],
   otros: []
 };
@@ -1402,33 +1487,33 @@ const INV_DEPARTAMENTOS = [
 ];
 
 const INV_PRODUCTOS_SEED = [
-  {"id":"p1","departamento":"bar","departamentoLabel":"Bar (licores, vinos, mezcladores, postres)","categoria":"Licores","producto":"TEQUILA JOSE CUERVO REPOSADO","unidad":"750 ML","costoUnitario":110.9547},
+  {"id":"p1","departamento":"bar","departamentoLabel":"Bar (licores, vinos, mezcladores, postres)","categoria":"Licores","producto":"TEQUILA JOSE CUERVO REPOSADO","unidad":"750 ML","costoUnitario":111},
   {"id":"p2","departamento":"bar","departamentoLabel":"Bar (licores, vinos, mezcladores, postres)","categoria":"Licores","producto":"TEQUILA 1800","unidad":"750 ML","costoUnitario":240},
   {"id":"p3","departamento":"bar","departamentoLabel":"Bar (licores, vinos, mezcladores, postres)","categoria":"Licores","producto":"TEQUILA CENTENARIO","unidad":"750 ML","costoUnitario":154},
-  {"id":"p4","departamento":"bar","departamentoLabel":"Bar (licores, vinos, mezcladores, postres)","categoria":"Licores","producto":"TEQUILA REPOSADO TRADICIONAL","unidad":"750 ML","costoUnitario":110.9547},
-  {"id":"p5","departamento":"bar","departamentoLabel":"Bar (licores, vinos, mezcladores, postres)","categoria":"Licores","producto":"RON VIEJO DE CALDAS BLANCO","unidad":"750 ML","costoUnitario":53.348},
-  {"id":"p6","departamento":"bar","departamentoLabel":"Bar (licores, vinos, mezcladores, postres)","categoria":"Licores","producto":"RON MEDELLIN 8 AÑOS","unidad":"375 ML","costoUnitario":102.5627},
-  {"id":"p7","departamento":"bar","departamentoLabel":"Bar (licores, vinos, mezcladores, postres)","categoria":"Licores","producto":"RON MEDELLIN 3 AÑOS","unidad":"375 ML","costoUnitario":65.0293},
-  {"id":"p8","departamento":"bar","departamentoLabel":"Bar (licores, vinos, mezcladores, postres)","categoria":"Licores","producto":"MARTINI BIANCO","unidad":"750 ML","costoUnitario":86.6667},
-  {"id":"p9","departamento":"bar","departamentoLabel":"Bar (licores, vinos, mezcladores, postres)","categoria":"Licores","producto":"VODKA ABSOLUT","unidad":"750 ML","costoUnitario":126.6667},
+  {"id":"p4","departamento":"bar","departamentoLabel":"Bar (licores, vinos, mezcladores, postres)","categoria":"Licores","producto":"TEQUILA REPOSADO TRADICIONAL","unidad":"750 ML","costoUnitario":111},
+  {"id":"p5","departamento":"bar","departamentoLabel":"Bar (licores, vinos, mezcladores, postres)","categoria":"Licores","producto":"RON VIEJO DE CALDAS BLANCO","unidad":"750 ML","costoUnitario":53},
+  {"id":"p6","departamento":"bar","departamentoLabel":"Bar (licores, vinos, mezcladores, postres)","categoria":"Licores","producto":"RON MEDELLIN 8 AÑOS","unidad":"375 ML","costoUnitario":103},
+  {"id":"p7","departamento":"bar","departamentoLabel":"Bar (licores, vinos, mezcladores, postres)","categoria":"Licores","producto":"RON MEDELLIN 3 AÑOS","unidad":"375 ML","costoUnitario":65},
+  {"id":"p8","departamento":"bar","departamentoLabel":"Bar (licores, vinos, mezcladores, postres)","categoria":"Licores","producto":"MARTINI BIANCO","unidad":"750 ML","costoUnitario":87},
+  {"id":"p9","departamento":"bar","departamentoLabel":"Bar (licores, vinos, mezcladores, postres)","categoria":"Licores","producto":"VODKA ABSOLUT","unidad":"750 ML","costoUnitario":127},
   {"id":"p10","departamento":"bar","departamentoLabel":"Bar (licores, vinos, mezcladores, postres)","categoria":"Licores","producto":"GINEBRA / GORDONS","unidad":"750 ML","costoUnitario":100},
-  {"id":"p11","departamento":"bar","departamentoLabel":"Bar (licores, vinos, mezcladores, postres)","categoria":"Licores","producto":"AGUARDIENTE AMARILLO","unidad":"375 ML","costoUnitario":61.2},
-  {"id":"p12","departamento":"bar","departamentoLabel":"Bar (licores, vinos, mezcladores, postres)","categoria":"Licores","producto":"BUCHANNAS MASTER","unidad":"750 ML","costoUnitario":265.0667},
-  {"id":"p13","departamento":"bar","departamentoLabel":"Bar (licores, vinos, mezcladores, postres)","categoria":"Licores","producto":"BUCHANANS DELUXE (12 AÑOS)","unidad":"750 ML","costoUnitario":186.5333},
-  {"id":"p14","departamento":"bar","departamentoLabel":"Bar (licores, vinos, mezcladores, postres)","categoria":"Licores","producto":"BUCHANANS 18 AÑOS","unidad":"750 ML","costoUnitario":265.068},
-  {"id":"p15","departamento":"bar","departamentoLabel":"Bar (licores, vinos, mezcladores, postres)","categoria":"Licores","producto":"OLD PARR","unidad":"750 ML","costoUnitario":169.8667},
-  {"id":"p16","departamento":"bar","departamentoLabel":"Bar (licores, vinos, mezcladores, postres)","categoria":"Licores","producto":"DON JULIO","unidad":"750 ML","costoUnitario":451.9387},
-  {"id":"p17","departamento":"bar","departamentoLabel":"Bar (licores, vinos, mezcladores, postres)","categoria":"Licores","producto":"JHONNI WALKER","unidad":"750 ML","costoUnitario":208.6667},
-  {"id":"p18","departamento":"bar","departamentoLabel":"Bar (licores, vinos, mezcladores, postres)","categoria":"Licores","producto":"TRIPLE C","unidad":"750 ML","costoUnitario":69.6613},
-  {"id":"p19","departamento":"bar","departamentoLabel":"Bar (licores, vinos, mezcladores, postres)","categoria":"Licores","producto":"BAILYS CREMA","unidad":"700 ML","costoUnitario":116.3},
-  {"id":"p20","departamento":"bar","departamentoLabel":"Bar (licores, vinos, mezcladores, postres)","categoria":"Licores","producto":"CONVIER COCO","unidad":"750 ML","costoUnitario":87.8653},
+  {"id":"p11","departamento":"bar","departamentoLabel":"Bar (licores, vinos, mezcladores, postres)","categoria":"Licores","producto":"AGUARDIENTE AMARILLO","unidad":"375 ML","costoUnitario":61},
+  {"id":"p12","departamento":"bar","departamentoLabel":"Bar (licores, vinos, mezcladores, postres)","categoria":"Licores","producto":"BUCHANNAS MASTER","unidad":"750 ML","costoUnitario":265},
+  {"id":"p13","departamento":"bar","departamentoLabel":"Bar (licores, vinos, mezcladores, postres)","categoria":"Licores","producto":"BUCHANANS DELUXE (12 AÑOS)","unidad":"750 ML","costoUnitario":187},
+  {"id":"p14","departamento":"bar","departamentoLabel":"Bar (licores, vinos, mezcladores, postres)","categoria":"Licores","producto":"BUCHANANS 18 AÑOS","unidad":"750 ML","costoUnitario":265},
+  {"id":"p15","departamento":"bar","departamentoLabel":"Bar (licores, vinos, mezcladores, postres)","categoria":"Licores","producto":"OLD PARR","unidad":"750 ML","costoUnitario":170},
+  {"id":"p16","departamento":"bar","departamentoLabel":"Bar (licores, vinos, mezcladores, postres)","categoria":"Licores","producto":"DON JULIO","unidad":"750 ML","costoUnitario":452},
+  {"id":"p17","departamento":"bar","departamentoLabel":"Bar (licores, vinos, mezcladores, postres)","categoria":"Licores","producto":"JHONNI WALKER","unidad":"750 ML","costoUnitario":209},
+  {"id":"p18","departamento":"bar","departamentoLabel":"Bar (licores, vinos, mezcladores, postres)","categoria":"Licores","producto":"TRIPLE C","unidad":"750 ML","costoUnitario":70},
+  {"id":"p19","departamento":"bar","departamentoLabel":"Bar (licores, vinos, mezcladores, postres)","categoria":"Licores","producto":"BAILYS CREMA","unidad":"700 ML","costoUnitario":116},
+  {"id":"p20","departamento":"bar","departamentoLabel":"Bar (licores, vinos, mezcladores, postres)","categoria":"Licores","producto":"CONVIER COCO","unidad":"750 ML","costoUnitario":88},
   {"id":"p21","departamento":"bar","departamentoLabel":"Bar (licores, vinos, mezcladores, postres)","categoria":"Vinos","producto":"VINO POR COPA","unidad":"750 ML","costoUnitario":40},
-  {"id":"p22","departamento":"bar","departamentoLabel":"Bar (licores, vinos, mezcladores, postres)","categoria":"Vinos","producto":"VINO BLANCO","unidad":"750 ML","costoUnitario":24.6667},
-  {"id":"p23","departamento":"bar","departamentoLabel":"Bar (licores, vinos, mezcladores, postres)","categoria":"Vinos","producto":"VINO TINTO","unidad":"750 ML","costoUnitario":47.5467},
-  {"id":"p24","departamento":"bar","departamentoLabel":"Bar (licores, vinos, mezcladores, postres)","categoria":"Vinos","producto":"VINO ROSE","unidad":"750 ML","costoUnitario":62.6533},
+  {"id":"p22","departamento":"bar","departamentoLabel":"Bar (licores, vinos, mezcladores, postres)","categoria":"Vinos","producto":"VINO BLANCO","unidad":"750 ML","costoUnitario":25},
+  {"id":"p23","departamento":"bar","departamentoLabel":"Bar (licores, vinos, mezcladores, postres)","categoria":"Vinos","producto":"VINO TINTO","unidad":"750 ML","costoUnitario":48},
+  {"id":"p24","departamento":"bar","departamentoLabel":"Bar (licores, vinos, mezcladores, postres)","categoria":"Vinos","producto":"VINO ROSE","unidad":"750 ML","costoUnitario":63},
   {"id":"p25","departamento":"bar","departamentoLabel":"Bar (licores, vinos, mezcladores, postres)","categoria":"Vinos","producto":"VINO MARIA BARILLA","unidad":"750 ML","costoUnitario":20},
-  {"id":"p26","departamento":"bar","departamentoLabel":"Bar (licores, vinos, mezcladores, postres)","categoria":"Mezcladores","producto":"ZUMO DE LIMON 250 ML","unidad":"250 ML","costoUnitario":13.4},
-  {"id":"p27","departamento":"bar","departamentoLabel":"Bar (licores, vinos, mezcladores, postres)","categoria":"OTROS","producto":"CEREZA MAROCHINO LATA","unidad":"KG","costoUnitario":27.7045},
+  {"id":"p26","departamento":"bar","departamentoLabel":"Bar (licores, vinos, mezcladores, postres)","categoria":"Mezcladores","producto":"ZUMO DE LIMON 250 ML","unidad":"250 ML","costoUnitario":13},
+  {"id":"p27","departamento":"bar","departamentoLabel":"Bar (licores, vinos, mezcladores, postres)","categoria":"OTROS","producto":"CEREZA MAROCHINO LATA","unidad":"KG","costoUnitario":28},
   {"id":"p28","departamento":"bar","departamentoLabel":"Bar (licores, vinos, mezcladores, postres)","categoria":"OTROS","producto":"AZUCAR","unidad":"GR","costoUnitario":3},
   {"id":"p29","departamento":"bar","departamentoLabel":"Bar (licores, vinos, mezcladores, postres)","categoria":"OTROS","producto":"COCO PULPA","unidad":"180 GR","costoUnitario":1500},
   {"id":"p30","departamento":"centro_produccion","departamentoLabel":"Centro de producción (carnes)","categoria":"Carnes centro de producción","producto":"Cerdo especial","unidad":"Unidades","costoUnitario":4408},
@@ -1656,16 +1741,16 @@ const INV_PRODUCTOS_SEED = [
   {"id":"p252","departamento":"bodega_general","departamentoLabel":"Bodega general (materias primas e insumos)","categoria":"Lácteos y Huevos","producto":"Leche De Coco X 400Ml","unidad":"Unidad","costoUnitario":8912},
   {"id":"p253","departamento":"bodega_general","departamentoLabel":"Bodega general (materias primas e insumos)","categoria":"Pescados y Mariscos","producto":"Atun en Lata","unidad":"Unidad","costoUnitario":4450},
   {"id":"p254","departamento":"bodega_general","departamentoLabel":"Bodega general (materias primas e insumos)","categoria":"Pescados y Mariscos","producto":"Sardinas en Lata","unidad":"Unidad","costoUnitario":6990},
-  {"id":"p255","departamento":"neveras_gaseosas","departamentoLabel":"Bebidas de meseros (gaseosa, agua, cerveza)","categoria":"Gaseosa","producto":"Coca-Cola","unidad":"Unidad","costoUnitario":2100.8333},
-  {"id":"p256","departamento":"neveras_gaseosas","departamentoLabel":"Bebidas de meseros (gaseosa, agua, cerveza)","categoria":"Gaseosa","producto":"Coca-Cola zero","unidad":"Unidad","costoUnitario":2100.8333},
-  {"id":"p257","departamento":"neveras_gaseosas","departamentoLabel":"Bebidas de meseros (gaseosa, agua, cerveza)","categoria":"Agua","producto":"Agua","unidad":"Unidad","costoUnitario":1333.3333},
+  {"id":"p255","departamento":"neveras_gaseosas","departamentoLabel":"Bebidas de meseros (gaseosa, agua, cerveza)","categoria":"Gaseosa","producto":"Coca-Cola","unidad":"Unidad","costoUnitario":2101},
+  {"id":"p256","departamento":"neveras_gaseosas","departamentoLabel":"Bebidas de meseros (gaseosa, agua, cerveza)","categoria":"Gaseosa","producto":"Coca-Cola zero","unidad":"Unidad","costoUnitario":2101},
+  {"id":"p257","departamento":"neveras_gaseosas","departamentoLabel":"Bebidas de meseros (gaseosa, agua, cerveza)","categoria":"Agua","producto":"Agua","unidad":"Unidad","costoUnitario":1333},
   {"id":"p258","departamento":"neveras_gaseosas","departamentoLabel":"Bebidas de meseros (gaseosa, agua, cerveza)","categoria":"Agua","producto":"Soda","unidad":"Unidad","costoUnitario":2500},
   {"id":"p259","departamento":"neveras_gaseosas","departamentoLabel":"Bebidas de meseros (gaseosa, agua, cerveza)","categoria":"Cerveza","producto":"Costeñita","unidad":"Unidad","costoUnitario":2500},
-  {"id":"p260","departamento":"neveras_gaseosas","departamentoLabel":"Bebidas de meseros (gaseosa, agua, cerveza)","categoria":"Cerveza","producto":"Club","unidad":"Unidad","costoUnitario":2436.9667},
+  {"id":"p260","departamento":"neveras_gaseosas","departamentoLabel":"Bebidas de meseros (gaseosa, agua, cerveza)","categoria":"Cerveza","producto":"Club","unidad":"Unidad","costoUnitario":2437},
   {"id":"p261","departamento":"neveras_gaseosas","departamentoLabel":"Bebidas de meseros (gaseosa, agua, cerveza)","categoria":"Cerveza","producto":"Heineken","unidad":"Unidad","costoUnitario":2700},
   {"id":"p262","departamento":"neveras_gaseosas","departamentoLabel":"Bebidas de meseros (gaseosa, agua, cerveza)","categoria":"Cerveza","producto":"Coronita","unidad":"Unidad","costoUnitario":2486},
-  {"id":"p263","departamento":"neveras_gaseosas","departamentoLabel":"Bebidas de meseros (gaseosa, agua, cerveza)","categoria":"Cerveza","producto":"Stella Artois","unidad":"Unidad","costoUnitario":3022.8821},
-  {"id":"p264","departamento":"neveras_gaseosas","departamentoLabel":"Bebidas de meseros (gaseosa, agua, cerveza)","categoria":"Gaseosa","producto":"Ginger","unidad":"Unidad","costoUnitario":5997.5},
+  {"id":"p263","departamento":"neveras_gaseosas","departamentoLabel":"Bebidas de meseros (gaseosa, agua, cerveza)","categoria":"Cerveza","producto":"Stella Artois","unidad":"Unidad","costoUnitario":3023},
+  {"id":"p264","departamento":"neveras_gaseosas","departamentoLabel":"Bebidas de meseros (gaseosa, agua, cerveza)","categoria":"Gaseosa","producto":"Ginger","unidad":"Unidad","costoUnitario":5998},
 ];
 
 const PROV_MATCHES = {};
@@ -1685,7 +1770,7 @@ if((DB.get('inv_catalogo_version', 1)) < 2){
   }));
   DB.set('inv_catalogo_version', 2);
 }
-if(!DB.get('compras_presupuesto')){ DB.set('compras_presupuesto', 0); }
+if(!DB.get('compras_presupuesto')){ DB.set('compras_presupuesto', {}); }
 if(!DB.get('compras_listas')){ DB.set('compras_listas', []); }
 if(!DB.get('pagos_lotes')){ DB.set('pagos_lotes', []); }
 if(!DB.get('pagos_items')){ DB.set('pagos_items', []); }
@@ -1720,7 +1805,7 @@ if(!DB.get('proveedores')){
 if(!DB.get('inv_conteos')){ DB.set('inv_conteos', []); }
 if(!DB.get('inv_sesiones')){ DB.set('inv_sesiones', []); }
 if(!DB.get('inv_baseline_jul2026_cargado')){
-  var invBaseSesion = { id:'ses_seed_20260731', fecha:'2026-07-31', hora:'00:00', usuario:'sistema', nombre:'Importado \u2014 corte 31 de julio 2026', creadoEn:'2026-07-31T00:00:00.000Z' };
+  var invBaseSesion = { id:'ses_seed_20260731', fecha:'2026-07-31', hora:'00:00', usuario:'sistema', nombre:'Importado \u2014 corte 31 de julio 2026', creadoEn:'2026-07-31T00:00:00.000Z', cerrada:true, fechaCierre:'2026-07-31', horaCierre:'00:00', cerradoPor:'Importado \u2014 corte 31 de julio 2026' };
   var invBaseSesiones = DB.get('inv_sesiones', []); invBaseSesiones.push(invBaseSesion); DB.set('inv_sesiones', invBaseSesiones);
   var invBaseConteos = DB.get('inv_conteos', []);
   invBaseConteos.push({ departamento:'bar', departamentoLabel:'Bar (licores, vinos, mezcladores, postres)', sesionId:invBaseSesion.id, usuario:'sistema', nombre:'Importado \u2014 corte 31 de julio 2026', fecha:'2026-07-31', hora:'00:00', items:[{productoId:'p1',producto:'TEQUILA JOSE CUERVO REPOSADO',categoria:'Licores',unidad:'750 ML',cantidad:690,costoUnitario:110.9547,valor:76558.74},{productoId:'p2',producto:'TEQUILA 1800',categoria:'Licores',unidad:'750 ML',cantidad:840,costoUnitario:240,valor:201600},{productoId:'p3',producto:'TEQUILA CENTENARIO',categoria:'Licores',unidad:'750 ML',cantidad:0,costoUnitario:154,valor:0},{productoId:'p4',producto:'TEQUILA REPOSADO TRADICIONAL',categoria:'Licores',unidad:'750 ML',cantidad:0,costoUnitario:110.9547,valor:0},{productoId:'p5',producto:'RON VIEJO DE CALDAS BLANCO',categoria:'Licores',unidad:'750 ML',cantidad:720,costoUnitario:53.348,valor:38410.56},{productoId:'p6',producto:'RON MEDELLIN 8 AÑOS',categoria:'Licores',unidad:'375 ML',cantidad:0,costoUnitario:102.5627,valor:0},{productoId:'p7',producto:'RON MEDELLIN 3 AÑOS',categoria:'Licores',unidad:'375 ML',cantidad:905,costoUnitario:65.0293,valor:58851.52},{productoId:'p8',producto:'MARTINI BIANCO',categoria:'Licores',unidad:'750 ML',cantidad:2270,costoUnitario:86.6667,valor:196733.41},{productoId:'p9',producto:'VODKA ABSOLUT',categoria:'Licores',unidad:'750 ML',cantidad:940,costoUnitario:126.6667,valor:119066.7},{productoId:'p10',producto:'GINEBRA / GORDONS',categoria:'Licores',unidad:'750 ML',cantidad:755,costoUnitario:100,valor:75500},{productoId:'p11',producto:'AGUARDIENTE AMARILLO',categoria:'Licores',unidad:'375 ML',cantidad:1730,costoUnitario:61.2,valor:105876},{productoId:'p12',producto:'BUCHANNAS MASTER',categoria:'Licores',unidad:'750 ML',cantidad:1225,costoUnitario:265.0667,valor:324706.71},{productoId:'p13',producto:'BUCHANANS DELUXE (12 AÑOS)',categoria:'Licores',unidad:'750 ML',cantidad:650,costoUnitario:186.5333,valor:121246.65},{productoId:'p14',producto:'BUCHANANS 18 AÑOS',categoria:'Licores',unidad:'750 ML',cantidad:795,costoUnitario:265.068,valor:210729.06},{productoId:'p15',producto:'OLD PARR',categoria:'Licores',unidad:'750 ML',cantidad:1330,costoUnitario:169.8667,valor:225922.71},{productoId:'p16',producto:'DON JULIO',categoria:'Licores',unidad:'750 ML',cantidad:1290,costoUnitario:451.9387,valor:583000.92},{productoId:'p17',producto:'JHONNI WALKER',categoria:'Licores',unidad:'750 ML',cantidad:2165,costoUnitario:208.6667,valor:451763.41},{productoId:'p18',producto:'TRIPLE C',categoria:'Licores',unidad:'750 ML',cantidad:780,costoUnitario:69.6613,valor:54335.81},{productoId:'p19',producto:'BAILYS CREMA',categoria:'Licores',unidad:'700 ML',cantidad:920,costoUnitario:116.3,valor:106996},{productoId:'p20',producto:'CONVIER COCO',categoria:'Licores',unidad:'750 ML',cantidad:965,costoUnitario:87.8653,valor:84790.01},{productoId:'p21',producto:'VINO POR COPA',categoria:'Vinos',unidad:'750 ML',cantidad:960,costoUnitario:40,valor:38400},{productoId:'p22',producto:'VINO BLANCO',categoria:'Vinos',unidad:'750 ML',cantidad:990,costoUnitario:24.6667,valor:24420.03},{productoId:'p23',producto:'VINO TINTO',categoria:'Vinos',unidad:'750 ML',cantidad:3255,costoUnitario:47.5467,valor:154764.51},{productoId:'p24',producto:'VINO ROSE',categoria:'Vinos',unidad:'750 ML',cantidad:860,costoUnitario:62.6533,valor:53881.84},{productoId:'p25',producto:'VINO MARIA BARILLA',categoria:'Vinos',unidad:'750 ML',cantidad:14540,costoUnitario:20,valor:290800},{productoId:'p26',producto:'ZUMO DE LIMON 250 ML',categoria:'Mezcladores',unidad:'250 ML',cantidad:5590,costoUnitario:13.4,valor:74906},{productoId:'p27',producto:'CEREZA MAROCHINO LATA',categoria:'OTROS',unidad:'KG',cantidad:3790,costoUnitario:27.7045,valor:105000.05},{productoId:'p28',producto:'AZUCAR',categoria:'OTROS',unidad:'GR',cantidad:14580,costoUnitario:3,valor:43740},{productoId:'p29',producto:'COCO PULPA',categoria:'OTROS',unidad:'180 GR',cantidad:76,costoUnitario:1500,valor:114000}], valorTotal:3936000.64, observaciones:'Conteo importado del inventario de corte a 31 de julio de 2026 (archivo definitivo). No incluye menaje.' });
@@ -1733,6 +1818,55 @@ if(!DB.get('inv_baseline_jul2026_cargado')){
   invBaseConteos.push({ departamento:'neveras_gaseosas', departamentoLabel:'Bebidas de meseros (gaseosa, agua, cerveza)', sesionId:invBaseSesion.id, usuario:'sistema', nombre:'Importado \u2014 corte 31 de julio 2026', fecha:'2026-07-31', hora:'00:00', items:[{productoId:'p255',producto:'Coca-Cola',categoria:'Gaseosa',unidad:'Unidad',cantidad:130,costoUnitario:2100.8333,valor:273108.33},{productoId:'p256',producto:'Coca-Cola zero',categoria:'Gaseosa',unidad:'Unidad',cantidad:80,costoUnitario:2100.8333,valor:168066.66},{productoId:'p257',producto:'Agua',categoria:'Agua',unidad:'Unidad',cantidad:195,costoUnitario:1333.3333,valor:259999.99},{productoId:'p258',producto:'Soda',categoria:'Agua',unidad:'Unidad',cantidad:33,costoUnitario:2500,valor:82500},{productoId:'p259',producto:'Costeñita',categoria:'Cerveza',unidad:'Unidad',cantidad:30,costoUnitario:2500,valor:75000},{productoId:'p260',producto:'Club',categoria:'Cerveza',unidad:'Unidad',cantidad:32,costoUnitario:2436.9667,valor:77982.93},{productoId:'p261',producto:'Heineken',categoria:'Cerveza',unidad:'Unidad',cantidad:55,costoUnitario:2700,valor:148500},{productoId:'p262',producto:'Coronita',categoria:'Cerveza',unidad:'Unidad',cantidad:137,costoUnitario:2486,valor:340582},{productoId:'p263',producto:'Stella Artois',categoria:'Cerveza',unidad:'Unidad',cantidad:41,costoUnitario:3022.8821,valor:123938.17},{productoId:'p264',producto:'Ginger',categoria:'Gaseosa',unidad:'Unidad',cantidad:15,costoUnitario:5997.5,valor:89962.5}], valorTotal:1639640.58, observaciones:'Conteo importado del inventario de corte a 31 de julio de 2026 (archivo definitivo). No incluye menaje.' });
   DB.set('inv_conteos', invBaseConteos);
   DB.set('inv_baseline_jul2026_cargado', true);
+}
+
+// v2 del módulo de inventarios: valores en pesos enteros (sin decimales),
+// la sesión importada del 31 de julio queda marcada como "cerrada" (para
+// que aparezca en el historial de inventarios cerrados aunque ya existiera
+// en la base de datos de antes de este cambio), y se agrega "Papas a la
+// francesa" al catálogo de Centro de producción y Verduras y frutas.
+if((DB.get('inv_v2_version', 1)) < 2){
+  const invProdsRedondeo = DB.get('inv_productos', []);
+  invProdsRedondeo.forEach(function(p){ p.costoUnitario = Math.round(Number(p.costoUnitario)||0); });
+  DB.set('inv_productos', invProdsRedondeo);
+
+  const invConteosRedondeo = DB.get('inv_conteos', []);
+  invConteosRedondeo.forEach(function(c){
+    (c.items||[]).forEach(function(it){
+      it.costoUnitario = Math.round(Number(it.costoUnitario)||0);
+      it.valor = Math.round(Number(it.cantidad||0) * it.costoUnitario);
+    });
+    c.valorTotal = Math.round((c.items||[]).reduce(function(a,it){ return a + (Number(it.valor)||0); }, 0));
+  });
+  DB.set('inv_conteos', invConteosRedondeo);
+
+  const invSesionesCierre = DB.get('inv_sesiones', []);
+  let invSesionesCambio = false;
+  invSesionesCierre.forEach(function(s){
+    if(s.id === 'ses_seed_20260731' && !s.cerrada){
+      s.cerrada = true; s.fechaCierre = '2026-07-31'; s.horaCierre = '00:00'; s.cerradoPor = 'Importado — corte 31 de julio 2026';
+      invSesionesCambio = true;
+    }
+  });
+  if(invSesionesCambio) DB.set('inv_sesiones', invSesionesCierre);
+
+  const invProdsPapas = DB.get('inv_productos', []);
+  function invPapasExiste(dep, nombre){
+    return invProdsPapas.some(function(p){ return p.departamento===dep && (p.producto||'').toLowerCase()===nombre.toLowerCase(); });
+  }
+  const invPapasNuevas = [
+    { dep:'centro_produccion', label:'Centro de producción (carnes)', nombre:'Papas a la francesa (bolsa)', unidad:'Bolsa' },
+    { dep:'centro_produccion', label:'Centro de producción (carnes)', nombre:'Papas a la francesa (porciones)', unidad:'Porción' },
+    { dep:'verduras_frutas', label:'Verduras y frutas', nombre:'Papas a la francesa (porciones)', unidad:'Porción' }
+  ];
+  invPapasNuevas.forEach(function(n){
+    if(!invPapasExiste(n.dep, n.nombre)){
+      invProdsPapas.push({ id:'p_papas_'+Date.now()+'_'+Math.random().toString(36).slice(2,7), departamento:n.dep, departamentoLabel:n.label, categoria:'Papas', producto:n.nombre, unidad:n.unidad, costoUnitario:0, sede:'monteria' });
+    }
+  });
+  DB.set('inv_productos', invProdsPapas);
+
+  DB.set('inv_v2_version', 2);
 }
 
 /* ==================================================================
@@ -1888,19 +2022,13 @@ const NAV = [
       ]},
       { id:'servicio_cliente', label:'Servicio al cliente', icon:'user', matchArea:'servicio_cliente', items:[
         { id:'sc_comprobantes', label:'Comprobantes de transferencias', icon:'camera', roles:['empleado','administracion','gerencia'], customRender:'renderComprobantesStandalone' },
-        { id:'sc_comandas', label:'Comandas por persona (imprimir)', icon:'printer', roles:['empleado','administracion','gerencia'], customRender:'renderComandasModule' },
         { id:'sc_encuesta', label:'Encuesta de satisfacción', icon:'star', roles:['administracion','gerencia'], customRender:'renderEncuestaModule' }
       ]},
       { id:'cocina', label:'Cocina', icon:'chef', matchArea:'cocina', items:[
         { id:'coc_comida_personal', label:'Comida del personal', icon:'chef', roles:['empleado','administracion','gerencia'], customRender:'renderComidaPersonalModule' },
-        { id:'coc_ordenes', label:'Órdenes de producción', icon:'checklist', roles:['empleado','administracion','gerencia'] },
         { id:'coc_bajas', label:'Reporte de bajas', icon:'down', roles:['empleado','administracion','gerencia'], customRender:'renderBajasModule' },
-        { id:'coc_mejora', label:'Prueba, desarrollo y mejora constante', icon:'target', roles:['empleado','administracion','gerencia'] },
-        { id:'coc_inventario', label:'Inventario de cocina', icon:'box', roles:['empleado','administracion','gerencia'], customRender:'renderInventarioCocinaModule' },
+        { id:'coc_mejora', label:'Prueba, desarrollo y mejora constante', icon:'target', roles:['empleado','administracion','gerencia'], customRender:'renderMejoraContinuaModule' },
         { id:'coc_fotos_platos', label:'Fotos de platos', icon:'camera', roles:['empleado','administracion','gerencia'], customRender:'renderFotosPlatosModule' }
-      ]},
-      { id:'bar', label:'Bar', icon:'glass', matchArea:'bar', items:[
-        { id:'bar_inventario', label:'Inventario de bar', icon:'box', roles:['empleado','administracion','gerencia'] }
       ]},
       { id:'inspeccion', label:'Inspección', icon:'search', matchArea:'inspecciones', items:[
         { id:'coc_inspeccion', label:'Inspección de cocina', icon:'search', roles:['empleado','administracion','gerencia'], areaObjetivo:'cocina', customRender:'renderInspeccionAreaModule' },
@@ -2362,7 +2490,6 @@ function homeAtencionAccion(i){
 }
 function homeAccesosRapidosHtml(){
   const candidatos = [
-    { itemId:'sc_comandas', icon:'printer' },
     { itemId:'coc_fotos_platos', icon:'camera' },
     { itemId:'cf_caja', icon:'cash' },
     { itemId:'mant_solicitudes', icon:'wrench' },
@@ -2672,15 +2799,11 @@ const TIPS_ITEM = {
   cf_pagos: { emoji:'💳', titulo:'Pagos a proveedores', texto:'Lleva el control de los pagos pendientes y realizados a proveedores.' },
   cf_planificacion_tareas: { emoji:'✅', titulo:'Planificación y asignación de tareas', texto:'Asigna tareas al equipo y da seguimiento a su cumplimiento.' },
   sc_comprobantes: { emoji:'📸', titulo:'Comprobantes de transferencias', texto:'Sube los comprobantes de transferencia que te envíen los clientes.' },
-  sc_comandas: { emoji:'🖨️', titulo:'Comandas por persona', texto:'Imprime la comanda de cada persona en la mesa, para que cocina sepa exactamente qué preparar.' },
   sc_encuesta: { emoji:'⭐', titulo:'Encuesta de satisfacción', texto:'Revisa cómo está calificando la gente al restaurante y detecta reseñas negativas a tiempo.' },
   coc_comida_personal: { emoji:'🍛', titulo:'Comida del personal', texto:'Registra qué comió cada persona del equipo durante el turno.' },
-  coc_ordenes: { emoji:'📋', titulo:'Órdenes de producción', texto:'Este módulo todavía está en desarrollo — por ahora no tiene funcionalidad activa.' },
   coc_bajas: { emoji:'🗑️', titulo:'Reporte de bajas', texto:'Reporta producto que se dañó, venció o se botó, para llevar control de mermas.' },
-  coc_mejora: { emoji:'🎯', titulo:'Prueba, desarrollo y mejora constante', texto:'Este módulo todavía está en desarrollo — por ahora no tiene funcionalidad activa.' },
-  coc_inventario: { emoji:'📦', titulo:'Inventario de cocina', texto:'Lleva el conteo del inventario específico de cocina.' },
+  coc_mejora: { emoji:'🎯', titulo:'Prueba, desarrollo y mejora constante', texto:'Registra quejas o ideas propias como tareas de mejora, con meta, fecha límite y resultado — así queda constancia de qué ha funcionado.' },
   coc_fotos_platos: { emoji:'📸', titulo:'Fotos de platos', texto:'Sube fotos de los platos que van saliendo, para control de calidad y presentación.' },
-  bar_inventario: { emoji:'🍹', titulo:'Inventario de bar', texto:'Este módulo todavía está en desarrollo — por ahora no tiene funcionalidad activa.' },
   coc_inspeccion: { emoji:'🔍', titulo:'Inspección de cocina', texto:'Inspección cruzada de cocina, aparte del checklist diario del equipo — un segundo par de ojos.' },
   sc_inspeccion: { emoji:'🔍', titulo:'Inspección de servicio al cliente', texto:'Inspección cruzada del salón, aparte del checklist diario del equipo.' },
   bar_inspeccion: { emoji:'🔍', titulo:'Inspección de bar', texto:'Inspección cruzada de la barra, aparte del checklist diario del equipo.' },
@@ -5408,7 +5531,7 @@ function miseCocinaAlarmaPendiente(estacion, idx){
   // el checklist de las 6:00 p.m. — cada checkpoint necesita su propio
   // checklist, hecho razonablemente cerca de esa hora.
   const desdeMin = Math.max(0, MISE_COCINA_ALARMA_HORARIOS[idx].minutos - 240);
-  const registros = DB.get('mise_cocina', []).filter(r =>
+  const registros = filtrarPorSede(DB.get('mise_cocina', [])).filter(r =>
     r.estacion === estacion && r.fecha === hoy && (r.horaMinutos == null || r.horaMinutos >= desdeMin)
   );
   return registros.length === 0;
@@ -6238,7 +6361,8 @@ function incumplimientosUltimoRegistro(coleccion, fecha, filtro){
 function incumplimientosDetectarDia(fecha){
   return INCUMPLIMIENTOS_DEFINICIONES.map(def => {
     if(def.tipo === 'mise_cocina'){
-      const registros = DB.get('mise_cocina', []).filter(r => r && r.estacion === def.estacion && r.fecha === fecha);
+      const sedeReporte = sedeParaGuardar();
+      const registros = DB.get('mise_cocina', []).filter(r => r && r.estacion === def.estacion && r.fecha === fecha && (!sedeReporte || !r.sede || r.sede === sedeReporte));
       const desdeMin = Math.max(0, def.checkpointMin - 240);
       const reg = registros.find(r => r.horaMinutos == null || (r.horaMinutos >= desdeMin && r.horaMinutos <= def.checkpointMin));
       return {
@@ -6450,11 +6574,249 @@ function renderBajasModule(sec, group, item, ruta){
 }
 
 /* ==================================================================
+   PRUEBA, DESARROLLO Y MEJORA CONSTANTE — bitácora de mejora continua.
+   Cada entrada nace de dos maneras: (a) una queja o hallazgo real (ej.
+   "se recibió una queja de comida fría") al que le definimos una
+   solución, o (b) una oportunidad que el propio equipo detecta (ej. "el
+   emplatado de X plato es muy simple") y se programa como tarea. En
+   ambos casos: se fija una meta/tarea, un responsable y una fecha
+   límite; al ejecutarla se registra el resultado y si fue exitosa o no
+   — así queda un historial de qué se ha probado y qué funcionó.
+   Colección: mejora_continua.
+   ================================================================== */
+const MEJORA_EXITO_META = {
+  exitoso:    { label:'Exitoso',     color:'#2E7D32' },
+  parcial:    { label:'Parcial',     color:'#8A6D1F' },
+  no_exitoso: { label:'No funcionó', color:'#C0392B' }
+};
+function mejoraTodas(){ return filtrarPorSede(DB.get('mejora_continua', [])); }
+let mejoraLastRuta = '', mejoraLastGroup = null, mejoraLastItem = null;
+let mejoraFiltroEstado = '';
+let mejoraFiltroArea = '';
+let mejoraItemEnCierre = null;
+let mejoraOrigenActual = 'oportunidad';
+
+function mejoraSetOrigen(v){
+  mejoraOrigenActual = v;
+  renderMejoraContinuaModule(null, mejoraLastGroup, mejoraLastItem, mejoraLastRuta);
+}
+
+function mejoraGuardarNueva(){
+  const area = (document.getElementById('mej_area')||{}).value || '';
+  const situacion = (document.getElementById('mej_situacion')||{}).value ? document.getElementById('mej_situacion').value.trim() : '';
+  const tarea = (document.getElementById('mej_tarea')||{}).value ? document.getElementById('mej_tarea').value.trim() : '';
+  const metaEsperada = (document.getElementById('mej_meta')||{}).value ? document.getElementById('mej_meta').value.trim() : '';
+  const responsable = (document.getElementById('mej_responsable')||{}).value ? document.getElementById('mej_responsable').value.trim() : SESSION.nombre;
+  const fechaLimite = (document.getElementById('mej_fechaLimite')||{}).value || '';
+
+  if(!area){ showMsg('mej_msg','Selecciona el área relacionada.','rojo'); return; }
+  if(!situacion){ showMsg('mej_msg', mejoraOrigenActual==='queja' ? 'Describe la queja o situación.' : 'Describe la oportunidad de mejora que identificaron.', 'rojo'); return; }
+  if(!tarea){ showMsg('mej_msg','Escribe la tarea o mejora concreta que van a hacer.','rojo'); return; }
+  if(!fechaLimite){ showMsg('mej_msg','Pon una fecha límite.','rojo'); return; }
+
+  DB.push('mejora_continua', {
+    sede: sedeParaGuardar(), area, origen: mejoraOrigenActual,
+    situacion, tarea, metaEsperada, responsable,
+    fechaLimite, estado:'pendiente',
+    fechaEjecucion:null, resultado:'', exito:null,
+    creadoPor: SESSION.nombre, creadoEn: new Date().toISOString(), fecha: hoyStr()
+  });
+  showMsg('mej_msg','Tarea de mejora registrada.','verde');
+  renderMejoraContinuaModule(null, mejoraLastGroup, mejoraLastItem, mejoraLastRuta);
+}
+
+function mejoraCambiarEstado(id, estado){
+  const arr = DB.get('mejora_continua', []);
+  const reg = arr.find(r=>r.id===id);
+  if(reg){ reg.estado = estado; DB.set('mejora_continua', arr); }
+  renderMejoraContinuaModule(null, mejoraLastGroup, mejoraLastItem, mejoraLastRuta);
+}
+
+function mejoraAbrirCierre(id){
+  mejoraItemEnCierre = id;
+  renderMejoraContinuaModule(null, mejoraLastGroup, mejoraLastItem, mejoraLastRuta);
+}
+function mejoraCancelarCierre(){
+  mejoraItemEnCierre = null;
+  renderMejoraContinuaModule(null, mejoraLastGroup, mejoraLastItem, mejoraLastRuta);
+}
+function mejoraGuardarCierre(id){
+  const fechaEjecucion = (document.getElementById('mej_fechaEjecucion')||{}).value || hoyStr();
+  const resultado = (document.getElementById('mej_resultado')||{}).value ? document.getElementById('mej_resultado').value.trim() : '';
+  const exito = (document.getElementById('mej_exito')||{}).value || '';
+  if(!resultado){ showMsg('mej_cierreMsg','Cuenta qué pasó / qué resultado dio.','rojo'); return; }
+  if(!exito){ showMsg('mej_cierreMsg','Marca si fue exitoso, parcial o no funcionó.','rojo'); return; }
+  const arr = DB.get('mejora_continua', []);
+  const reg = arr.find(r=>r.id===id);
+  if(!reg) return;
+  reg.estado = 'cerrada';
+  reg.fechaEjecucion = fechaEjecucion;
+  reg.resultado = resultado;
+  reg.exito = exito;
+  DB.set('mejora_continua', arr);
+  mejoraItemEnCierre = null;
+  renderMejoraContinuaModule(null, mejoraLastGroup, mejoraLastItem, mejoraLastRuta);
+}
+
+function mejoraEliminar(id){
+  if(!(SESSION && SESSION.rol==='gerencia')){ return; }
+  if(typeof confirm==='function' && !confirm('¿Eliminar esta tarea de mejora? No se puede deshacer.')) return;
+  DB.set('mejora_continua', DB.get('mejora_continua', []).filter(r=>r.id!==id));
+  renderMejoraContinuaModule(null, mejoraLastGroup, mejoraLastItem, mejoraLastRuta);
+}
+
+function mejoraAreaOptionsHtml(seleccionada){
+  const opciones = AREA_ORDER.map(a => `<option value="${a}" ${a===seleccionada?'selected':''}>${AREA_META[a].label}</option>`).join('');
+  return `<option value="">Seleccionar...</option>${opciones}<option value="general" ${seleccionada==='general'?'selected':''}>General / varias áreas</option>`;
+}
+
+function mejoraTarjetaHtml(r){
+  const meta = AREA_META[r.area] || { label: r.area==='general' ? 'General' : r.area, color:'#B87333' };
+  const vencida = r.estado!=='cerrada' && r.fechaLimite && r.fechaLimite < hoyStr();
+  const estadoBadge = r.estado==='cerrada'
+    ? `<span class="badge" style="background:${hexToRgba(MEJORA_EXITO_META[r.exito]?.color||'#5B6B73',0.14)};color:${MEJORA_EXITO_META[r.exito]?.color||'#5B6B73'};">${MEJORA_EXITO_META[r.exito]?.label || 'Cerrada'}</span>`
+    : (r.estado==='en_progreso' ? '<span class="badge badge-dorado">En progreso</span>' : (vencida ? '<span class="badge badge-rojo">Vencida</span>' : '<span class="badge badge-gris">Pendiente</span>'));
+
+  const accionesHtml = r.estado==='cerrada' ? '' : `
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;">
+      ${r.estado==='pendiente' ? `<button class="btn-secondary" style="padding:6px 12px;font-size:12px;" onclick="mejoraCambiarEstado('${r.id}','en_progreso')">Marcar en progreso</button>` : ''}
+      <button class="btn-primary" style="padding:6px 12px;font-size:12px;width:auto;" onclick="mejoraAbrirCierre('${r.id}')">Registrar resultado / cerrar</button>
+      ${SESSION.rol==='gerencia' ? `<button class="btn-secondary" style="padding:6px 12px;font-size:12px;color:#B7423A;" onclick="mejoraEliminar('${r.id}')">Eliminar</button>` : ''}
+    </div>`;
+
+  const cierreForm = mejoraItemEnCierre===r.id ? `
+    <div class="compact-form" style="margin-top:12px;border-top:1px solid var(--border);padding-top:12px;">
+      <div class="form-grid">
+        <div class="form-field"><label>Fecha en que se ejecutó</label><input id="mej_fechaEjecucion" type="date" value="${hoyStr()}"></div>
+        <div class="form-field"><label>¿Cómo resultó?</label>
+          <select id="mej_exito">
+            <option value="">Seleccionar...</option>
+            <option value="exitoso">Exitoso</option>
+            <option value="parcial">Parcial</option>
+            <option value="no_exitoso">No funcionó</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-field" style="margin-top:8px;"><label>Resultado — qué se hizo y qué pasó</label><textarea id="mej_resultado" rows="2" placeholder="Ej: se rediseñó el emplatado y se probó en 3 servicios, mejoró la percepción..."></textarea></div>
+      <div style="display:flex;gap:8px;margin-top:8px;">
+        <button class="btn-primary" style="width:auto;padding:9px 16px;" onclick="mejoraGuardarCierre('${r.id}')">Guardar y cerrar</button>
+        <button class="btn-secondary" style="width:auto;padding:9px 16px;" onclick="mejoraCancelarCierre()">Cancelar</button>
+      </div>
+      <div id="mej_cierreMsg"></div>
+    </div>` : '';
+
+  return `
+    <div style="border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin-bottom:14px;${vencida?'border-left:4px solid var(--rojo);':''}">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:6px;">
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+          <span class="badge" style="background:${hexToRgba(meta.color,0.14)};color:${meta.color};">${meta.label}</span>
+          <span class="badge ${r.origen==='queja'?'badge-rojo':'badge-azul'}">${r.origen==='queja'?'Viene de una queja':'Oportunidad detectada'}</span>
+          ${estadoBadge}
+        </div>
+        <div style="font-size:11px;color:var(--text-light);">Fecha límite: <b>${r.fechaLimite}</b></div>
+      </div>
+      <p style="font-size:12.5px;margin:0 0 4px;"><b>Situación:</b> ${r.situacion}</p>
+      <p style="font-size:12.5px;margin:0 0 4px;"><b>Tarea / mejora:</b> ${r.tarea}</p>
+      ${r.metaEsperada ? `<p style="font-size:12.5px;margin:0 0 4px;"><b>Meta esperada:</b> ${r.metaEsperada}</p>` : ''}
+      <p style="font-size:11.5px;color:var(--text-light);margin:4px 0 0;">Responsable: ${r.responsable} · Creado por ${r.creadoPor} el ${r.fecha}</p>
+      ${r.estado==='cerrada' ? `<div style="margin-top:8px;padding:8px 10px;border-radius:8px;background:var(--crema);">
+        <p style="font-size:12px;margin:0;"><b>Resultado (${r.fechaEjecucion}):</b> ${r.resultado}</p>
+      </div>` : ''}
+      ${accionesHtml}
+      ${cierreForm}
+    </div>`;
+}
+
+function renderMejoraContinuaModule(sec, group, item, ruta){
+  if(ruta) mejoraLastRuta = ruta;
+  if(group) mejoraLastGroup = group;
+  if(item) mejoraLastItem = item;
+  const secReal = sec || NAV.find(s=>s.id==='operacion');
+
+  const todas = mejoraTodas();
+  const pendientes = todas.filter(r=>r.estado==='pendiente');
+  const enProgreso = todas.filter(r=>r.estado==='en_progreso');
+  const cerradas = todas.filter(r=>r.estado==='cerrada');
+  const exitosas = cerradas.filter(r=>r.exito==='exitoso');
+  const vencidas = todas.filter(r=>r.estado!=='cerrada' && r.fechaLimite && r.fechaLimite < hoyStr());
+
+  const kpi = (color, iconName, valor, label) => `
+    <div class="module-card" style="cursor:default;">
+      <div class="icon-circle" style="background:${hexToRgba(color,0.14)}; color:${color};">${ic(iconName,22)}</div>
+      <h3>${valor}</h3><p>${label}</p>
+    </div>`;
+  const kpisHtml = `<div class="module-grid" style="margin-bottom:22px;">
+    ${kpi('#5B6B73','clock', pendientes.length + enProgreso.length, 'Tareas abiertas')}
+    ${kpi(vencidas.length?'#C0392B':'#2E7D32','bell', vencidas.length, 'Vencidas sin cerrar')}
+    ${kpi('#2E7D32','check', cerradas.length, 'Cerradas en total')}
+    ${kpi('#8A6D1F','target', cerradas.length ? Math.round((exitosas.length/cerradas.length)*100)+'%' : '—', 'Tasa de éxito')}
+  </div>`;
+
+  let filtradas = todas.slice().sort((a,b)=> String(b.creadoEn||'').localeCompare(String(a.creadoEn||'')));
+  if(mejoraFiltroEstado) filtradas = filtradas.filter(r=>r.estado===mejoraFiltroEstado);
+  if(mejoraFiltroArea) filtradas = filtradas.filter(r=>r.area===mejoraFiltroArea);
+
+  const listaHtml = filtradas.length ? filtradas.map(mejoraTarjetaHtml).join('') : `<div class="placeholder-box"><p>No hay tareas de mejora que coincidan con el filtro.</p></div>`;
+
+  const html = `
+    <div class="panel">
+      <div class="panel-header">
+        <div class="icon-circle" style="background:${hexToRgba(secReal.color,0.14)}; color:${secReal.color};">${ic('target',21)}</div>
+        <div><h2>Prueba, desarrollo y mejora constante</h2><div class="path">${mejoraLastRuta}</div></div>
+      </div>
+      <p style="font-size:12.5px;color:var(--text-light);margin-bottom:16px;">Aquí queda todo lo que probamos para mejorar: desde solucionar una queja puntual (ej. "comida fría") hasta una idea propia del equipo (ej. "mejorar el emplatado de X plato"). Cada una con su meta, fecha límite, y al final si funcionó o no — para no repetir lo que ya sabemos que no sirve.</p>
+      ${kpisHtml}
+
+      <div class="form-section-title" style="margin-top:0;">Nueva tarea de mejora</div>
+      <div class="tabs" style="margin-bottom:14px;">
+        <button class="tab-btn ${mejoraOrigenActual==='queja'?'active':''}" onclick="mejoraSetOrigen('queja')">${ic('bell',14)}Viene de una queja / reporte</button>
+        <button class="tab-btn ${mejoraOrigenActual==='oportunidad'?'active':''}" onclick="mejoraSetOrigen('oportunidad')">${ic('target',14)}Oportunidad que detectamos nosotros</button>
+      </div>
+      <div class="compact-form">
+        <div class="form-grid">
+          <div class="form-field"><label>Área relacionada <span class="req-star">*</span></label>
+            <select id="mej_area">${mejoraAreaOptionsHtml('')}</select>
+          </div>
+          <div class="form-field"><label>Responsable</label><input id="mej_responsable" value="${SESSION.nombre}"></div>
+          <div class="form-field"><label>Fecha límite <span class="req-star">*</span></label><input id="mej_fechaLimite" type="date" value="${hoyStr()}"></div>
+        </div>
+        <div class="form-field" style="margin-top:8px;"><label>${mejoraOrigenActual==='queja' ? 'Queja o situación reportada' : 'Oportunidad de mejora identificada'} <span class="req-star">*</span></label>
+          <textarea id="mej_situacion" rows="2" placeholder="${mejoraOrigenActual==='queja' ? 'Ej: se recibió una queja de comida fría en el plato X' : 'Ej: el emplatado del plato X quedó muy simple comparado con el resto de la carta'}"></textarea>
+        </div>
+        <div class="form-field" style="margin-top:8px;"><label>Tarea / mejora que vamos a hacer <span class="req-star">*</span></label>
+          <textarea id="mej_tarea" rows="2" placeholder="Ej: rediseñar el emplatado del plato X y probarlo en el próximo servicio"></textarea>
+        </div>
+        <div class="form-field" style="margin-top:8px;"><label>Meta esperada (opcional)</label>
+          <input id="mej_meta" placeholder="Ej: que no vuelvan a salir quejas de temperatura en ese plato">
+        </div>
+      </div>
+      <button class="btn-primary" style="width:auto;padding:11px 22px;margin-top:14px;" onclick="mejoraGuardarNueva()">Registrar tarea de mejora</button>
+      <div id="mej_msg"></div>
+
+      <h3 style="margin:26px 0 10px;font-size:15px;">Bitácora de mejoras</h3>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px;">
+        <select onchange="mejoraFiltroEstado=this.value; renderMejoraContinuaModule(null, mejoraLastGroup, mejoraLastItem, mejoraLastRuta);" style="padding:6px 9px;border:1px solid var(--border);border-radius:8px;font-size:12.5px;">
+          <option value="">Todos los estados</option>
+          <option value="pendiente" ${mejoraFiltroEstado==='pendiente'?'selected':''}>Pendientes</option>
+          <option value="en_progreso" ${mejoraFiltroEstado==='en_progreso'?'selected':''}>En progreso</option>
+          <option value="cerrada" ${mejoraFiltroEstado==='cerrada'?'selected':''}>Cerradas</option>
+        </select>
+        <select onchange="mejoraFiltroArea=this.value; renderMejoraContinuaModule(null, mejoraLastGroup, mejoraLastItem, mejoraLastRuta);" style="padding:6px 9px;border:1px solid var(--border);border-radius:8px;font-size:12.5px;">
+          ${mejoraAreaOptionsHtml(mejoraFiltroArea).replace('Seleccionar...','Todas las áreas')}
+        </select>
+      </div>
+      ${listaHtml}
+    </div>`;
+  document.getElementById('content').innerHTML = html;
+  if(window.innerWidth <= 820) document.getElementById('sidebar').classList.remove('open');
+}
+
+/* ==================================================================
    INVENTARIO DE COCINA — conteo rápido por turno con alerta si un
    insumo está por debajo del mínimo. Colecciones: inv_cocina_items
    (catálogo editable), inv_cocina_conteos (historial de conteos).
    ================================================================== */
-function invCocinaCatalogo(){ return DB.get('inv_cocina_items', []); }
+function invCocinaCatalogo(){ return filtrarPorSede(DB.get('inv_cocina_items', [])); }
 function invCocinaConteos(){ return filtrarPorSede(DB.get('inv_cocina_conteos', [])).slice().reverse(); }
 let invCocinaLastRuta = '', invCocinaLastGroup = null, invCocinaLastItem = null;
 
@@ -6463,14 +6825,14 @@ function invCocinaAgregarItem(){
   const unidad = (document.getElementById('ic_nuevaUnidad')||{}).value ? document.getElementById('ic_nuevaUnidad').value.trim() : '';
   const minimo = Number((document.getElementById('ic_nuevoMinimo')||{}).value || 0);
   if(!nombre){ showMsg('ic_catalogo_msg','Escribe el nombre del insumo.','rojo'); return; }
-  const cat = invCocinaCatalogo();
-  cat.push({ id:'ici_'+Date.now(), nombre, unidad: unidad || 'unidades', minimo });
-  DB.set('inv_cocina_items', cat);
+  const catTodo = DB.get('inv_cocina_items', []);
+  catTodo.push({ id:'ici_'+Date.now(), nombre, unidad: unidad || 'unidades', minimo, sede: sedeParaGuardar() });
+  DB.set('inv_cocina_items', catTodo);
   showMsg('ic_catalogo_msg','Insumo agregado.','verde');
   renderInventarioCocinaModule(null, invCocinaLastGroup, invCocinaLastItem, invCocinaLastRuta);
 }
 function invCocinaQuitarItem(id){
-  DB.set('inv_cocina_items', invCocinaCatalogo().filter(i=>i.id!==id));
+  DB.set('inv_cocina_items', DB.get('inv_cocina_items', []).filter(i=>i.id!==id));
   renderInventarioCocinaModule(null, invCocinaLastGroup, invCocinaLastItem, invCocinaLastRuta);
 }
 function guardarConteoCocina(){
@@ -10964,8 +11326,8 @@ function reporteGeneral360DashboardHtml(){
 
 // ---- Gerencia: Reporte de caja (consolidado, columnas fieles al original) ----
 function renderReporteCajaGerencia(sec, group, item, ruta){
-  const cierres = DB.get('caja_cierre', []).slice().reverse();
-  const comprobantes = DB.get('caja_comprobantes', []).slice().reverse();
+  const cierres = filtrarPorSede(DB.get('caja_cierre', [])).slice().reverse();
+  const comprobantes = filtrarPorSede(DB.get('caja_comprobantes', [])).slice().reverse();
   const conDiferencia = cierres.filter(c => (c.diferenciaTotal||0) !== 0);
   const sumaDiferencias = cierres.reduce((a,c) => a + (c.diferenciaTotal||0), 0);
 
@@ -11030,9 +11392,9 @@ function renderReporteCajaGerencia(sec, group, item, ruta){
    ================================================================== */
 function invDeptoMeta(id){ return INV_DEPARTAMENTOS.find(x=>x.id===id) || {id, label:id, icon:'box', color:'#B87333'}; }
 function invDeptoLabel(id){ return invDeptoMeta(id).label; }
-function invCatalogoDe(depId){ return DB.get('inv_productos', []).filter(p=>p.departamento===depId); }
+function invCatalogoDe(depId){ return filtrarPorSede(DB.get('inv_productos', [])).filter(p=>p.departamento===depId); }
 function invConteosDe(depId){
-  return DB.get('inv_conteos', []).filter(c=>c.departamento===depId)
+  return filtrarPorSede(DB.get('inv_conteos', [])).filter(c=>c.departamento===depId)
     .slice().sort((a,b)=> (a.fecha+a.hora).localeCompare(b.fecha+b.hora));
 }
 function invUltimoConteo(depId){
@@ -11040,41 +11402,109 @@ function invUltimoConteo(depId){
   return conteos.length ? conteos[conteos.length-1] : null;
 }
 
-/* ---- Sesiones de conteo: agrupan el conteo de los 7 departamentos que se
-   hace en una misma pasada, para poder sacar un "Inventario total" coherente. ---- */
-function invSesiones(){ return DB.get('inv_sesiones', []).slice().sort((a,b)=> (a.fecha+a.hora).localeCompare(b.fecha+b.hora)); }
-function invSesionActiva(){ const s = invSesiones(); return s.length ? s[s.length-1] : null; }
+/* ---- Sesiones de conteo: agrupan el conteo de los 8 departamentos que se
+   hace en una misma pasada, para poder sacar un "Inventario total" coherente.
+   Una sesión "cerrada" queda congelada como el inventario oficial de esa
+   fecha — el siguiente conteo abre una sesión nueva automáticamente, y no
+   toca ni reemplaza los datos de la sesión cerrada. Así el inventario del
+   31 de agosto no borra el del 31 de julio: cada cierre queda disponible
+   para siempre en el Historial. ---- */
+function invSesiones(){ return filtrarPorSede(DB.get('inv_sesiones', [])).slice().sort((a,b)=> (a.fecha+a.hora).localeCompare(b.fecha+b.hora)); }
+function invSesionActiva(){
+  const s = invSesiones();
+  const ultima = s.length ? s[s.length-1] : null;
+  return (ultima && !ultima.cerrada) ? ultima : null;
+}
+function invSesionesCerradas(){ return invSesiones().filter(s=>s.cerrada).slice().reverse(); }
 function invSesionActivaOCrear(){
   let activa = invSesionActiva();
   if(!activa){
-    activa = { id:'ses_'+Date.now(), fecha:hoyStr(), hora:horaStr(), usuario:SESSION.usuario, nombre:SESSION.nombre };
+    activa = { id:'ses_'+Date.now(), fecha:hoyStr(), hora:horaStr(), usuario:SESSION.usuario, nombre:SESSION.nombre, sede: sedeParaGuardar() };
     const arr = DB.get('inv_sesiones', []); arr.push(activa); DB.set('inv_sesiones', arr);
   }
   return activa;
 }
 function invIniciarSesion(){
   const arr = DB.get('inv_sesiones', []);
-  const nueva = { id:'ses_'+Date.now(), fecha:hoyStr(), hora:horaStr(), usuario:SESSION.usuario, nombre:SESSION.nombre };
+  const nueva = { id:'ses_'+Date.now(), fecha:hoyStr(), hora:horaStr(), usuario:SESSION.usuario, nombre:SESSION.nombre, sede: sedeParaGuardar() };
   arr.push(nueva); DB.set('inv_sesiones', arr);
   renderInventarioModule(NAV.find(s=>s.id==='operacion'), null, null, invLastRuta);
 }
 function invConteoDeSesion(depId, sesionId){
-  const de = DB.get('inv_conteos', []).filter(c=>c.departamento===depId && c.sesionId===sesionId);
+  const de = filtrarPorSede(DB.get('inv_conteos', [])).filter(c=>c.departamento===depId && c.sesionId===sesionId);
   return de.length ? de[de.length-1] : null;
+}
+function invDeptosContadosSesion(sesionId){ return INV_DEPARTAMENTOS.filter(d=>invConteoDeSesion(d.id, sesionId)); }
+function invValorSesion(sesionId){
+  return invDeptosContadosSesion(sesionId).reduce((a,d)=> a + invConteoDeSesion(d.id, sesionId).valorTotal, 0);
+}
+function invCerrarSesion(sesionId){
+  const sesiones = DB.get('inv_sesiones', []);
+  const s = sesiones.find(x=>x.id===sesionId);
+  if(!s || s.cerrada) return;
+  const contados = invDeptosContadosSesion(sesionId).length;
+  const msg = contados < INV_DEPARTAMENTOS.length
+    ? `Esta sesión solo tiene ${contados}/${INV_DEPARTAMENTOS.length} departamentos contados. ¿Cerrarla de todas formas como el inventario oficial de esta fecha? No se puede deshacer, y los departamentos sin contar quedarán en $0 en este cierre.`
+    : `¿Cerrar la sesión de conteo del ${s.fecha} como el inventario oficial de esta fecha? Después de cerrarla no se puede modificar. El próximo conteo abrirá una sesión nueva, sin tocar esta.`;
+  if(!window.confirm(msg)) return;
+  s.cerrada = true; s.fechaCierre = hoyStr(); s.horaCierre = horaStr(); s.cerradoPor = SESSION.nombre;
+  DB.set('inv_sesiones', sesiones);
+  invDashboardTab = 'conteo';
+  renderInventarioModule(NAV.find(x=>x.id==='operacion'), null, null, invLastRuta);
 }
 
 let invActiveDepto = null;
 let invLastRuta = 'Operación → Administración → Inventarios';
+let invDashboardTab = 'conteo'; // 'conteo' | 'historial' | 'comparar'
+let invHistorialSesionId = null;
+let invCompararA = null;
+let invCompararB = null;
+
+function invIrTab(tab){
+  invDashboardTab = tab;
+  invHistorialSesionId = null;
+  renderInventarioModule(NAV.find(s=>s.id==='operacion'), null, null, invLastRuta);
+}
 
 function renderInventarioModule(sec, group, item, ruta){
   if(ruta) invLastRuta = ruta;
+  const tabsHtml = `
+    <button class="tab-btn ${invDashboardTab==='conteo'?'active':''}" onclick="invIrTab('conteo')">${ic('checklist',14)}Conteo</button>
+    <button class="tab-btn ${invDashboardTab==='historial'?'active':''}" onclick="invIrTab('historial')">${ic('calendar',14)}Historial de inventarios cerrados</button>
+    <button class="tab-btn ${invDashboardTab==='comparar'?'active':''}" onclick="invIrTab('comparar')">${ic('chart',14)}Comparar inventarios</button>`;
+
+  let bodyHtml;
+  if(invDashboardTab === 'historial'){
+    bodyHtml = invHistorialSesionId ? invHistorialDetalleHtml(invHistorialSesionId) : invHistorialListaHtml();
+  } else if(invDashboardTab === 'comparar'){
+    bodyHtml = invCompararHtml();
+  } else {
+    bodyHtml = invConteoTabHtml();
+  }
+
+  const html = `
+    <div class="panel">
+      <div class="panel-header">
+        <div class="icon-circle" style="background:${hexToRgba(sec.color,0.14)}; color:${sec.color};">${ic('box',21)}</div>
+        <div><h2>Inventarios</h2><div class="path">${invLastRuta}</div></div>
+      </div>
+      <div class="tab-bar">${tabsHtml}</div>
+      ${bodyHtml}
+    </div>`;
+  document.getElementById('content').innerHTML = html;
+  if(window.innerWidth <= 820) document.getElementById('sidebar').classList.remove('open');
+}
+
+/* ---- Tab: Conteo — el dashboard de siempre, con las 8 tarjetas por
+   departamento como tareas aparte para cada persona. ---- */
+function invConteoTabHtml(){
   const sesionActiva = invSesionActiva();
 
   const cards = INV_DEPARTAMENTOS.map(d=>{
     const cat = invCatalogoDe(d.id);
     const enSesion = sesionActiva ? invConteoDeSesion(d.id, sesionActiva.id) : null;
     let estadoTxt;
-    if(enSesion) estadoTxt = '<span style="color:var(--verde);font-weight:600;">Contado en esta sesión · '+fmtMoney(enSesion.valorTotal)+'</span>';
+    if(enSesion) estadoTxt = '<span style="color:var(--verde);font-weight:600;">Contado en esta sesión · '+fmtMoney(enSesion.valorTotal)+(enSesion.nombre ? ' · '+enSesion.nombre : '')+'</span>';
     else if(sesionActiva) estadoTxt = '<span style="color:var(--rojo);font-weight:600;">Pendiente en esta sesión</span>';
     else estadoTxt = 'Sin sesión de conteo activa';
     return `
@@ -11086,33 +11516,176 @@ function renderInventarioModule(sec, group, item, ruta){
     </div>`;
   }).join('');
 
-  let totalHtml;
+  const ultimaCerrada = invSesionesCerradas()[0] || null;
+  const ultimaCerradaHtml = ultimaCerrada ? `
+    <div class="module-card" style="cursor:pointer;" onclick="invIrTab('historial')">
+      <div class="icon-circle" style="background:${hexToRgba('#B87333',0.14)}; color:#B87333;">${ic('checklist',24)}</div>
+      <h3>${fmtMoney(invValorSesion(ultimaCerrada.id))}</h3>
+      <p>Último inventario cerrado — ${ultimaCerrada.fecha}</p>
+      <p style="font-size:11px;color:var(--text-light);margin-top:2px;">Ver en Historial &rarr;</p>
+    </div>` : '';
+
+  let totalHtml, cerrarBtnHtml = '';
   if(sesionActiva){
-    const contados = INV_DEPARTAMENTOS.filter(d=>invConteoDeSesion(d.id, sesionActiva.id));
-    const valorTotalSesion = contados.reduce((a,d)=>a + invConteoDeSesion(d.id, sesionActiva.id).valorTotal, 0);
+    const contados = invDeptosContadosSesion(sesionActiva.id);
+    const valorTotalSesion = invValorSesion(sesionActiva.id);
     const faltan = INV_DEPARTAMENTOS.length - contados.length;
     totalHtml = `
       <div class="stat-card2 ${faltan===0?'ok':'bad'}" style="max-width:440px;margin-bottom:18px;padding:16px 18px;">
-        <div class="lbl">Inventario total — sesión de conteo del ${sesionActiva.fecha}</div>
+        <div class="lbl">Inventario total — sesión de conteo del ${sesionActiva.fecha} (todavía abierta)</div>
         <div class="val" style="font-size:26px;">${fmtMoney(valorTotalSesion)}</div>
         <div class="sub">${contados.length}/${INV_DEPARTAMENTOS.length} departamentos contados${faltan ? ' · faltan '+faltan : ' · sesión completa'}</div>
       </div>`;
+    cerrarBtnHtml = `<button class="tab-btn" onclick="invCerrarSesion('${sesionActiva.id}')" style="margin-bottom:14px;margin-left:8px;">${ic('checklist',14)}Cerrar esta sesión como inventario oficial</button>`;
   } else {
-    totalHtml = `<p style="color:var(--text-light);font-size:13px;margin-bottom:14px;">Todavía no hay una sesión de conteo activa. Inicia una para contar los 7 departamentos desde cero y obtener el inventario total.</p>`;
+    totalHtml = `<p style="color:var(--text-light);font-size:13px;margin-bottom:14px;">No hay una sesión de conteo abierta. Al guardar el primer conteo de un departamento se abre una nueva automáticamente — no afecta a los inventarios ya cerrados.</p>`;
   }
 
-  const html = `
-    <div class="panel">
-      <div class="panel-header">
-        <div class="icon-circle" style="background:${hexToRgba(sec.color,0.14)}; color:${sec.color};">${ic('box',21)}</div>
-        <div><h2>Inventarios</h2><div class="path">${invLastRuta}</div></div>
+  return `
+    <button class="tab-btn" onclick="invIniciarSesion()" style="margin-bottom:14px;">+ Iniciar nueva sesión de conteo</button>${cerrarBtnHtml}
+    ${totalHtml}
+    <div class="module-grid">${ultimaCerradaHtml}${cards}</div>`;
+}
+
+/* ---- Tab: Historial — cada inventario cerrado queda consultable para
+   siempre, tal como quedó ese día (no se pisa con conteos posteriores). ---- */
+function invHistorialListaHtml(){
+  const cerradas = invSesionesCerradas();
+  if(!cerradas.length){
+    return `<p style="color:var(--text-light);font-size:13px;">Todavía no se ha cerrado ningún inventario. Cuando cierres una sesión de conteo desde la pestaña "Conteo", aparecerá aquí para siempre.</p>`;
+  }
+  const filas = cerradas.map(s=>{
+    const contados = invDeptosContadosSesion(s.id).length;
+    return `<tr style="cursor:pointer;" onclick="invVerHistorialDetalle('${s.id}')">
+      <td>${s.fecha}</td>
+      <td>${contados}/${INV_DEPARTAMENTOS.length}</td>
+      <td>${fmtMoney(invValorSesion(s.id))}</td>
+      <td>${s.cerradoPor || '-'}</td>
+      <td><button class="tab-btn" onclick="event.stopPropagation();invVerHistorialDetalle('${s.id}')">Ver detalle</button></td>
+    </tr>`;
+  }).join('');
+  return `
+    <p style="color:var(--text-light);font-size:12.5px;margin-bottom:10px;">Cada fila es un inventario completo cerrado en una fecha — el conteo de un mes no borra al de otro. Haz clic para ver el detalle por departamento y producto.</p>
+    <table class="mini-table">
+      <thead><tr><th>Fecha de cierre</th><th>Departamentos contados</th><th>Valor total</th><th>Cerrado por</th><th></th></tr></thead>
+      <tbody>${filas}</tbody>
+    </table>`;
+}
+function invVerHistorialDetalle(sesionId){
+  invHistorialSesionId = sesionId;
+  renderInventarioModule(NAV.find(s=>s.id==='operacion'), null, null, invLastRuta);
+}
+function invHistorialDetalleHtml(sesionId){
+  const s = invSesiones().find(x=>x.id===sesionId);
+  if(!s) return invHistorialListaHtml();
+  const filasDeptos = INV_DEPARTAMENTOS.map(d=>{
+    const c = invConteoDeSesion(d.id, sesionId);
+    return `<tr><td>${d.label}</td><td>${c ? c.items.length : 0}</td><td>${c ? (c.nombre||'-') : '-'}</td><td>${c ? fmtMoney(c.valorTotal) : '<span style="color:var(--text-light);">Sin contar</span>'}</td></tr>`;
+  }).join('');
+  const detalleDeptos = INV_DEPARTAMENTOS.map(d=>{
+    const c = invConteoDeSesion(d.id, sesionId);
+    if(!c || !c.items.length) return '';
+    const filasProd = c.items.slice().sort((a,b)=>(a.categoria||'').localeCompare(b.categoria||'')||a.producto.localeCompare(b.producto))
+      .map(it=>`<tr><td>${it.producto}</td><td>${it.unidad}</td><td>${it.cantidad}</td><td>${fmtMoney(it.costoUnitario)}</td><td>${fmtMoney(it.valor)}</td></tr>`).join('');
+    return `
+    <details style="margin-bottom:10px;">
+      <summary style="cursor:pointer;font-weight:600;padding:8px 0;">${d.label} — ${fmtMoney(c.valorTotal)}</summary>
+      <table class="mini-table"><thead><tr><th>Producto</th><th>Unidad</th><th>Cantidad</th><th>Costo unitario</th><th>Valor</th></tr></thead><tbody>${filasProd}</tbody></table>
+    </details>`;
+  }).join('');
+  return `
+    <button class="tab-btn" onclick="invVerHistorialDetalle(null)" style="margin-bottom:14px;">&larr; Volver al historial</button>
+    <div class="stat-card2 ok" style="max-width:440px;margin-bottom:18px;padding:16px 18px;">
+      <div class="lbl">Inventario cerrado — ${s.fecha}</div>
+      <div class="val" style="font-size:26px;">${fmtMoney(invValorSesion(sesionId))}</div>
+      <div class="sub">Cerrado por ${s.cerradoPor || '-'}${s.fechaCierre ? ' el '+s.fechaCierre : ''}</div>
+    </div>
+    <table class="mini-table" style="margin-bottom:20px;">
+      <thead><tr><th>Departamento</th><th>Productos</th><th>Contado por</th><th>Valor</th></tr></thead>
+      <tbody>${filasDeptos}</tbody>
+    </table>
+    <h3 style="font-size:15px;margin-bottom:10px;">Detalle por departamento y producto</h3>
+    ${detalleDeptos}`;
+}
+
+/* ---- Tab: Comparar — confrontar dos inventarios cerrados (p.ej. dos
+   meses distintos) departamento por departamento, con diferencia $ y %. ---- */
+function invCompararSeleccionar(cual, sesionId){
+  if(cual==='a') invCompararA = sesionId || null; else invCompararB = sesionId || null;
+  renderInventarioModule(NAV.find(s=>s.id==='operacion'), null, null, invLastRuta);
+}
+function invCompararHtml(){
+  const cerradas = invSesionesCerradas();
+  if(cerradas.length < 2){
+    return `<p style="color:var(--text-light);font-size:13px;">Necesitas al menos dos inventarios cerrados para poder compararlos. Ahora mismo hay ${cerradas.length}.</p>`;
+  }
+  if(invCompararA === null) invCompararA = cerradas[1] ? cerradas[1].id : cerradas[0].id;
+  if(invCompararB === null) invCompararB = cerradas[0].id;
+  const opciones = s => cerradas.map(c=>`<option value="${c.id}" ${c.id===s?'selected':''}>${c.fecha} — ${fmtMoney(invValorSesion(c.id))}</option>`).join('');
+  const selectoresHtml = `
+    <div class="compact-form" style="margin-bottom:16px;">
+      <div class="form-grid">
+        <div class="form-field"><label>Inventario A (anterior)</label><select onchange="invCompararSeleccionar('a', this.value)">${opciones(invCompararA)}</select></div>
+        <div class="form-field"><label>Inventario B (más reciente)</label><select onchange="invCompararSeleccionar('b', this.value)">${opciones(invCompararB)}</select></div>
       </div>
-      <button class="tab-btn" onclick="invIniciarSesion()" style="margin-bottom:14px;">+ Iniciar nueva sesión de conteo</button>
-      ${totalHtml}
-      <div class="module-grid">${cards}</div>
     </div>`;
-  document.getElementById('content').innerHTML = html;
-  if(window.innerWidth <= 820) document.getElementById('sidebar').classList.remove('open');
+
+  if(invCompararA === invCompararB){
+    return selectoresHtml + `<p style="color:var(--text-light);font-size:13px;">Elige dos inventarios distintos para compararlos.</p>`;
+  }
+
+  const sA = invSesiones().find(x=>x.id===invCompararA), sB = invSesiones().find(x=>x.id===invCompararB);
+  const valorA = invValorSesion(invCompararA), valorB = invValorSesion(invCompararB);
+  const difTotal = valorB - valorA;
+  const pctTotal = valorA ? (difTotal/valorA*100) : 0;
+  const colorDif = d => d > 0 ? 'var(--verde)' : (d < 0 ? 'var(--rojo)' : 'var(--text-light)');
+  const signo = d => d > 0 ? '+' : '';
+
+  const filasDeptos = INV_DEPARTAMENTOS.map(d=>{
+    const cA = invConteoDeSesion(d.id, invCompararA), cB = invConteoDeSesion(d.id, invCompararB);
+    const vA = cA ? cA.valorTotal : 0, vB = cB ? cB.valorTotal : 0;
+    const dif = vB - vA, pct = vA ? (dif/vA*100) : (vB ? 100 : 0);
+    return `<tr>
+      <td>${d.label}</td><td>${fmtMoney(vA)}</td><td>${fmtMoney(vB)}</td>
+      <td style="color:${colorDif(dif)};font-weight:600;">${signo(dif)}${fmtMoney(dif)}</td>
+      <td style="color:${colorDif(dif)};font-weight:600;">${signo(pct)}${pct.toFixed(1)}%</td>
+    </tr>`;
+  }).join('');
+
+  const detalleProductos = INV_DEPARTAMENTOS.map(d=>{
+    const cA = invConteoDeSesion(d.id, invCompararA), cB = invConteoDeSesion(d.id, invCompararB);
+    if(!cA && !cB) return '';
+    const idsA = new Map((cA?cA.items:[]).map(it=>[it.productoId, it]));
+    const idsB = new Map((cB?cB.items:[]).map(it=>[it.productoId, it]));
+    const todosIds = new Set([...idsA.keys(), ...idsB.keys()]);
+    const filas = [...todosIds].map(pid=>{
+      const itA = idsA.get(pid), itB = idsB.get(pid);
+      const nombre = (itB||itA).producto;
+      const vA = itA ? itA.valor : 0, vB = itB ? itB.valor : 0;
+      const dif = vB - vA;
+      if(dif === 0 && vA === 0 && vB === 0) return '';
+      return `<tr><td>${nombre}</td><td>${fmtMoney(vA)}</td><td>${fmtMoney(vB)}</td><td style="color:${colorDif(dif)};font-weight:600;">${signo(dif)}${fmtMoney(dif)}</td></tr>`;
+    }).filter(Boolean).join('');
+    if(!filas) return '';
+    return `
+    <details style="margin-bottom:10px;">
+      <summary style="cursor:pointer;font-weight:600;padding:8px 0;">${d.label}</summary>
+      <table class="mini-table"><thead><tr><th>Producto</th><th>${sA?sA.fecha:''}</th><th>${sB?sB.fecha:''}</th><th>Diferencia</th></tr></thead><tbody>${filas}</tbody></table>
+    </details>`;
+  }).join('');
+
+  return selectoresHtml + `
+    <div class="stat-card2 ${difTotal>=0?'ok':'bad'}" style="max-width:520px;margin-bottom:18px;padding:16px 18px;">
+      <div class="lbl">Diferencia total entre ${sA?sA.fecha:''} y ${sB?sB.fecha:''}</div>
+      <div class="val" style="font-size:26px;color:${colorDif(difTotal)};">${signo(difTotal)}${fmtMoney(difTotal)}</div>
+      <div class="sub">${signo(pctTotal)}${pctTotal.toFixed(1)}% respecto al inventario del ${sA?sA.fecha:''}</div>
+    </div>
+    <table class="mini-table" style="margin-bottom:20px;">
+      <thead><tr><th>Departamento</th><th>${sA?sA.fecha:''}</th><th>${sB?sB.fecha:''}</th><th>Diferencia</th><th>%</th></tr></thead>
+      <tbody>${filasDeptos}</tbody>
+    </table>
+    <h3 style="font-size:15px;margin-bottom:10px;">Detalle por producto</h3>
+    ${detalleProductos}`;
 }
 
 function renderInventarioDepto(depId){
@@ -11131,7 +11704,7 @@ function renderInventarioDepto(depId){
     <tr>
       <td>${p.producto}</td>
       <td>${p.unidad}</td>
-      <td><input type="number" class="denom-input" style="width:90px;" min="0" step="0.01" data-costo="${p.id}" value="${p.costoUnitario||0}" oninput="invRecalcularFila('${p.id}')"></td>
+      <td><input type="number" class="denom-input" style="width:90px;" min="0" step="1" data-costo="${p.id}" value="${Math.round(p.costoUnitario||0)}" oninput="invRecalcularFila('${p.id}')"></td>
       <td><input type="number" class="denom-input" style="width:90px;" min="0" step="0.01" data-cant="${p.id}" value="0" oninput="invRecalcularFila('${p.id}')"></td>
       <td data-valor-fila="${p.id}" style="font-weight:600;">$0</td>
     </tr>`;
@@ -11163,7 +11736,7 @@ function renderInventarioDepto(depId){
         <div class="form-field"><label>Categoría (opcional)</label><input id="inv_nuevo_categoria" placeholder="Ej. Licores"></div>
         <div class="form-field"><label>Producto</label><input id="inv_nuevo_producto" placeholder="Nombre del producto"></div>
         <div class="form-field"><label>Unidad</label><input id="inv_nuevo_unidad" placeholder="Ej. gr, Unidad, 750 ML"></div>
-        <div class="form-field"><label>Costo unitario</label><input id="inv_nuevo_costo" type="number" step="0.01" placeholder="0"></div>
+        <div class="form-field"><label>Costo unitario</label><input id="inv_nuevo_costo" type="number" step="1" placeholder="0"></div>
       </div>
       </div>
       <button class="tab-btn" onclick="invAgregarProducto()" style="margin-top:8px;">+ Agregar al catálogo</button>
@@ -11201,26 +11774,26 @@ function invRecalcularTotal(){
   document.querySelectorAll('[data-cant]').forEach(cantEl=>{
     const prodId = cantEl.dataset.cant;
     const costoEl = document.querySelector(`[data-costo="${prodId}"]`);
-    const costo = Number((costoEl ? costoEl.value : 0) || 0);
+    const costo = Math.round(Number((costoEl ? costoEl.value : 0) || 0));
     const cant = Number(cantEl.value || 0);
-    const valor = Math.round(costo*cant*100)/100;
+    const valor = Math.round(costo*cant);
     const celda = document.querySelector(`[data-valor-fila="${prodId}"]`);
     if(celda) celda.textContent = fmtMoney(valor);
     total += valor;
   });
   const el = document.getElementById('inv_valorTotal');
-  if(el) el.textContent = fmtMoney(Math.round(total*100)/100);
+  if(el) el.textContent = fmtMoney(Math.round(total));
 }
 
 function invAgregarProducto(){
   const categoria = document.getElementById('inv_nuevo_categoria').value.trim() || null;
   const producto = document.getElementById('inv_nuevo_producto').value.trim();
   const unidad = document.getElementById('inv_nuevo_unidad').value.trim() || 'Unidad';
-  const costo = Number(document.getElementById('inv_nuevo_costo').value) || 0;
+  const costo = Math.round(Number(document.getElementById('inv_nuevo_costo').value) || 0);
   if(!producto){ showMsg('inv_msg_nuevo','Escribe el nombre del producto.','rojo'); return; }
   const productos = DB.get('inv_productos', []);
   const id = 'p_' + Date.now() + '_' + Math.random().toString(36).slice(2,6);
-  productos.push({ id, departamento: invActiveDepto, departamentoLabel: invDeptoLabel(invActiveDepto), categoria, producto, unidad, costoUnitario: costo });
+  productos.push({ id, departamento: invActiveDepto, departamentoLabel: invDeptoLabel(invActiveDepto), categoria, producto, unidad, costoUnitario: costo, sede: sedeParaGuardar() });
   DB.set('inv_productos', productos);
   renderInventarioDepto(invActiveDepto);
   showMsg('inv_msg_nuevo','Producto agregado al catálogo.','verde');
@@ -11235,9 +11808,9 @@ function invGuardarConteo(){
   catalogo.forEach(p=>{
     const costoEl = document.querySelector(`[data-costo="${p.id}"]`);
     const cantEl = document.querySelector(`[data-cant="${p.id}"]`);
-    const costo = Number((costoEl ? costoEl.value : p.costoUnitario) || 0);
+    const costo = Math.round(Number((costoEl ? costoEl.value : p.costoUnitario) || 0));
     const cantidad = Number((cantEl ? cantEl.value : 0) || 0);
-    const valor = Math.round(costo*cantidad*100)/100;
+    const valor = Math.round(costo*cantidad);
     valorTotal += valor;
     items.push({ productoId:p.id, producto:p.producto, categoria:p.categoria, unidad:p.unidad, cantidad, costoUnitario:costo, valor });
     const idx = productos.findIndex(x=>x.id===p.id);
@@ -11252,8 +11825,9 @@ function invGuardarConteo(){
     sesionId: sesion.id,
     usuario: SESSION.usuario, nombre: SESSION.nombre,
     fecha: (fechaEl && fechaEl.value) ? fechaEl.value : hoyStr(), hora: horaStr(),
-    items, valorTotal: Math.round(valorTotal*100)/100,
-    observaciones: document.getElementById('inv_observaciones').value.trim()
+    items, valorTotal: Math.round(valorTotal),
+    observaciones: document.getElementById('inv_observaciones').value.trim(),
+    sede: sedeParaGuardar()
   };
   DB.push('inv_conteos', registro);
 
@@ -11274,12 +11848,20 @@ function renderReporteInventarioGerencia(sec, group, item, ruta){
   const contadosEnSesion = filas.filter(f=>f.enSesion).length;
   const valorInventarioTotal = filas.reduce((a,f)=>a+(f.enSesion?f.enSesion.valorTotal:0),0);
 
+  const ultimaCerrada = invSesionesCerradas()[0] || null;
+  const ultimaCerradaHtml = ultimaCerrada ? `
+    <div class="stat-card2 ok" style="max-width:460px;margin-bottom:14px;padding:16px 18px;">
+      <div class="lbl">Último inventario oficial (cerrado) — ${ultimaCerrada.fecha}</div>
+      <div class="val" style="font-size:26px;">${fmtMoney(invValorSesion(ultimaCerrada.id))}</div>
+      <div class="sub">Cerrado por ${ultimaCerrada.cerradoPor || '-'} · consulta el historial completo en Inventarios → Historial</div>
+    </div>` : `<p style="color:var(--text-light);font-size:13px;margin-bottom:10px;">Todavía no se ha cerrado ningún inventario oficial.</p>`;
+
   const inventarioTotalHtml = sesionActiva ? `
     <div class="stat-card2 ${contadosEnSesion===INV_DEPARTAMENTOS.length?'ok':'bad'}" style="max-width:460px;margin-bottom:20px;padding:16px 18px;">
-      <div class="lbl">Inventario total — sesión de conteo del ${sesionActiva.fecha}</div>
+      <div class="lbl">Sesión de conteo en curso (todavía abierta) — ${sesionActiva.fecha}</div>
       <div class="val" style="font-size:28px;">${fmtMoney(valorInventarioTotal)}</div>
-      <div class="sub">${contadosEnSesion}/${INV_DEPARTAMENTOS.length} departamentos contados en esta sesión${contadosEnSesion<INV_DEPARTAMENTOS.length ? ' · faltan '+(INV_DEPARTAMENTOS.length-contadosEnSesion) : ' · sesión completa'}</div>
-    </div>` : `<p style="color:var(--text-light);font-size:13px;margin-bottom:16px;">Todavía no se ha iniciado ninguna sesión de conteo.</p>`;
+      <div class="sub">${contadosEnSesion}/${INV_DEPARTAMENTOS.length} departamentos contados en esta sesión${contadosEnSesion<INV_DEPARTAMENTOS.length ? ' · faltan '+(INV_DEPARTAMENTOS.length-contadosEnSesion) : ' · sesión completa · falta cerrarla'}</div>
+    </div>` : `<p style="color:var(--text-light);font-size:13px;margin-bottom:16px;">No hay ninguna sesión de conteo abierta en este momento.</p>`;
 
   const kpi = (color, iconName, valor, label) => `
     <div class="module-card" style="cursor:default;">
@@ -11329,6 +11911,7 @@ function renderReporteInventarioGerencia(sec, group, item, ruta){
         <div class="icon-circle" style="background:${hexToRgba(sec.color,0.14)}; color:${sec.color};">${ic('box',21)}</div>
         <div><h2>Reporte de inventario 360</h2><div class="path">${ruta}</div></div>
       </div>
+      ${ultimaCerradaHtml}
       ${inventarioTotalHtml}
       ${kpisHtml}
       <h3 style="font-size:15px;margin-bottom:10px;">Departamentos en la sesión activa</h3>
@@ -13324,7 +13907,21 @@ async function guardarUsuarioPermisos(usuarioIdOriginal){
 function compraNormalizar(s){
   return (s||'').toString().normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase();
 }
-function compraCatalogoCompleto(){ return DB.get('inv_productos', []); }
+function compraCatalogoCompleto(){ return filtrarPorSede(DB.get('inv_productos', [])); }
+// El presupuesto de compras es un solo número por sede — se guarda como
+// objeto { [sedeId]: monto } para que cada sede maneje el suyo sin
+// pisar el de la otra.
+function comprasPresupuestoActual(){
+  const s = sedeParaGuardar();
+  const obj = DB.get('compras_presupuesto', {});
+  return Number(obj[s] || 0);
+}
+function comprasPresupuestoGuardar(v){
+  const s = sedeParaGuardar();
+  const obj = DB.get('compras_presupuesto', {});
+  obj[s] = v;
+  DB.set('compras_presupuesto', obj);
+}
 function compraBuscarProductos(query){
   const q = compraNormalizar(query).trim();
   if(!q) return [];
@@ -13337,8 +13934,8 @@ let compraLastRuta = 'Operación → Administración → Compras';
 function renderComprasModule(sec, group, item, ruta){
   if(ruta) compraLastRuta = ruta;
   compraDraft = [];
-  const presupuesto = DB.get('compras_presupuesto', 0);
-  const historialInicial = DB.get('compras_listas', []).slice().reverse().slice(0,10);
+  const presupuesto = comprasPresupuestoActual();
+  const historialInicial = filtrarPorSede(DB.get('compras_listas', [])).slice().reverse().slice(0,10);
 
   const html = `
     <div class="panel">
@@ -13387,7 +13984,7 @@ function renderComprasModule(sec, group, item, ruta){
 
 function compraGuardarPresupuesto(){
   const v = Number(document.getElementById('compra_presupuesto').value) || 0;
-  DB.set('compras_presupuesto', v);
+  comprasPresupuestoGuardar(v);
   compraRecalcular();
 }
 
@@ -13461,7 +14058,7 @@ function compraRecalcular(){
   const totalEl = document.getElementById('compra_totalEstimado');
   if(totalEl) totalEl.textContent = fmtMoney(total);
 
-  const presupuesto = DB.get('compras_presupuesto', 0);
+  const presupuesto = comprasPresupuestoActual();
   const alerta = document.getElementById('compra_alertaPresupuesto');
   if(alerta && !alerta.dataset.mostrandoMotivo){
     if(presupuesto>0 && total>presupuesto){
@@ -13507,7 +14104,7 @@ function compraIntentarGuardar(motivoConfirmado){
   if(!compraDraft.length){ showMsg('compra_msg','Agrega al menos un producto a la lista.','rojo'); return; }
 
   const total = compraDraft.reduce((a,i)=>a+(i.cantidad*i.precioEstimado),0);
-  const presupuesto = DB.get('compras_presupuesto', 0);
+  const presupuesto = comprasPresupuestoActual();
   const sePaso = presupuesto>0 && total>presupuesto;
 
   if(sePaso && !motivoConfirmado){
@@ -13523,7 +14120,8 @@ function compraIntentarGuardar(motivoConfirmado){
     totalEstimado: Math.round(total*100)/100,
     sePaso,
     motivoExceso: sePaso ? motivoConfirmado : null,
-    observaciones: document.getElementById('compra_observaciones').value.trim()
+    observaciones: document.getElementById('compra_observaciones').value.trim(),
+    sede: sedeParaGuardar()
   };
   DB.push('compras_listas', registro);
   showMsg('compra_msg', sePaso ? 'Lista guardada, con el motivo del exceso de presupuesto.' : 'Lista de compras guardada correctamente.', 'verde');
@@ -13723,7 +14321,23 @@ function pagosParsearHoja(rows){
 // compartido como "cualquiera con el enlace" para que este endpoint gviz
 // funcione sin clave ni sesión — igual que la Encuesta de satisfacción,
 // esto necesita internet en el momento de abrir el módulo.
-const PAGOS_SHEET_URL = 'https://docs.google.com/spreadsheets/d/16ZyjS7jGHEGM7Lrqml2wtuqXfNsj-lC7/gviz/tq?tqx=out:csv&gid=0';
+// Cada sede tiene su propia hoja de Google Sheets para pagos a
+// proveedores (así lo definió Harol) — el enlace de cada una se guarda en
+// DB y se puede editar desde el propio módulo, sin necesidad de tocar el
+// código cuando se cree la hoja de una sede nueva. La de Montería es la
+// hoja original que ya existía antes de separar por sede.
+const PAGOS_SHEET_URL_MONTERIA_ORIGINAL = 'https://docs.google.com/spreadsheets/d/16ZyjS7jGHEGM7Lrqml2wtuqXfNsj-lC7/gviz/tq?tqx=out:csv&gid=0';
+function pagosUrlsPorSede(){ return DB.get('pagos_sheet_url_por_sede', {}); }
+function pagosUrlActual(){ return (pagosUrlsPorSede()[sedeParaGuardar()] || '').trim(); }
+function pagosGuardarUrl(){
+  const v = (document.getElementById('pagos_urlSheet')||{}).value || '';
+  const obj = pagosUrlsPorSede();
+  obj[sedeParaGuardar()] = v.trim();
+  DB.set('pagos_sheet_url_por_sede', obj);
+  showMsg('pagos_urlMsg', v.trim() ? 'Enlace guardado.' : 'Enlace borrado — no se traerán pagos automáticos de esta sede hasta que agregues uno.', 'verde');
+  pagosAutoStatus = 'idle';
+  if(v.trim()) pagosCargarDesdeGoogleSheets(false);
+}
 let pagosAutoStatus = 'idle'; // idle | cargando | ok | error
 let pagosAutoMsg = '';
 
@@ -13767,9 +14381,11 @@ function pagosMarcarPagadosAntesDe(){
   const inputEl = document.getElementById('pagos_corteFecha');
   const fechaCorte = inputEl ? inputEl.value : '';
   if(!fechaCorte){ showMsg('pagos_msg', 'Elige una fecha de corte primero.', 'rojo'); return; }
+  const miSede = sedeParaGuardar();
   const items = DB.get('pagos_items', []);
   let marcados = 0, sinFecha = 0;
   items.forEach(it => {
+    if(it.sede !== miSede) return;
     if(it.estado === 'pagado') return;
     const hasta = pagosExtraerFechaHasta(it.loteTitulo);
     if(!hasta){ sinFecha++; return; }
@@ -13791,11 +14407,11 @@ function pagosMarcarPagadosAntesDe(){
 // cada responsable desde Google Sheets. Pide confirmación porque no se
 // puede deshacer.
 function pagosBorrarTodo(){
-  const ok = window.confirm('¿Seguro que quieres borrar TODA la información de pagos a proveedores guardada en este dispositivo? Esta acción no se puede deshacer. Después se puede volver a traer la semana activa desde Google Sheets.');
+  const miSede = sedeParaGuardar();
+  const ok = window.confirm('¿Seguro que quieres borrar TODA la información de pagos a proveedores de esta sede? Esta acción no se puede deshacer y no afecta la información de otras sedes. Después se puede volver a traer la semana activa desde Google Sheets.');
   if(!ok) return;
-  DB.set('pagos_items', []);
-  DB.set('pagos_lotes', []);
-  DB.set('pagos_ultima_sync', null);
+  DB.set('pagos_items', DB.get('pagos_items', []).filter(it => it.sede !== miSede));
+  DB.set('pagos_lotes', DB.get('pagos_lotes', []).filter(l => l.sede !== miSede));
   pagosAutoStatus = 'idle';
   pagosAutoMsg = '';
   renderPagosModule(NAV.find(s=>s.id==='operacion'), null, null, pagosLastRuta);
@@ -13807,10 +14423,18 @@ function pagosBorrarTodo(){
 // subido. Se llama sola cuando alguien abre el módulo, y también se
 // puede disparar a mano con el botón "Actualizar ahora".
 async function pagosCargarDesdeGoogleSheets(silencioso){
+  const miSede = sedeParaGuardar();
+  const url = pagosUrlActual();
+  if(!url){
+    pagosAutoStatus = 'error';
+    pagosAutoMsg = 'Todavía no hay un enlace de Google Sheets configurado para esta sede. Agrégalo abajo para traer los pagos automáticamente (o sube el Excel manualmente).';
+    if(!silencioso) pagosRefrescarBanner();
+    return;
+  }
   pagosAutoStatus = 'cargando';
   if(!silencioso) pagosRefrescarBanner();
   try{
-    const resp = await fetch(PAGOS_SHEET_URL, { cache:'no-store' });
+    const resp = await fetch(url, { cache:'no-store' });
     if(!resp.ok) throw new Error('HTTP ' + resp.status);
     const text = await resp.text();
     const rows = encuestaParseCSV(text); // parser CSV genérico, ya usado por Encuesta
@@ -13830,7 +14454,7 @@ async function pagosCargarDesdeGoogleSheets(silencioso){
     });
     const bloques = Array.from(masRecientePorResponsable.values()).map(x => x.bloque);
 
-    const existentes = DB.get('pagos_items', []);
+    const existentes = DB.get('pagos_items', []).filter(it => it.sede === miSede);
     const clavesExistentes = new Set(existentes.map(it => pagosClaveAutoItem(it, it.loteTitulo)));
     let nuevos = 0, omitidos = 0;
     const lote = DB.push('pagos_lotes', {
@@ -13838,7 +14462,8 @@ async function pagosCargarDesdeGoogleSheets(silencioso){
       fecha: hoyStr(), hora: horaStr(),
       usuario: 'auto', nombre: 'Automático (Google Sheets)',
       bloques: bloques.map(b => b.titulo),
-      responsables: bloques.map(b => b.responsable)
+      responsables: bloques.map(b => b.responsable),
+      sede: miSede
     });
     bloques.forEach(b => {
       b.items.forEach(it => {
@@ -13847,12 +14472,16 @@ async function pagosCargarDesdeGoogleSheets(silencioso){
         clavesExistentes.add(k);
         DB.push('pagos_items', Object.assign({}, it, {
           loteId: lote.id, loteTitulo: b.titulo, responsable: b.responsable,
-          estado: 'pendiente', fechaPago: null, comprobantePago: null, notaPago: ''
+          estado: 'pendiente', fechaPago: null, comprobantePago: null, notaPago: '',
+          sede: miSede
         }));
         nuevos++;
       });
     });
-    DB.set('pagos_ultima_sync', new Date().toISOString());
+    const syncObj = DB.get('pagos_ultima_sync', {});
+    const syncBase = (typeof syncObj === 'string' || syncObj === null) ? {} : syncObj;
+    syncBase[miSede] = new Date().toISOString();
+    DB.set('pagos_ultima_sync', syncBase);
     pagosAutoStatus = 'ok';
     pagosAutoMsg = nuevos
       ? `Se cargaron ${nuevos} pago(s) nuevo(s) desde Google Sheets.` + (omitidos ? ` (${omitidos} ya estaban registrados.)` : '')
@@ -13868,19 +14497,24 @@ function pagosRefrescarBanner(){
   if(box) box.outerHTML = pagosSyncBannerHtml();
 }
 function pagosSyncBannerHtml(){
-  const ultima = DB.get('pagos_ultima_sync', null);
+  const syncObj = DB.get('pagos_ultima_sync', {});
+  const ultima = (typeof syncObj === 'object' && syncObj) ? syncObj[sedeParaGuardar()] : null;
   const ultimaTxt = ultima ? new Date(ultima).toLocaleString('es-CO') : 'nunca';
+  const urlActual = pagosUrlActual();
   let estadoHtml = '';
   if(pagosAutoStatus === 'cargando') estadoHtml = '<div class="verif-box" style="background:var(--tint-dorado);color:var(--dorado);">Conectando con Google Sheets...</div>';
   else if(pagosAutoStatus === 'ok') estadoHtml = `<div class="verif-box ok">${pagosAutoMsg}</div>`;
   else if(pagosAutoStatus === 'error') estadoHtml = `<div class="verif-box bad">${pagosAutoMsg}</div>`;
   return `<div id="pagos_syncBanner" style="margin-bottom:16px;">
-    <p style="font-size:11.5px;color:var(--text-light);margin-bottom:8px;">Los pagos se traen automáticamente desde la pestaña "Proveedores" del Google Sheets — solo la semana activa de cada responsable (requiere internet en este momento). Si prefieres, también puedes subir el Excel manualmente más abajo.</p>
+    <p style="font-size:11.5px;color:var(--text-light);margin-bottom:8px;">Los pagos se traen automáticamente desde la hoja de Google Sheets de <b>esta sede</b> — solo la semana activa de cada responsable (requiere internet en este momento). Si prefieres, también puedes subir el Excel manualmente más abajo.</p>
+    <div class="form-field" style="max-width:520px;margin-bottom:8px;"><label>Enlace de Google Sheets (CSV) de esta sede</label><input id="pagos_urlSheet" placeholder="Pega aquí el enlace de exportación CSV de la hoja de esta sede" value="${urlActual}"></div>
+    <button class="btn-secondary" style="width:auto;padding:7px 14px;font-size:12.5px;margin-bottom:10px;" onclick="pagosGuardarUrl()">Guardar enlace</button>
+    <div id="pagos_urlMsg"></div>
     ${estadoHtml}
     <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:8px;">
       <button class="btn-primary" style="width:auto;padding:8px 16px;" onclick="pagosCargarDesdeGoogleSheets(false)">Actualizar ahora</button>
       <span style="font-size:11px;color:var(--text-light);">Última actualización: ${ultimaTxt}</span>
-      <a href="#" onclick="pagosBorrarTodo();return false;" style="font-size:11px;color:#B7423A;margin-left:auto;">Borrar toda la información de pagos</a>
+      <a href="#" onclick="pagosBorrarTodo();return false;" style="font-size:11px;color:#B7423A;margin-left:auto;">Borrar toda la información de pagos de esta sede</a>
     </div>
   </div>`;
 }
@@ -13927,9 +14561,9 @@ function renderPagosModule(sec, group, item, ruta){
   pagosItemEnEdicion = null;
   pagosComprobanteData = null;
 
-  const lotes = DB.get('pagos_lotes', []).slice().reverse();
+  const lotes = filtrarPorSede(DB.get('pagos_lotes', [])).slice().reverse();
   const loteOpciones = lotes.map(l=>`<option value="${l.id}">${l.archivo} — ${l.fecha}</option>`).join('');
-  const todosLosItems = DB.get('pagos_items', []);
+  const todosLosItems = filtrarPorSede(DB.get('pagos_items', []));
   const responsablesUnicos = Array.from(new Set(todosLosItems.map(it=>it.responsable || 'Sin responsable identificado')));
   const responsableOpciones = responsablesUnicos.map(r=>`<option value="${r}">${r}</option>`).join('');
 
@@ -14001,7 +14635,7 @@ function renderPagosModule(sec, group, item, ruta){
 function pagosRenderKPIs(){
   const box = document.getElementById('pagos_kpis');
   if(!box) return;
-  const items = DB.get('pagos_items', []);
+  const items = filtrarPorSede(DB.get('pagos_items', []));
   const r = pagosResumen(items);
   box.innerHTML = `
     <div class="module-grid">
@@ -14023,7 +14657,7 @@ function pagosRenderKPIs(){
 function pagosRenderResumenResponsables(){
   const box = document.getElementById('pagos_resumenResponsables');
   if(!box) return;
-  const items = DB.get('pagos_items', []);
+  const items = filtrarPorSede(DB.get('pagos_items', []));
   const resumen = pagosResumenPorResponsable(items);
   if(!resumen.length){ box.innerHTML = ''; return; }
   box.innerHTML = `
@@ -14042,7 +14676,7 @@ function pagosRenderResumenResponsables(){
 function pagosRenderTabla(){
   const filas = document.getElementById('pagos_filas');
   if(!filas) return;
-  let items = DB.get('pagos_items', []).slice().reverse();
+  let items = filtrarPorSede(DB.get('pagos_items', [])).slice().reverse();
   if(pagosFiltroEstado) items = items.filter(it=>it.estado===pagosFiltroEstado);
   if(pagosFiltroLote) items = items.filter(it=>it.loteId===pagosFiltroLote);
   if(pagosFiltroResponsable) items = items.filter(it=>(it.responsable||'Sin responsable identificado')===pagosFiltroResponsable);
@@ -14177,7 +14811,8 @@ function pagosRenderPreview(){
 }
 function pagosConfirmarCarga(){
   if(!pagosParsedPreview || !pagosParsedPreview.bloques.length) return;
-  const existentes = DB.get('pagos_items', []);
+  const miSede = sedeParaGuardar();
+  const existentes = DB.get('pagos_items', []).filter(function(it){ return it.sede === miSede; });
   const clave = function(p,f){ return compraNormalizar(p) + '|' + compraNormalizar(f); };
   const clavesExistentes = new Set(existentes.filter(function(it){ return it.factura; }).map(function(it){ return clave(it.proveedor, it.factura); }));
   let nuevos = 0, omitidos = 0;
@@ -14186,7 +14821,8 @@ function pagosConfirmarCarga(){
     fecha: hoyStr(), hora: horaStr(),
     usuario: SESSION.usuario, nombre: SESSION.nombre,
     bloques: pagosParsedPreview.bloques.map(function(b){ return b.titulo; }),
-    responsables: pagosParsedPreview.bloques.map(function(b){ return b.responsable; })
+    responsables: pagosParsedPreview.bloques.map(function(b){ return b.responsable; }),
+    sede: miSede
   });
   pagosParsedPreview.bloques.forEach(function(b){
     b.items.forEach(function(it){
@@ -14200,7 +14836,8 @@ function pagosConfirmarCarga(){
         estado: 'pendiente',
         fechaPago: null,
         comprobantePago: null,
-        notaPago: ''
+        notaPago: '',
+        sede: miSede
       }));
       nuevos++;
     });
@@ -14426,7 +15063,7 @@ function reservasImportarArchivo(input){
         ultimaFecha = fechaReporte;
 
         const existentes = DB.get('reservas', []);
-        const clave = r => [r.fecha, (r.cliente||'').trim().toLowerCase(), r.hora, r.personas].join('|');
+        const clave = r => [r.fecha, (r.sede||'').trim().toLowerCase(), (r.cliente||'').trim().toLowerCase(), r.hora, r.personas].join('|');
         const clavesExistentes = new Set(existentes.map(clave));
 
         for(let r=headerIdx+1;r<rows.length;r++){
@@ -14558,10 +15195,22 @@ function reservasEliminar(id){
    prevision_notas (un registro por guardado; se usa el más reciente
    por fecha).
    ================================================================== */
-function previsionUmbral(){ return DB.get('prevision_umbral', 15); }
-function previsionSetUmbral(n){ DB.set('prevision_umbral', Math.max(1, Number(n)||15)); }
+// El umbral de "día movido" es un número por sede (cada sede tiene su
+// propio volumen normal de reservas) — se guarda como objeto { [sede]: n }.
+function previsionUmbral(){
+  const obj = DB.get('prevision_umbral', {});
+  if(typeof obj === 'number') return obj; // compatibilidad antes de la migración
+  const v = obj[sedeParaGuardar()];
+  return v ? Math.max(1, Number(v)) : 15;
+}
+function previsionSetUmbral(n){
+  const obj = DB.get('prevision_umbral', {});
+  const base = (typeof obj === 'number') ? {} : obj;
+  base[sedeParaGuardar()] = Math.max(1, Number(n)||15);
+  DB.set('prevision_umbral', base);
+}
 function previsionNotasDelDia(fecha){
-  const arr = DB.get('prevision_notas', []).filter(r=>r.fecha===fecha);
+  const arr = filtrarPorSede(DB.get('prevision_notas', [])).filter(r=>r.fecha===fecha);
   return arr.length ? arr[arr.length-1] : null;
 }
 
@@ -14787,7 +15436,7 @@ function guardarPrevisionNotas(){
   const tipoManual = document.getElementById('pv_tipoManual').value || null;
   const grado = document.getElementById('pv_grado').value === 'si';
   const notas = document.getElementById('pv_notas').value.trim();
-  DB.push('prevision_notas', { fecha: previsionFechaVista, notas, tipoManual, grado, creadoPor: SESSION.nombre });
+  DB.push('prevision_notas', { fecha: previsionFechaVista, notas, tipoManual, grado, creadoPor: SESSION.nombre, sede: sedeParaGuardar() });
   showMsg('pv_msg','Planificación guardada.','verde');
   renderPrevisionModule(NAV.find(s=>s.id==='operacion'), null, null, previsionLastRuta);
 }
