@@ -3050,7 +3050,11 @@ function tutorialMarcarVisto(itemId){
 }
 
 let _tutorialPendiente = null;
+// Los pop-ups de tutorial quedaron desactivados a pedido de Harol — se
+// deja el contenido (TIPS_ITEM) y el resto de la función intactos por si
+// se quieren reactivar más adelante; simplemente ya no se muestran nunca.
 function mostrarPopupTutorial(sec, group, item, ruta, continuarFn){
+  continuarFn(); return;
   const tip = TIPS_ITEM[item.id];
   if(!tip || tutorialYaVisto(item.id)){ continuarFn(); return; }
   tutorialMarcarVisto(item.id);
