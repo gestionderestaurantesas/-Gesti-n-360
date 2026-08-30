@@ -941,6 +941,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       if(!claims.rol || !claims.sede){
         return { ok:false, mensaje:'Esta cuenta todavía no tiene rol asignado. Contacta a Gerencia.' };
       }
+      window._fsCurrentUid = cred.user.uid; // UID real de Firebase (capa FS — ver DISENO_migracion_documentos_individuales.md)
       return { ok:true, rol: claims.rol, sede: claims.sede };
     }catch(err){
       let mensaje = 'Usuario o contraseña incorrectos.';
@@ -990,6 +991,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
   window._fsCache = {};
   window._fsListo = false;
   window._fsSesionLista = false;
+  window._fsCurrentUid = null; // UID real de Firebase de la sesión activa (capa FS, ver DISENO_migracion_documentos_individuales.md)
   let fsListoCallbacks = [];
   window._fsAlListo = function(fn){ if(window._fsListo) fn(); else fsListoCallbacks.push(fn); };
 
@@ -1022,8 +1024,134 @@ https://github.com/nodeca/pako/blob/main/LICENSE
   // (ver window.iniciarSesionReal) y dispara este mismo listener.
   fbAuth.onAuthStateChanged(function(user){
     window._fsSesionLista = !!user;
+    window._fsCurrentUid = user ? user.uid : null;
     if(user) fsEmpezarEscucha();
   });
+
+  /* ================= CAPA FS — documentos individuales =================
+     Piloto de migración (ver DISENO_migracion_documentos_individuales.md).
+     Convive con DB.* sin reemplazarlo ni tocar la estructura vieja
+     (ch_cordova_datos). Por ahora solo se usa apuntando a colecciones de
+     PRUEBA (ej. "checklists_prueba") — ninguna llamada de este bloque
+     toca datos reales hasta que se decida explícitamente lo contrario.
+
+     Estructura: empresas/{empresaId}/sedes/{sedeId}/{coleccion}/{docId}
+     Id del documento: "{tipo}__{legacyId}" — evita choques al unificar
+     ~20 tipos de checklist en una sola colección (ajuste 8 de Harol).
+
+     Cada función recibe explícitamente quién hace la operación (quienId,
+     quienNombre) en vez de leer la variable global SESSION del script
+     clásico — así este módulo no depende de detalles internos del script
+     principal, solo de lo que le pasan. */
+  const FS_EMPRESA_ID = 'cordova'; // fijo por ahora; los claims todavía no son multiempresa
+
+  function fsRutaColeccion(coleccion, sedeId){
+    return collection(fbDb, 'empresas', FS_EMPRESA_ID, 'sedes', sedeId, coleccion);
+  }
+
+  async function fsEscribirConReintento(ref, datos, rutaParaError, intentos){
+    intentos = intentos || 0;
+    try{
+      await setDoc(ref, datos, { merge: true });
+      return { ok:true };
+    }catch(err){
+      if(intentos < 2){
+        await new Promise(function(r){ setTimeout(r, 400 * Math.pow(2, intentos)); });
+        return fsEscribirConReintento(ref, datos, rutaParaError, intentos + 1);
+      }
+      // se agotaron los 3 intentos: registrar el error para que Gerencia lo vea
+      // (ajuste 7 de Harol) — esto NUNCA bloquea ni revierte la escritura
+      // vieja en DB, que ya se hizo antes de llegar acá.
+      const mensajeError = String((err && err.message) || err);
+      try{
+        await setDoc(doc(collection(fbDb, 'empresas', FS_EMPRESA_ID, 'errores_sync')), {
+          ruta: rutaParaError || (ref && ref.path) || '',
+          error: mensajeError,
+          creadoEn: serverTimestamp()
+        });
+      }catch(e2){ /* si ni esto funciona, ya no hay más que hacer del lado del cliente */ }
+      console.warn('FS: no se pudo sincronizar (quedó registrado en errores_sync):', mensajeError);
+      return { ok:false, error: mensajeError };
+    }
+  }
+
+  window.FS = {
+    // Crea un documento nuevo. legacyId (opcional) es el id que ya trae
+    // el registro viejo de DB.push — si se pasa, el id del documento
+    // queda "tipo__legacyId" (trazable y sin choques entre tipos).
+    async crear(coleccion, sedeId, tipo, datos, quienId, quienNombre, legacyId){
+      const docId = tipo + '__' + (legacyId || (Date.now() + '_' + Math.random().toString(36).slice(2,7)));
+      const ref = doc(fsRutaColeccion(coleccion, sedeId), docId);
+      const registro = Object.assign({}, datos, {
+        empresaId: FS_EMPRESA_ID,
+        sedeId: sedeId,
+        tipo: tipo,
+        creadoPorId: quienId || null,
+        creadoPorNombre: quienNombre || null,
+        creadoPorUid: window._fsCurrentUid || null,
+        creadoEn: serverTimestamp(),
+        actualizadoEn: serverTimestamp(),
+        estado: (datos && datos.estado) || 'activo'
+      });
+      const resultado = await fsEscribirConReintento(ref, registro, ref.path);
+      return Object.assign({ id: docId }, resultado);
+    },
+
+    // Escucha en tiempo real toda la colección de una sede (sin F5).
+    // Devuelve la función para dejar de escuchar.
+    escuchar(coleccion, sedeId, callback){
+      return onSnapshot(fsRutaColeccion(coleccion, sedeId), function(snap){
+        const items = [];
+        snap.forEach(function(d){ items.push(Object.assign({ id: d.id }, d.data())); });
+        callback(items);
+      }, function(err){
+        console.warn('FS.escuchar: error de sincronización en "' + coleccion + '/' + sedeId + '":', err);
+      });
+    },
+
+    // Actualiza campos de un documento existente. Nunca deja tocar los
+    // campos de creación/sede/empresa (ajuste 5 de Harol) — eso lo hace
+    // cumplir además la regla de Firestore del lado del servidor.
+    async actualizar(coleccion, sedeId, docId, cambios){
+      const ref = doc(fsRutaColeccion(coleccion, sedeId), docId);
+      const seguro = Object.assign({}, cambios);
+      delete seguro.empresaId; delete seguro.sedeId;
+      delete seguro.creadoPorId; delete seguro.creadoPorUid; delete seguro.creadoPorNombre; delete seguro.creadoEn;
+      seguro.actualizadoEn = serverTimestamp();
+      return fsEscribirConReintento(ref, seguro, ref.path);
+    },
+
+    // Nunca borra: marca "anulado" con responsable y motivo (ajuste de
+    // caja/pagos/inventarios/propinas, aplicable a cualquier colección).
+    async anular(coleccion, sedeId, docId, motivo, quienId, quienNombre){
+      const ref = doc(fsRutaColeccion(coleccion, sedeId), docId);
+      return fsEscribirConReintento(ref, {
+        estado: 'anulado',
+        anuladoPorId: quienId || null,
+        anuladoPorNombre: quienNombre || null,
+        anuladoEn: serverTimestamp(),
+        motivoAnulacion: motivo || '',
+        actualizadoEn: serverTimestamp()
+      }, ref.path);
+    },
+
+    // Auditoría de operaciones sensibles: usuario, fecha, acción, registro
+    // afectado, info anterior/nueva y motivo.
+    async auditar(accion, registroAfectado, infoAnterior, infoNueva, motivo, quienId, quienNombre){
+      const ref = doc(collection(fbDb, 'empresas', FS_EMPRESA_ID, 'auditoria'));
+      return fsEscribirConReintento(ref, {
+        usuario: quienId || null,
+        usuarioNombre: quienNombre || null,
+        usuarioUid: window._fsCurrentUid || null,
+        fecha: serverTimestamp(),
+        accion: accion,
+        registroAfectado: registroAfectado,
+        infoAnterior: infoAnterior || null,
+        infoNueva: infoNueva || null,
+        motivo: motivo || ''
+      }, ref.path);
+    }
+  };
 </script>
 
 <!-- ================= APP PRINCIPAL ================= -->
@@ -5271,6 +5399,14 @@ function guardarAseoArea(itemId){
     observaciones
   };
   DB.push('aseo_area', registro);
+  // Piloto capa FS — escritura doble hacia una colección de PRUEBA, no
+  // hacia producción (ajuste 2 de Harol). No afecta lo que ya guardó
+  // DB.push arriba, que sigue siendo la escritura que manda (ajuste 7):
+  // si esto falla, el checklist real ya quedó guardado igual.
+  if(window.FS){
+    window.FS.crear('checklists_prueba', registro.sede, 'aseo_area', registro, registro.usuario, registro.nombre, registro.id)
+      .catch(function(e){ console.warn('FS piloto (aseo_area): no se pudo escribir en checklists_prueba', e); });
+  }
   aseoAreaValues = {};
   aseoAreaExtra = {};
   aseoAreaReady = null;
