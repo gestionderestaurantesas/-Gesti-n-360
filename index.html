@@ -10776,6 +10776,7 @@ function planifSetTipoNueva(v){ planifTipoNueva = v; renderPlanificacionTareasMo
 function planifSetVista(v){
   planifVista = v;
   planifSeleccion = null;
+  planifRosterSeleccion = null;
   if((v==='dia' || v==='personas') && !planifCoberturaHoy && !planifCoberturaCargando) planifCargarCoberturaHoy();
   renderPlanificacionTareasModule(null,null,null,planifLastRuta);
 }
@@ -11111,6 +11112,134 @@ function planifHojasIndividualesHtml(){
   return `<div style="display:flex;gap:14px;flex-wrap:wrap;">${tarjetas}</div>`;
 }
 
+/* ------------------------------------------------------------------
+   ROSTER FIJO DE RESPONSABILIDADES — quién tiene normalmente a su
+   cargo cada checklist/mise en place/cierre/inspección, sin depender
+   de una fecha ni de Horarios. Piloto: solo la sede Montería, a pedido
+   de Harol — se puede extender a las demás sedes más adelante.
+   Colección: planif_roster_fijo.
+   ------------------------------------------------------------------ */
+const PLANIF_ROSTER_SEDE_PILOTO = 'monteria';
+const PLANIF_ROSTER_CATEGORIAS = [
+  { id:'checklist', label:'Checklist' },
+  { id:'mise_en_place', label:'Mise en place' },
+  { id:'cierre', label:'Cierres' },
+  { id:'inspeccion', label:'Inspecciones' },
+];
+function planifCatalogoTareasFijo(){
+  const secChk = NAV.find(s=>s.id==='checklists');
+  const items = [];
+  secChk.groups.forEach(g => g.items.forEach(it => {
+    let categoria = 'checklist';
+    if(/^chk_mise/.test(it.id)) categoria = 'mise_en_place';
+    else if(/^chk_cierre/.test(it.id)) categoria = 'cierre';
+    items.push({ id: it.id, label: it.label, categoria });
+  }));
+  [
+    { id:'coc_inspeccion', label:'Inspección de cocina' },
+    { id:'sc_inspeccion', label:'Inspección de servicio al cliente' },
+    { id:'bar_inspeccion', label:'Inspección de bar' },
+    { id:'cf_inspeccion_caja', label:'Inspección de caja' }
+  ].forEach(i => items.push({ id:i.id, label:i.label, categoria:'inspeccion' }));
+  return items;
+}
+function planifRosterTrabajadores(){
+  return DB.get('usuarios', []).filter(u => u.sede === PLANIF_ROSTER_SEDE_PILOTO && u.activo !== false);
+}
+function planifRosterRelaciones(){
+  return DB.get('planif_roster_fijo', []).filter(r => r.sede === PLANIF_ROSTER_SEDE_PILOTO);
+}
+function planifRosterTieneRelacion(usuario, checklistId){
+  return planifRosterRelaciones().some(r => r.usuario===usuario && r.checklistId===checklistId);
+}
+let planifRosterSeleccion = null; // { tipo:'persona', usuario, nombre } | { tipo:'tarea', id, label, categoria }
+function planifRosterRelacionar(usuario, nombre, checklistId, checklistLabel, categoria){
+  if(planifRosterTieneRelacion(usuario, checklistId)){ planifRosterQuitar(usuario, checklistId); return; }
+  DB.push('planif_roster_fijo', { sede: PLANIF_ROSTER_SEDE_PILOTO, usuario, nombre, checklistId, checklistLabel, categoria });
+  renderPlanificacionTareasModule(null,null,null,planifLastRuta);
+}
+function planifRosterQuitar(usuario, checklistId){
+  const arr = DB.get('planif_roster_fijo', []);
+  DB.set('planif_roster_fijo', arr.filter(r => !(r.sede===PLANIF_ROSTER_SEDE_PILOTO && r.usuario===usuario && r.checklistId===checklistId)));
+  renderPlanificacionTareasModule(null,null,null,planifLastRuta);
+}
+function planifRosterClickPersona(usuario, nombre){
+  if(planifRosterSeleccion && planifRosterSeleccion.tipo==='tarea'){
+    const t = planifRosterSeleccion; planifRosterSeleccion = null;
+    planifRosterRelacionar(usuario, nombre, t.id, t.label, t.categoria);
+    return;
+  }
+  planifRosterSeleccion = (planifRosterSeleccion && planifRosterSeleccion.tipo==='persona' && planifRosterSeleccion.usuario===usuario) ? null : { tipo:'persona', usuario, nombre };
+  renderPlanificacionTareasModule(null,null,null,planifLastRuta);
+}
+function planifRosterClickTarea(id, label, categoria){
+  if(planifRosterSeleccion && planifRosterSeleccion.tipo==='persona'){
+    const p = planifRosterSeleccion; planifRosterSeleccion = null;
+    planifRosterRelacionar(p.usuario, p.nombre, id, label, categoria);
+    return;
+  }
+  planifRosterSeleccion = (planifRosterSeleccion && planifRosterSeleccion.tipo==='tarea' && planifRosterSeleccion.id===id) ? null : { tipo:'tarea', id, label, categoria };
+  renderPlanificacionTareasModule(null,null,null,planifLastRuta);
+}
+function planifRosterHtml(){
+  const trabajadores = planifRosterTrabajadores();
+  const catalogo = planifCatalogoTareasFijo();
+  const relaciones = planifRosterRelaciones();
+  const conteoPorUsuario = {}; relaciones.forEach(r => { conteoPorUsuario[r.usuario] = (conteoPorUsuario[r.usuario]||0) + 1; });
+  const conteoPorTarea = {}; relaciones.forEach(r => { conteoPorTarea[r.checklistId] = (conteoPorTarea[r.checklistId]||0) + 1; });
+
+  const colTrabajadores = trabajadores.length ? trabajadores.map(u => {
+    const activa = planifRosterSeleccion && planifRosterSeleccion.tipo==='persona' && planifRosterSeleccion.usuario===u.usuario;
+    const n = conteoPorUsuario[u.usuario] || 0;
+    const nombreSeguro = (u.nombre||u.usuario).replace(/'/g,"\\'");
+    return `<div onclick="planifRosterClickPersona('${u.usuario}','${nombreSeguro}')"
+      style="cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:8px;padding:7px 10px;border-radius:9px;margin-bottom:5px;border:1px solid ${activa?'var(--bronce)':'var(--border)'};background:${activa?'rgba(180,146,47,0.12)':'var(--white)'};">
+      <span>${u.nombre || u.usuario} <span style="color:var(--text-light);font-size:10.5px;">· ${u.cargo || u.rolPuesto || ''}</span></span>
+      <span class="badge ${n?'badge-verde':''}" style="font-size:10.5px;">${n}</span>
+    </div>`;
+  }).join('') : `<p style="color:var(--text-light);font-size:12.5px;">No hay trabajadores activos de Montería registrados.</p>`;
+
+  const colTareas = PLANIF_ROSTER_CATEGORIAS.map(cat => {
+    const deCat = catalogo.filter(c => c.categoria===cat.id);
+    if(!deCat.length) return '';
+    const filas = deCat.map(c => {
+      const activa = planifRosterSeleccion && planifRosterSeleccion.tipo==='tarea' && planifRosterSeleccion.id===c.id;
+      const n = conteoPorTarea[c.id] || 0;
+      return `<div onclick="planifRosterClickTarea('${c.id}','${c.label.replace(/'/g,"\\'")}','${c.categoria}')"
+        style="cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:8px;padding:7px 10px;border-radius:9px;margin-bottom:5px;border:1px solid ${activa?'var(--bronce)':'var(--border)'};background:${activa?'rgba(180,146,47,0.12)':'var(--white)'};">
+        <span style="font-size:12.5px;">${c.label}</span>
+        ${n ? `<span class="badge badge-verde" style="font-size:10.5px;">${n}</span>` : ''}
+      </div>`;
+    }).join('');
+    return `<div style="margin-bottom:12px;"><div style="font-weight:700;font-size:12.5px;color:var(--text-light);margin-bottom:4px;">${cat.label}</div>${filas}</div>`;
+  }).join('');
+
+  const conRelaciones = trabajadores.filter(u => conteoPorUsuario[u.usuario]);
+  const relacionesHtml = conRelaciones.length ? conRelaciones.map(u => {
+    const mias = relaciones.filter(r=>r.usuario===u.usuario);
+    const chips = mias.map(r => `<span style="display:inline-flex;align-items:center;gap:4px;background:rgba(180,146,47,0.10);border:1px solid var(--border);border-radius:999px;padding:3px 10px 3px 12px;font-size:11.5px;margin:0 6px 6px 0;">
+      ${r.checklistLabel} <button type="button" onclick="planifRosterQuitar('${r.usuario}','${r.checklistId}')" style="border:none;background:none;color:#C0392B;cursor:pointer;font-size:13px;line-height:1;padding:0 2px;" title="Quitar">&times;</button>
+    </span>`).join('');
+    return `<div style="margin-bottom:12px;"><div style="font-weight:700;font-size:12.5px;">${u.nombre}</div><div>${chips}</div></div>`;
+  }).join('') : `<p style="color:var(--text-light);font-size:12.5px;">Todavía no hay relaciones guardadas.</p>`;
+
+  return `
+    <p style="color:var(--text-light);font-size:12px;margin-bottom:4px;"><b>Piloto: solo Montería.</b> Esta relación no depende de la fecha ni de Horarios — es la asignación de base de cada trabajador, para usarla después al armar el día.</p>
+    <p style="color:var(--text-light);font-size:12px;margin-bottom:10px;">Toca un trabajador y luego una tarea (o al revés) para relacionarlos. Tocar una relación ya hecha la quita.</p>
+    <div style="display:flex;gap:16px;flex-wrap:wrap;">
+      <div style="flex:1;min-width:260px;">
+        <div style="font-weight:700;font-size:13px;margin-bottom:8px;">Trabajadores de Montería (${trabajadores.length})</div>
+        ${colTrabajadores}
+      </div>
+      <div style="flex:1;min-width:260px;">
+        <div style="font-weight:700;font-size:13px;margin-bottom:8px;">Checklist, mise en place, cierres e inspecciones</div>
+        ${colTareas}
+      </div>
+    </div>
+    <div class="form-section-title">Relaciones actuales</div>
+    ${relacionesHtml}`;
+}
+
 function renderPlanificacionTareasModule(sec, group, item, ruta){
   if(ruta) planifLastRuta = ruta;
   const secOp = sec || NAV.find(s=>s.id==='operacion');
@@ -11153,6 +11282,7 @@ function renderPlanificacionTareasModule(sec, group, item, ruta){
       <button class="tab-btn ${planifVista==='lista'?'active':''}" onclick="planifSetVista('lista')">Lista por área</button>
       <button class="tab-btn ${planifVista==='dia'?'active':''}" onclick="planifSetVista('dia')">Vista del día</button>
       <button class="tab-btn ${planifVista==='personas'?'active':''}" onclick="planifSetVista('personas')">Por persona</button>
+      <button class="tab-btn ${planifVista==='roster'?'active':''}" onclick="planifSetVista('roster')">Roster fijo (Montería)</button>
     </div>`;
 
   const cuerpoLista = `
@@ -11196,6 +11326,8 @@ function renderPlanificacionTareasModule(sec, group, item, ruta){
       <div class="form-section-title" style="margin-top:0;">Hoja individual de cada persona — ${planifFecha}</div>
       ${planifHojasIndividualesHtml()}`;
 
+  const cuerpoRoster = planifRosterHtml();
+
   const html = `
     <div class="panel">
       <div class="panel-header">
@@ -11204,7 +11336,7 @@ function renderPlanificacionTareasModule(sec, group, item, ruta){
       </div>
       <p style="color:var(--text-light);font-size:12px;margin-bottom:14px;">Asigna tareas por área y turno para un día, y a cada persona — quien esté cubriendo ese turno (según Horarios) o quien tenga la tarea asignada la marca como hecha. Puede ser una tarea libre o uno de los checklists que ya existen en la app.</p>
       ${vistaTabsHtml}
-      ${planifVista==='dia' ? cuerpoDia : (planifVista==='personas' ? cuerpoPersonas : cuerpoLista)}
+      ${planifVista==='dia' ? cuerpoDia : (planifVista==='personas' ? cuerpoPersonas : (planifVista==='roster' ? cuerpoRoster : cuerpoLista))}
     </div>`;
   document.getElementById('content').innerHTML = html;
 }
