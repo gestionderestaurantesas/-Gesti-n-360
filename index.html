@@ -10765,16 +10765,18 @@ let planifFecha = hoyStr();
 let planifArea = PLANIF_AREAS[0];
 let planifLastRuta = 'Operación → Planificación y asignación de tareas';
 let planifTipoNueva = 'libre';
-let planifVista = 'lista'; // 'lista' | 'dia'
+let planifVista = 'lista'; // 'lista' | 'dia' | 'personas'
 let planifCoberturaHoy = null;
 let planifCoberturaCargando = false;
+let planifSeleccion = null; // { tipo:'tarea', id } | { tipo:'persona', usuario, nombre } — para asignar con dos clics
 
 function planifSetFecha(v){ planifFecha = v || hoyStr(); renderPlanificacionTareasModule(null,null,null,planifLastRuta); }
 function planifSetArea(v){ planifArea = v; renderPlanificacionTareasModule(null,null,null,planifLastRuta); }
 function planifSetTipoNueva(v){ planifTipoNueva = v; renderPlanificacionTareasModule(null,null,null,planifLastRuta); }
 function planifSetVista(v){
   planifVista = v;
-  if(v==='dia' && !planifCoberturaHoy && !planifCoberturaCargando) planifCargarCoberturaHoy();
+  planifSeleccion = null;
+  if((v==='dia' || v==='personas') && !planifCoberturaHoy && !planifCoberturaCargando) planifCargarCoberturaHoy();
   renderPlanificacionTareasModule(null,null,null,planifLastRuta);
 }
 // Pide a Horarios (puente de solo lectura) quién trabaja hoy, por área y
@@ -10796,6 +10798,144 @@ function planifAsignarTarea(tareaId, usuario, nombre){
   arr[idx].asignadoANombre = usuario ? (nombre||'') : '';
   DB.set('tareas_asignadas', arr);
   renderPlanificacionTareasModule(null,null,null,planifLastRuta);
+}
+
+/* ------------------------------------------------------------------
+   TABLERO DE ASIGNACIÓN — cruza el personal de hoy (que viene de
+   Horarios, solo nombres) con las cuentas reales de usuarios de esta
+   app, para poder asignarles tareas con dos clics (tarea + persona, en
+   cualquier orden) y repartir lo pendiente de forma pareja.
+   ------------------------------------------------------------------ */
+// Compara nombres ignorando mayúsculas, tildes y signos, para poder
+// cruzar "Yoenys Yanith Humanez Bello" (Horarios) con el mismo nombre
+// guardado en Usuarios aunque no estén escritos exactamente igual.
+function planifNormalizarNombre(s){
+  return (s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z ]/g,' ').replace(/\s+/g,' ').trim();
+}
+function planifResolverUsuarioPorNombre(nombreHorarios, usuariosDisp){
+  const norm = planifNormalizarNombre(nombreHorarios);
+  if(!norm) return null;
+  let match = usuariosDisp.find(u => planifNormalizarNombre(u.nombre) === norm);
+  if(match) return match;
+  const palabras = norm.split(' ').filter(Boolean);
+  if(!palabras.length) return null;
+  match = usuariosDisp.find(u => {
+    const un = planifNormalizarNombre(u.nombre);
+    return palabras.every(p => un.indexOf(p) !== -1);
+  });
+  return match || null;
+}
+// Lista plana de quién trabaja hoy (según Horarios), cada uno cruzado
+// con su cuenta real si se pudo encontrar. Quien descansa hoy no
+// aparece — no tiene sentido asignarle tareas.
+function planifPersonasHoyResueltas(){
+  const usuariosDisp = planifUsuariosDisponibles();
+  const areas = (planifCoberturaHoy && planifCoberturaHoy.areas) || [];
+  const out = [];
+  areas.forEach(a => {
+    (a.personas || []).forEach(p => {
+      if(p.descansa) return;
+      const u = planifResolverUsuarioPorNombre(p.nombre, usuariosDisp);
+      out.push({
+        nombreHorarios: p.nombre, color: p.color, rangos: p.rangos,
+        areaHorarios: a.nombre, areaHorariosId: a.id,
+        usuario: u ? u.usuario : null, nombreReal: u ? u.nombre : null
+      });
+    });
+  });
+  return out;
+}
+function planifConteoTareasPorUsuario(){
+  const conteo = {};
+  planifTareasDeDiaTodasAreas(planifFecha).forEach(t => { if(t.asignadoA) conteo[t.asignadoA] = (conteo[t.asignadoA]||0) + 1; });
+  return conteo;
+}
+// Clic en una tarea y luego en una persona (o al revés) = asignar.
+function planifClickTarea(tareaId){
+  if(planifSeleccion && planifSeleccion.tipo==='persona'){
+    const p = planifSeleccion; planifSeleccion = null;
+    planifAsignarTarea(tareaId, p.usuario, p.nombre);
+    return;
+  }
+  planifSeleccion = (planifSeleccion && planifSeleccion.tipo==='tarea' && planifSeleccion.id===tareaId) ? null : { tipo:'tarea', id: tareaId };
+  renderPlanificacionTareasModule(null,null,null,planifLastRuta);
+}
+function planifClickPersona(usuario, nombre){
+  if(!usuario) return; // sin cuenta vinculada — no se le puede asignar nada todavía
+  if(planifSeleccion && planifSeleccion.tipo==='tarea'){
+    const t = planifSeleccion; planifSeleccion = null;
+    planifAsignarTarea(t.id, usuario, nombre);
+    return;
+  }
+  planifSeleccion = (planifSeleccion && planifSeleccion.tipo==='persona' && planifSeleccion.usuario===usuario) ? null : { tipo:'persona', usuario, nombre };
+  renderPlanificacionTareasModule(null,null,null,planifLastRuta);
+}
+// Reparte de una vez las tareas que quedaron sin asignar, prefiriendo a
+// alguien del área correspondiente (cuando Horarios tiene esa misma
+// área) y siempre a quien tenga menos tareas encima en este momento —
+// así el reparto queda parejo sin tener que ir una por una.
+const PLANIF_MAPA_AREA_A_HORARIOS = { cocina:'cocina', bar:'bar', servicio_cliente:'servicio', contabilidad:'caja' };
+function planifRepartirEquitativo(){
+  const personas = planifPersonasHoyResueltas().filter(p => p.usuario);
+  if(!personas.length) return;
+  const cargaActual = {};
+  const conteo = planifConteoTareasPorUsuario();
+  personas.forEach(p => { cargaActual[p.usuario] = conteo[p.usuario] || 0; });
+
+  const pendientes = planifTareasDeDiaTodasAreas(planifFecha).filter(t => !t.asignadoA);
+  if(!pendientes.length) return;
+  const arr = DB.get('tareas_asignadas', []);
+  pendientes.forEach(t => {
+    const idHorarios = PLANIF_MAPA_AREA_A_HORARIOS[t.area];
+    let candidatos = idHorarios ? personas.filter(p => p.areaHorariosId===idHorarios) : [];
+    if(!candidatos.length) candidatos = personas;
+    let elegido = candidatos[0];
+    candidatos.forEach(c => { if(cargaActual[c.usuario] < cargaActual[elegido.usuario]) elegido = c; });
+    const idx = arr.findIndex(x=>x.id===t.id);
+    if(idx!==-1){
+      arr[idx].asignadoA = elegido.usuario;
+      arr[idx].asignadoANombre = elegido.nombreReal || elegido.nombreHorarios;
+      cargaActual[elegido.usuario] = (cargaActual[elegido.usuario]||0) + 1;
+    }
+  });
+  DB.set('tareas_asignadas', arr);
+  renderPlanificacionTareasModule(null,null,null,planifLastRuta);
+}
+// Personas de inspección del día — selección manual, aparte de las
+// tareas normales (su función es revisar, no ejecutar).
+function planifInspectoresHoy(){
+  return DB.get('planif_inspectores', []).filter(r => r.fecha===planifFecha && r.sede===sedeParaGuardar());
+}
+function planifEsInspector(usuario){
+  return planifInspectoresHoy().some(r => r.usuario===usuario);
+}
+function planifToggleInspector(usuario, nombre){
+  if(!usuario) return;
+  const arr = DB.get('planif_inspectores', []);
+  const idx = arr.findIndex(r => r.fecha===planifFecha && r.sede===sedeParaGuardar() && r.usuario===usuario);
+  if(idx !== -1){
+    arr.splice(idx, 1);
+    DB.set('planif_inspectores', arr);
+  } else {
+    DB.push('planif_inspectores', { fecha: planifFecha, sede: sedeParaGuardar(), usuario, nombre });
+  }
+  renderPlanificacionTareasModule(null,null,null,planifLastRuta);
+}
+// Tareas de cierre y de mise en place de hoy — se derivan solas de las
+// tareas ya creadas (cuando se usa "checklist existente" y se elige uno
+// de cierre o de mise en place), sin pedir nada nuevo.
+function planifTareasCierreHoy(){
+  return planifTareasDeDiaTodasAreas(planifFecha).filter(t => t.tipo==='checklist' && /^chk_cierre/.test(t.checklistId||''));
+}
+function planifTareasMiseHoy(){
+  return planifTareasDeDiaTodasAreas(planifFecha).filter(t => t.tipo==='checklist' && /^chk_mise/.test(t.checklistId||''));
+}
+function planifListaResumenHtml(titulo, tareas, vacioTexto){
+  const cuerpo = tareas.length ? tareas.map(t => `<div style="display:flex;justify-content:space-between;font-size:12.5px;padding:4px 0;border-bottom:1px dashed var(--border);">
+      <span>${t.checklistLabel || t.descripcion} <span style="color:var(--text-light);font-size:11px;">(${(AREA_META[t.area]||{label:t.area}).label})</span></span>
+      <span style="color:${t.asignadoA?'var(--text)':'#C0392B'};">${t.asignadoANombre || 'Sin asignar'}</span>
+    </div>`).join('') : `<p style="color:var(--text-light);font-size:12px;">${vacioTexto}</p>`;
+  return `<div style="margin-bottom:16px;"><div style="font-weight:700;font-size:13px;margin-bottom:4px;">${titulo}</div>${cuerpo}</div>`;
 }
 
 function planifCrearTarea(){
@@ -10846,69 +10986,129 @@ function planifAsignarSelectHtml(t, usuariosDisp){
     <option value="">Sin asignar</option>${opciones}
   </select>`;
 }
-// Panel visual de "quién trabaja hoy" — viene de Horarios (puente de solo
-// lectura). No filtra por área de Planificación: muestra las 6 áreas tal
-// como existen en Horarios, porque el objetivo es ver el día completo.
-function planifCoberturaHoyHtml(){
-  if(planifCoberturaCargando && !planifCoberturaHoy){
-    return `<p style="color:var(--text-light);font-size:12.5px;">Consultando Horarios...</p>`;
+// -------- TABLERO: personal (izquierda) y tareas (derecha), ambos
+// distribuidos por área, con clic-clic para asignar. --------
+function planifTableroPersonasHtml(personas, conteo){
+  if(!personas.length){
+    return `<p style="color:var(--text-light);font-size:12.5px;">${planifCoberturaCargando ? 'Consultando Horarios...' : 'Horarios no tiene a nadie trabajando hoy todavía.'}</p>`;
   }
-  if(!planifCoberturaHoy){
-    return `<p style="color:var(--text-light);font-size:12.5px;">No se pudo traer el horario de hoy desde Horarios todavía. <button type="button" class="btn-secondary" style="padding:5px 10px;font-size:11.5px;" onclick="planifCargarCoberturaHoy()">Reintentar</button></p>`;
+  const porArea = {};
+  personas.forEach(p => { (porArea[p.areaHorarios] = porArea[p.areaHorarios] || []).push(p); });
+  return Object.keys(porArea).map(area => {
+    const filas = porArea[area].map(p => {
+      const activa = planifSeleccion && planifSeleccion.tipo==='persona' && planifSeleccion.usuario===p.usuario;
+      const sinCuenta = !p.usuario;
+      const n = p.usuario ? (conteo[p.usuario]||0) : 0;
+      const nombreSeguro = (p.nombreReal || p.nombreHorarios).replace(/'/g, "\\'");
+      return `<div ${sinCuenta ? '' : `onclick="planifClickPersona('${p.usuario}','${nombreSeguro}')"`}
+        style="cursor:${sinCuenta?'default':'pointer'};display:flex;justify-content:space-between;align-items:center;gap:8px;padding:7px 10px;border-radius:9px;margin-bottom:5px;border:1px solid ${activa?'var(--bronce)':'var(--border)'};background:${activa?'rgba(180,146,47,0.12)':'var(--white)'};opacity:${sinCuenta?0.55:1};">
+        <span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${p.color||'#ccc'};margin-right:6px;"></span>${p.nombreReal || p.nombreHorarios}${sinCuenta ? ' <span style="color:#C0392B;font-size:10px;">(sin cuenta vinculada)</span>' : ''}</span>
+        ${p.usuario ? `<span class="badge ${n?'badge-verde':''}" style="font-size:10.5px;">${n}</span>` : ''}
+      </div>`;
+    }).join('');
+    return `<div style="margin-bottom:12px;"><div style="font-weight:700;font-size:12.5px;color:var(--text-light);margin-bottom:4px;">${area}</div>${filas}</div>`;
+  }).join('');
+}
+function planifTableroTareasHtml(pendientes){
+  if(!pendientes.length){
+    return `<p style="color:var(--text-light);font-size:12.5px;">No hay tareas sin asignar.</p>`;
   }
-  const areas = (planifCoberturaHoy.areas || []).filter(a => a.personas && a.personas.length);
-  if(!areas.length){
-    return `<p style="color:var(--text-light);font-size:12.5px;">Horarios no tiene a nadie asignado para hoy (${planifCoberturaHoy.dia || ''}) todavía.</p>`;
+  const porArea = {};
+  pendientes.forEach(t => { const l = (AREA_META[t.area]||{label:t.area}).label; (porArea[l] = porArea[l] || []).push(t); });
+  return Object.keys(porArea).map(areaLabel => {
+    const filas = porArea[areaLabel].map(t => {
+      const activa = planifSeleccion && planifSeleccion.tipo==='tarea' && planifSeleccion.id===t.id;
+      const label = t.tipo==='checklist' ? (t.checklistLabel || 'Checklist') : t.descripcion;
+      const turnoLabel = (PLANIF_TURNOS.find(x=>x.id===t.turno)||{}).label || t.turno;
+      return `<div onclick="planifClickTarea('${t.id}')"
+        style="cursor:pointer;padding:7px 10px;border-radius:9px;margin-bottom:5px;border:1px solid ${activa?'var(--bronce)':'var(--border)'};background:${activa?'rgba(180,146,47,0.12)':'var(--white)'};">
+        <div style="font-size:12.5px;">${label}</div>
+        <div style="color:var(--text-light);font-size:10.5px;">${turnoLabel}</div>
+      </div>`;
+    }).join('');
+    return `<div style="margin-bottom:12px;"><div style="font-weight:700;font-size:12.5px;color:var(--text-light);margin-bottom:4px;">${areaLabel}</div>${filas}</div>`;
+  }).join('');
+}
+function planifTableroHtml(){
+  const personas = planifPersonasHoyResueltas();
+  const conteo = planifConteoTareasPorUsuario();
+  const tareas = planifTareasDeDiaTodasAreas(planifFecha);
+  const pendientes = tareas.filter(t => !t.asignadoA);
+  const asignadas = tareas.filter(t => t.asignadoA);
+
+  const asignadasHtml = asignadas.length ? asignadas.map(t => {
+    const completadas = planifCompletadasDeTarea(t.id);
+    const hecha = completadas.length > 0;
+    const label = t.tipo==='checklist' ? (t.checklistLabel || 'Checklist') : t.descripcion;
+    return `<div class="check-row3">
+      <span>${label} <span style="color:var(--text-light);font-size:11px;">(${(AREA_META[t.area]||{label:t.area}).label} · ${t.asignadoANombre})</span></span>
+      <div style="display:flex;align-items:center;gap:8px;">
+        ${hecha ? `<span class="badge badge-verde">Hecha</span>` : `<button type="button" class="btn-secondary" style="padding:4px 8px;font-size:11px;" onclick="planifAsignarTarea('${t.id}','','')">Quitar asignación</button>`}
+      </div>
+    </div>`;
+  }).join('') : `<p style="color:var(--text-light);font-size:12.5px;">Todavía no hay tareas asignadas.</p>`;
+
+  const personasConCuenta = personas.filter(p => p.usuario);
+  const inspectoresHtml = personasConCuenta.length ? personasConCuenta.map(p => `
+    <label style="display:flex;align-items:center;gap:8px;font-size:12.5px;padding:4px 0;">
+      <input type="checkbox" ${planifEsInspector(p.usuario)?'checked':''} onchange="planifToggleInspector('${p.usuario}','${(p.nombreReal||p.nombreHorarios).replace(/'/g,"\\'")}')">
+      ${p.nombreReal || p.nombreHorarios} <span style="color:var(--text-light);">· ${p.areaHorarios}</span>
+    </label>`).join('') : `<p style="color:var(--text-light);font-size:12px;">No hay personas con cuenta vinculada disponibles hoy.</p>`;
+
+  return `
+    <div style="font-size:11.5px;color:var(--text-light);margin-bottom:10px;">Según Horarios · ${planifCoberturaHoy ? (planifCoberturaHoy.dia||'') : ''} ${planifCoberturaHoy && planifCoberturaHoy.actualizadoEn ? '· actualizado ' + new Date(planifCoberturaHoy.actualizadoEn).toLocaleTimeString('es-CO',{hour:'2-digit',minute:'2-digit'}) : ''}
+      <button type="button" class="btn-secondary" style="padding:3px 8px;font-size:10.5px;margin-left:6px;" onclick="planifCargarCoberturaHoy()">Actualizar</button></div>
+    <p style="color:var(--text-light);font-size:12px;margin-bottom:10px;">Toca una tarea y luego una persona (o al revés) para asignarla. El número junto a cada persona es cuántas tareas ya tiene hoy.</p>
+    <button type="button" class="btn-secondary" style="padding:7px 12px;font-size:12px;margin-bottom:14px;" onclick="planifRepartirEquitativo()">Repartir lo pendiente parejo</button>
+    <div style="display:flex;gap:16px;flex-wrap:wrap;">
+      <div style="flex:1;min-width:260px;">
+        <div style="font-weight:700;font-size:13px;margin-bottom:8px;">Personal de hoy, por área</div>
+        ${planifTableroPersonasHtml(personas, conteo)}
+      </div>
+      <div style="flex:1;min-width:260px;">
+        <div style="font-weight:700;font-size:13px;margin-bottom:8px;">Tareas sin asignar, por área (${pendientes.length})</div>
+        ${planifTableroTareasHtml(pendientes)}
+      </div>
+    </div>
+    <div class="form-section-title">Ya asignadas — ${planifFecha}</div>
+    ${asignadasHtml}
+    <div class="form-section-title">Personas de inspección de hoy</div>
+    <p style="color:var(--text-light);font-size:12px;margin-bottom:8px;">Marca quién revisa el trabajo del grupo de arriba hoy.</p>
+    ${inspectoresHtml}
+    ${planifListaResumenHtml('Tareas de cierre de hoy', planifTareasCierreHoy(), 'Sin tareas de cierre asignadas todavía.')}
+    ${planifListaResumenHtml('Mise en place de hoy', planifTareasMiseHoy(), 'Sin tareas de mise en place asignadas todavía.')}`;
+}
+// -------- Pestaña "Por persona" — una hoja individual por cada quien
+// trabaja hoy, con sus tareas y su estado de cumplimiento. --------
+function planifHojasIndividualesHtml(){
+  const personas = planifPersonasHoyResueltas().filter(p => p.usuario);
+  if(!personas.length){
+    return `<p style="color:var(--text-light);font-size:12.5px;">No hay personas con cuenta vinculada trabajando hoy.</p>`;
   }
-  const tarjetas = areas.map(a => {
-    const filas = a.personas.map(p => `
-      <div style="display:flex;justify-content:space-between;gap:8px;padding:5px 0;border-bottom:1px dashed var(--border);font-size:12.5px;">
-        <span><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${p.color||'#ccc'};margin-right:6px;"></span>${p.nombre}</span>
-        <span style="color:var(--text-light);">${p.descansa ? 'Descansa' : planifRangosLabel(p.rangos)}</span>
-      </div>`).join('');
-    return `<div style="background:var(--white);border:1px solid var(--border);border-radius:12px;padding:12px 14px;min-width:220px;flex:1;">
-      <div style="font-weight:700;font-size:13px;margin-bottom:6px;">${a.nombre}</div>
+  const tareas = planifTareasDeDiaTodasAreas(planifFecha);
+  const completadasIds = new Set(DB.get('tareas_completadas', []).map(c=>c.tareaId));
+  const tarjetas = personas.map(p => {
+    const mias = tareas.filter(t => t.asignadoA === p.usuario);
+    const hechas = mias.filter(t => completadasIds.has(t.id));
+    const pct = mias.length ? Math.round((hechas.length/mias.length)*100) : null;
+    const esInsp = planifEsInspector(p.usuario);
+    const filas = mias.length ? mias.map(t => {
+      const hecha = completadasIds.has(t.id);
+      const label = t.tipo==='checklist' ? (t.checklistLabel || 'Checklist') : t.descripcion;
+      const areaLabel = (AREA_META[t.area]||{label:t.area}).label;
+      const turnoLabel = (PLANIF_TURNOS.find(x=>x.id===t.turno)||{}).label || t.turno;
+      return `<div style="display:flex;justify-content:space-between;font-size:12px;padding:4px 0;border-bottom:1px dashed var(--border);">
+        <span>${label} <span style="color:var(--text-light);font-size:10.5px;">(${areaLabel} · ${turnoLabel})</span></span>
+        <span class="badge ${hecha?'badge-verde':''}" style="font-size:10px;">${hecha?'Hecha':'Pendiente'}</span>
+      </div>`;
+    }).join('') : `<p style="color:var(--text-light);font-size:11.5px;">Sin tareas asignadas hoy.</p>`;
+    return `<div style="background:var(--white);border:1px solid var(--border);border-radius:12px;padding:14px;min-width:260px;flex:1;">
+      <div style="font-weight:700;font-size:13.5px;">${p.nombreReal}${esInsp ? ' <span class="badge" style="font-size:10px;background:rgba(180,146,47,0.16);color:var(--bronce);">Inspección</span>' : ''}</div>
+      <div style="color:var(--text-light);font-size:11px;margin-bottom:8px;">${p.areaHorarios}${pct!==null ? ' · ' + pct + '% cumplido hoy' : ''}</div>
       ${filas}
     </div>`;
   }).join('');
-  return `<div style="font-size:11.5px;color:var(--text-light);margin-bottom:8px;">Según Horarios · ${planifCoberturaHoy.dia || ''} · actualizado ${planifCoberturaHoy.actualizadoEn ? new Date(planifCoberturaHoy.actualizadoEn).toLocaleTimeString('es-CO',{hour:'2-digit',minute:'2-digit'}) : '—'}
-    <button type="button" class="btn-secondary" style="padding:3px 8px;font-size:10.5px;margin-left:6px;" onclick="planifCargarCoberturaHoy()">Actualizar</button></div>
-  <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:20px;">${tarjetas}</div>`;
-}
-// Tareas del día cruzando TODAS las áreas (para la Vista del día) — se
-// agrupan por área y dentro por turno, cada una con su selector de
-// asignación.
-function planifTareasDeDiaTodasAreasHtml(){
-  const usuariosDisp = planifUsuariosDisponibles();
-  const tareas = planifTareasDeDiaTodasAreas(planifFecha);
-  if(!tareas.length){
-    return `<p style="color:var(--text-light);font-size:12.5px;">Sin tareas asignadas todavía para ${planifFecha}.</p>`;
-  }
-  return PLANIF_AREAS.map(area => {
-    const deArea = tareas.filter(t=>t.area===area);
-    if(!deArea.length) return '';
-    const meta = AREA_META[area] || {label:area};
-    const filas = PLANIF_TURNOS.map(turno => {
-      const deTurno = deArea.filter(t=>t.turno===turno.id);
-      if(!deTurno.length) return '';
-      const filasHtml = deTurno.map(t => {
-        const completadas = planifCompletadasDeTarea(t.id);
-        const hecha = completadas.length > 0;
-        const label = t.tipo==='checklist' ? (t.checklistLabel || 'Checklist') : t.descripcion;
-        return `<div class="check-row3">
-          <span>${label} ${t.tipo==='checklist' ? '<span style="color:var(--text-light);font-size:11px;">(checklist)</span>' : ''}</span>
-          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-            ${planifAsignarSelectHtml(t, usuariosDisp)}
-            ${hecha
-              ? `<span class="badge badge-verde">Hecha por ${completadas[completadas.length-1].responsable}</span>`
-              : `<button type="button" class="btn-secondary" style="padding:5px 10px;font-size:11.5px;" onclick="planifMarcarCompletada('${t.id}')">Marcar hecha</button>`}
-          </div>
-        </div>`;
-      }).join('');
-      return `<div style="font-size:12px;font-weight:700;color:var(--text-light);margin:10px 0 4px;">${turno.label}</div>${filasHtml}`;
-    }).join('');
-    return `<div style="margin-bottom:16px;"><div style="font-weight:700;font-size:14px;margin-bottom:2px;">${meta.label}</div>${filas}</div>`;
-  }).join('');
+  return `<div style="display:flex;gap:14px;flex-wrap:wrap;">${tarjetas}</div>`;
 }
 
 function renderPlanificacionTareasModule(sec, group, item, ruta){
@@ -10952,6 +11152,7 @@ function renderPlanificacionTareasModule(sec, group, item, ruta){
     <div class="tab-bar" style="margin-bottom:16px;">
       <button class="tab-btn ${planifVista==='lista'?'active':''}" onclick="planifSetVista('lista')">Lista por área</button>
       <button class="tab-btn ${planifVista==='dia'?'active':''}" onclick="planifSetVista('dia')">Vista del día</button>
+      <button class="tab-btn ${planifVista==='personas'?'active':''}" onclick="planifSetVista('personas')">Por persona</button>
     </div>`;
 
   const cuerpoLista = `
@@ -10986,10 +11187,14 @@ function renderPlanificacionTareasModule(sec, group, item, ruta){
       <div class="form-grid" style="max-width:220px;margin-bottom:14px;">
         <div class="form-field"><label>Fecha</label><input type="date" id="pl_fecha_dia" value="${planifFecha}" onchange="planifSetFecha(this.value)"></div>
       </div>
-      <div class="form-section-title" style="margin-top:0;">Quién trabaja hoy, por área</div>
-      ${planifCoberturaHoyHtml()}
-      <div class="form-section-title">Tareas de todas las áreas — ${planifFecha}</div>
-      ${planifTareasDeDiaTodasAreasHtml()}`;
+      ${planifTableroHtml()}`;
+
+  const cuerpoPersonas = `
+      <div class="form-grid" style="max-width:220px;margin-bottom:14px;">
+        <div class="form-field"><label>Fecha</label><input type="date" id="pl_fecha_personas" value="${planifFecha}" onchange="planifSetFecha(this.value)"></div>
+      </div>
+      <div class="form-section-title" style="margin-top:0;">Hoja individual de cada persona — ${planifFecha}</div>
+      ${planifHojasIndividualesHtml()}`;
 
   const html = `
     <div class="panel">
@@ -10999,7 +11204,7 @@ function renderPlanificacionTareasModule(sec, group, item, ruta){
       </div>
       <p style="color:var(--text-light);font-size:12px;margin-bottom:14px;">Asigna tareas por área y turno para un día, y a cada persona — quien esté cubriendo ese turno (según Horarios) o quien tenga la tarea asignada la marca como hecha. Puede ser una tarea libre o uno de los checklists que ya existen en la app.</p>
       ${vistaTabsHtml}
-      ${planifVista==='dia' ? cuerpoDia : cuerpoLista}
+      ${planifVista==='dia' ? cuerpoDia : (planifVista==='personas' ? cuerpoPersonas : cuerpoLista)}
     </div>`;
   document.getElementById('content').innerHTML = html;
 }
