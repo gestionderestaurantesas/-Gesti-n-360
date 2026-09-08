@@ -1680,13 +1680,13 @@ function rolesPermisosGet(){ return DB.get('roles_permisos', ROLES_PERMISOS_SEED
    (catálogo persistente), inv_conteos (historial de conteos).
    ================================================================== */
 const INV_DEPARTAMENTOS = [
-  { "id": "bar", "label": "Bar (licores, vinos, mezcladores, postres)", "icon": "glass", "color": "#6B4E9E" },
-  { "id": "centro_produccion", "label": "Centro de producción (carnes)", "icon": "factory", "color": "#1E5A70" },
-  { "id": "carnes_cocina", "label": "Carnes de cocina", "icon": "chef", "color": "#C0392B" },
-  { "id": "verduras_frutas", "label": "Verduras y frutas", "icon": "box", "color": "#2E7D32" },
-  { "id": "nevera2p", "label": "Lácteos y neveras", "icon": "box", "color": "#3B6EA8" },
-  { "id": "salsas_preparaciones", "label": "Salsas y preparaciones", "icon": "box", "color": "#7A5C3E" },
-  { "id": "bodega_general", "label": "Bodega general (materias primas e insumos)", "icon": "box", "color": "#B87333" },
+  { "id": "bar", "label": "Bar (licores, vinos, mezcladores, postres)", "icon": "glass", "color": "#2F7A78" },
+  { "id": "centro_produccion", "label": "Centro de producción (carnes)", "icon": "factory", "color": "#2F7A78" },
+  { "id": "carnes_cocina", "label": "Carnes de cocina", "icon": "chef", "color": "#2F7A78" },
+  { "id": "verduras_frutas", "label": "Verduras y frutas", "icon": "box", "color": "#2F7A78" },
+  { "id": "nevera2p", "label": "Lácteos y neveras", "icon": "box", "color": "#2F7A78" },
+  { "id": "salsas_preparaciones", "label": "Salsas y preparaciones", "icon": "box", "color": "#2F7A78" },
+  { "id": "bodega_general", "label": "Bodega general (materias primas e insumos)", "icon": "box", "color": "#2F7A78" },
   { "id": "neveras_gaseosas", "label": "Bebidas de meseros (gaseosa, agua, cerveza)", "icon": "box", "color": "#2F7A78" },
 ];
 
@@ -2129,13 +2129,13 @@ function hexToRgba(hex, a){
 /* Metadatos de área — para etiquetar con color cada checklist dentro
    de la lista única de Checklists (sin fragmentarla en mini-grupos) */
 const AREA_META = {
-  contabilidad:      { label:'Caja',                  color:'#2E7D32' },
-  servicio_cliente:  { label:'Servicio al cliente',   color:'#3B6EA8' },
-  cocina:            { label:'Cocina',                color:'#B87333' },
-  steward:           { label:'Steward / lavado de platos', color:'#5B6B73' },
+  contabilidad:      { label:'Caja',                  color:'#2F7A78' },
+  servicio_cliente:  { label:'Servicio al cliente',   color:'#2F7A78' },
+  cocina:            { label:'Cocina',                color:'#2F7A78' },
+  steward:           { label:'Steward / lavado de platos', color:'#2F7A78' },
   bar:               { label:'Bar',                   color:'#2F7A78' },
-  centro_produccion: { label:'Centro de producción',  color:'#6B4E9E' },
-  inspecciones:      { label:'Inspecciones',           color:'#C0392B' }
+  centro_produccion: { label:'Centro de producción',  color:'#2F7A78' },
+  inspecciones:      { label:'Inspecciones',           color:'#2F7A78' }
 };
 const AREA_ORDER = ['contabilidad','servicio_cliente','cocina','bar','centro_produccion','inspecciones'];
 // Orden de la columna única de Checklists: por tipo de checklist (todos los
@@ -2166,7 +2166,7 @@ function flatItemsOrdenados(groupsConItems){
 }
 
 const NAV = [
-  { id:'checklists', label:'Checklists', icon:'checklist', color:'#B87333',
+  { id:'checklists', label:'Checklists', icon:'checklist', color:'#2F7A78',
     desc:'Todas las listas de verificación del restaurante, en un solo lugar.',
     // flatDisplay: se mantienen los grupos por área (para permisos y para
     // el interruptor de subáreas), pero se muestran como una sola columna,
@@ -2211,7 +2211,7 @@ const NAV = [
         { id:'chk_aseo_traperos', label:'Aseo de zona de traperos', icon:'checklist', categoria:'aseo', roles:['empleado','administracion','gerencia'], customRender:'renderAseoAreaModule' }
       ]}
     ]},
-  { id:'operacion', label:'Operación', icon:'tray', color:'#3B6EA8',
+  { id:'operacion', label:'Operación', icon:'tray', color:'#2F7A78',
     desc:'Gestiona las operaciones diarias de cada área del restaurante.',
     groups:[
       { id:'administracion', label:'Administración', icon:'cash', matchArea:'contabilidad', items:[
@@ -2248,7 +2248,7 @@ const NAV = [
         { id:'mant_proveedores', label:'Proveedores de mantenimiento', icon:'truck', roles:['empleado','administracion','gerencia'], customRender:'renderMantenimientoModule', tab:'proveedores' }
       ]}
     ]},
-  { id:'gerencia', label:'Gerencia', icon:'crown', color:'#1E5A70',
+  { id:'gerencia', label:'Gerencia', icon:'crown', color:'#2F7A78',
     desc:'Desempeño, reportes y configuración del sistema, todo en un solo lugar.',
     groups:[
       { id:'general', label:'Gerencia', matchArea:null, items:[
@@ -2263,7 +2263,7 @@ const NAV = [
         { id:'cfg_faq_sonia', label:'Preguntas frecuentes de HJ-IA', icon:'chat', roles:['gerencia'], customRender:'renderFaqSoniaModule' }
       ]}
     ]},
-  { id:'asistente', label:'HJ-IA', icon:'chat', color:'#B6E23A',
+  { id:'asistente', label:'HJ-IA', icon:'chat', color:'#2F7A78',
     desc:'Resuelve dudas de trabajo diario y de gestión de restaurantes, con IA.',
     groups:[
       { id:'chat', label:'Preguntas y respuestas', matchArea:null, items:[
@@ -2543,7 +2543,7 @@ function withAreaDividers(items){
   let lastArea = null;
   sorted.forEach(it=>{
     if(it.area && it.area !== lastArea){
-      const meta = AREA_META[it.area] || {label:it.area, color:'#64737A'};
+      const meta = AREA_META[it.area] || {label:it.area, color:'#2F7A78'};
       out.push({type:'divider', label:meta.label, color:meta.color});
       lastArea = it.area;
     }
@@ -4485,7 +4485,7 @@ function onFotoIncidenteChange(input){
 // pestaña "Reporte de incidentes" del módulo Cierre de área.
 function incidentesSeccionHtml(area){
   incidenteFotoData = null;
-  const meta = AREA_META[area] || { label: area, color: '#1E5A70' };
+  const meta = AREA_META[area] || { label: area, color: '#2F7A78' };
 
   const todos = incidentesDeArea(area).slice().reverse();
   const abiertos = todos.filter(r => r.estado !== 'cerrado');
@@ -6798,7 +6798,7 @@ function renderBajasModule(sec, group, item, ruta){
   if(group) bajasLastGroup = group;
   if(item) bajasLastItem = item;
   const area = (bajasLastItem && bajasLastItem.area) || (bajasLastGroup && bajasLastGroup.matchArea) || 'cocina';
-  const meta = AREA_META[area] || { label: bajasLastGroup ? bajasLastGroup.label : area, color:'#B87333' };
+  const meta = AREA_META[area] || { label: bajasLastGroup ? bajasLastGroup.label : area, color:'#2F7A78' };
   bajasFotoData = null;
 
   const todas = bajasDeArea(area).slice().reverse();
@@ -6954,7 +6954,7 @@ function mejoraAreaOptionsHtml(seleccionada){
 }
 
 function mejoraTarjetaHtml(r){
-  const meta = AREA_META[r.area] || { label: r.area==='general' ? 'General' : r.area, color:'#B87333' };
+  const meta = AREA_META[r.area] || { label: r.area==='general' ? 'General' : r.area, color:'#2F7A78' };
   const vencida = r.estado!=='cerrada' && r.fechaLimite && r.fechaLimite < hoyStr();
   const estadoBadge = r.estado==='cerrada'
     ? `<span class="badge" style="background:${hexToRgba(MEJORA_EXITO_META[r.exito]?.color||'#5B6B73',0.14)};color:${MEJORA_EXITO_META[r.exito]?.color||'#5B6B73'};">${MEJORA_EXITO_META[r.exito]?.label || 'Cerrada'}</span>`
@@ -10168,7 +10168,7 @@ function cambiarEstadoHallazgo(id, nuevoEstado){
 function renderInspeccionAreaTabs(activeId){
   inspeccionAreaActiveTab = activeId;
   const area = inspeccionAreaLastArea;
-  const meta = AREA_META[area] || { label: area, color:'#C0392B' };
+  const meta = AREA_META[area] || { label: area, color:'#2F7A78' };
 
   const tabs = [
     { id:'checklist', label:'Checklist paralelo', icon:'checklist' },
@@ -12146,7 +12146,7 @@ function renderReporteCajaGerencia(sec, group, item, ruta){
 /* ==================================================================
    MÓDULO INVENTARIOS — hub de departamentos + conteo con valorización
    ================================================================== */
-function invDeptoMeta(id){ return INV_DEPARTAMENTOS.find(x=>x.id===id) || {id, label:id, icon:'box', color:'#B87333'}; }
+function invDeptoMeta(id){ return INV_DEPARTAMENTOS.find(x=>x.id===id) || {id, label:id, icon:'box', color:'#2F7A78'}; }
 function invDeptoLabel(id){ return invDeptoMeta(id).label; }
 function invCatalogoDe(depId){ return filtrarPorSede(DB.get('inv_productos', [])).filter(p=>p.departamento===depId); }
 function invConteosDe(depId){
