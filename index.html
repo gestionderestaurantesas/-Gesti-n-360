@@ -472,6 +472,8 @@
   .tab-btn.active{ color:var(--bronce); border-bottom-color:var(--bronce); }
 
   .form-section-title{ font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.4px; color:var(--bronce); margin:20px 0 10px; }
+  .chk-badge{ display:inline-flex; align-items:center; justify-content:center; width:20px; height:20px; min-width:20px; border-radius:50%; background:var(--verde); color:#fff; font-size:11px; font-weight:800; margin-right:8px; vertical-align:middle; position:relative; top:-1px; }
+  .compact-form .chk-badge{ width:16px; height:16px; min-width:16px; font-size:9.5px; margin-right:6px; top:-0.5px; }
   .form-grid{ display:grid; grid-template-columns:repeat(auto-fit, minmax(190px,1fr)); gap:14px; }
   .form-field label{ display:block; font-size:11.5px; font-weight:600; color:var(--text-light); margin-bottom:5px; text-transform:uppercase; letter-spacing:.3px; }
   .form-field input, .form-field textarea{
@@ -485,10 +487,10 @@
   .toggle-row{ display:flex; align-items:center; justify-content:space-between; padding:11px 14px; background:var(--white); font-size:13px; }
   .toggle-row:nth-child(even){ background:var(--marfil); }
   .toggle-yn{ display:flex; gap:6px; }
-  .yn-btn{ padding:5px 14px; border-radius:999px; border:1px solid var(--border); background:var(--white); font-size:12px; font-weight:600; color:var(--text-light); }
-  .yn-btn.yes.active{ background:var(--tint-verde); color:var(--verde); border-color:var(--verde); }
-  .yn-btn.no.active{ background:var(--tint-rojo); color:var(--rojo); border-color:var(--rojo); }
-  .yn-btn.na.active{ background:var(--tint-gris); color:var(--gris); border-color:var(--gris); }
+  .yn-btn{ padding:5px 14px; border-radius:999px; border:1px solid var(--border); background:var(--white); font-size:12px; font-weight:600; color:var(--text-light); transition:background .15s,color .15s,border-color .15s; }
+  .yn-btn.yes.active{ background:var(--verde); color:#fff; border-color:var(--verde); box-shadow:0 1px 3px rgba(0,0,0,.16); }
+  .yn-btn.no.active{ background:var(--rojo); color:#fff; border-color:var(--rojo); box-shadow:0 1px 3px rgba(0,0,0,.16); }
+  .yn-btn.na.active{ background:var(--gris); color:#fff; border-color:var(--gris); box-shadow:0 1px 3px rgba(0,0,0,.16); }
 
   .mini-table{ width:100%; border-collapse:collapse; font-size:12.5px; }
   .mini-table th{ text-align:left; padding:8px 10px; color:var(--text-light); font-weight:600; border-bottom:2px solid var(--border); font-size:11px; text-transform:uppercase; letter-spacing:.3px; }
@@ -531,6 +533,8 @@
   .compact-form small{ display:block; margin:1px 0 5px; font-size:10.5px; }
   .compact-form .toggle-list{ margin-bottom:4px; max-width:520px; }
   .compact-form .check-row3{ padding:6px 12px; gap:16px; font-size:12px; max-width:520px; }
+  .compact-form .check-row3:has(.toggle-yn){ grid-template-columns:15px 1fr auto; gap:12px; }
+  .compact-form .check-row3:has(.toggle-yn)::before{ width:15px; height:15px; min-width:15px; font-size:9px; }
   .compact-form .toggle-yn{ gap:4px; }
   .compact-form .yn-btn{ padding:4px 10px; font-size:11.5px; }
   .switch{ position:relative; display:inline-block; width:40px; height:22px; flex-shrink:0; }
@@ -543,6 +547,16 @@
   .compact-form .progress-box2{ margin-bottom:12px; }
   .check-row3{ display:flex; align-items:center; justify-content:space-between; gap:18px; padding:10px 14px; background:var(--white); font-size:12.5px; max-width:620px; }
   .check-row3:nth-child(even){ background:var(--marfil); }
+  .check-row3:has(.toggle-yn){ display:grid; grid-template-columns:18px 1fr auto; gap:14px; }
+  .check-row3:has(.toggle-yn)::before{
+    content:'i'; width:18px; height:18px; min-width:18px; border-radius:50%; box-sizing:border-box;
+    display:flex; align-items:center; justify-content:center;
+    font-size:11px; font-weight:700; font-style:italic; font-family:Georgia,'Times New Roman',serif;
+    background:var(--tint-gris); color:var(--gris); border:1.5px solid var(--border);
+  }
+  .check-row3:has(.toggle-yn):has(.yn-btn.yes.active)::before{ content:'✓'; font-style:normal; font-family:inherit; background:var(--verde); border-color:var(--verde); color:#fff; }
+  .check-row3:has(.toggle-yn):has(.yn-btn.no.active)::before{ content:'!'; font-style:normal; font-family:inherit; background:var(--rojo); border-color:var(--rojo); color:#fff; }
+  .check-row3:has(.toggle-yn):has(.yn-btn.na.active)::before{ content:'–'; font-style:normal; font-family:inherit; background:var(--gris); border-color:var(--gris); color:#fff; }
   .verif-box{ display:flex; align-items:center; gap:8px; padding:8px 12px; border-radius:8px; font-size:12.5px; font-weight:600; margin-top:6px; }
   .verif-box.ok{ background:var(--tint-verde); color:var(--verde); }
   .verif-box.bad{ background:var(--tint-rojo); color:var(--rojo); }
@@ -18563,6 +18577,44 @@ function guardarBriefingServicio(){
   showMsg('bs_msg','Briefing guardado.','verde');
   renderBriefingServicioModule(NAV.find(s=>s.id==='checklists'), null, null, briefingServicioLastRuta);
 }
+
+// ---- Rediseño de checklists: insignias numeradas de sección ----
+// Convierte títulos de sección tipo "1. Información inicial..." en un
+// círculo numerado + texto, sin tocar cada función de render por separado.
+// Los estados (Sí/No/N-A) y su icono de fila ya se resuelven solo con CSS
+// (:has), así que aquí solo hace falta la insignia numerada.
+function chkEnhanceSecciones(){
+  const root = document.getElementById('content');
+  if(!root) return;
+  const titulos = root.querySelectorAll('.form-section-title:not([data-chk-done])');
+  titulos.forEach(el => {
+    el.setAttribute('data-chk-done', '1');
+    const m = (el.textContent || '').match(/^(\d+)\.\s*(.*)$/);
+    if(m){
+      el.textContent = '';
+      const badge = document.createElement('span');
+      badge.className = 'chk-badge';
+      badge.textContent = m[1];
+      el.appendChild(badge);
+      el.appendChild(document.createTextNode(m[2]));
+    }
+  });
+}
+window.chkEnhanceSecciones = chkEnhanceSecciones;
+(function chkInitObserver(){
+  function attach(){
+    const root = document.getElementById('content');
+    if(!root) return false;
+    chkEnhanceSecciones();
+    const mo = new MutationObserver(() => chkEnhanceSecciones());
+    mo.observe(root, { childList:true, subtree:true });
+    return true;
+  }
+  if(!attach()){
+    const bodyMo = new MutationObserver(() => { if(attach()) bodyMo.disconnect(); });
+    bodyMo.observe(document.documentElement, { childList:true, subtree:true });
+  }
+})();
 
 if(SESSION){ enterApp(); }
 </script>
