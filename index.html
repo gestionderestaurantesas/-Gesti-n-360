@@ -3301,7 +3301,7 @@ function enterApp(){
   // compartido, o se recargó la página estando dentro de un módulo),
   // abre directo ahí en vez de mandar siempre a Inicio.
   navAplicarHash();
-  alarmaMiseServicioIniciar();
+  if(typeof chkAlarmaIniciar === 'function') chkAlarmaIniciar();
   if(typeof miseCocinaAlarmaMasterIniciar === 'function') miseCocinaAlarmaMasterIniciar();
   tourOfrecerSiPendiente();
   // Fase 1 de la migración a la nube: en cuanto Firestore confirme que ya
@@ -6244,7 +6244,11 @@ function alistamientoAreaChecklistHtml(area){
       <p><b style="color:var(--text);">Objetivo:</b> ${intro.objetivo}</p>
       <p style="margin-top:4px;"><b style="color:var(--text);">En caso de incumplimiento:</b> ${intro.incumplimiento}</p>
     </div>` : '';
-  const alarmaHtml = area === 'servicio_cliente' ? alarmaMiseServicioConfigHtml() : '';
+  // La alarma de voz de este checklist ahora se inyecta sola (arriba del
+  // panel) desde el sistema genérico de alarmas de checklists — ver
+  // chkInyectarAlarmaBox(), más abajo en el archivo. Se deja de pintar
+  // aquí para no duplicarla.
+  const alarmaHtml = '';
 
   return `
     <div class="compact-form">
@@ -18611,13 +18615,233 @@ function chkEnhanceSecciones(){
   });
 }
 window.chkEnhanceSecciones = chkEnhanceSecciones;
+
+/* ==================================================================
+   ALARMA + RESPONSABLE, GENERALIZADA A TODOS LOS CHECKLISTS
+   ------------------------------------------------------------------
+   Toma la idea de la alarma de voz que ya existía solo para "Mise en
+   place de servicio" y la vuelve genérica: cualquier checklist (todos
+   los que están en NAV bajo la sección "checklists") puede configurar
+   hasta DOS horarios ("Turno 1" y "Turno 2" — para que suene dos
+   veces), cada uno con su propio responsable. Guardar un turno deja
+   la tarea asignada en Planificación para el día de hoy, sin tener
+   que crearla aparte.
+   Se inyecta sola arriba de cada pantalla de checklist (justo debajo
+   del encabezado del panel) leyendo el id del checklist desde el
+   hash de la URL — así no hace falta tocar cada una de las funciones
+   de render por separado.
+   ================================================================== */
+function chkCatalogo(){
+  const sec = NAV.find(s => s.id === 'checklists');
+  const out = [];
+  if(sec) (sec.groups || []).forEach(g => (g.items || []).forEach(it => {
+    if(it.id && it.id.indexOf('chk_') === 0){
+      out.push({ id: it.id, label: it.label, area: it.area || g.matchArea || g.id, grupo: g.label });
+    }
+  }));
+  return out;
+}
+function chkInfo(checklistId){ return chkCatalogo().find(c => c.id === checklistId) || null; }
+function chkChecklistIdActual(){
+  const partes = (location.hash || '').replace(/^#/, '').split('/');
+  return (partes[2] && partes[2].indexOf('chk_') === 0) ? partes[2] : null;
+}
+function chkAlarmaDefaultTurno(){ return { hora:'', activa:false, responsable:'', responsableNombre:'' }; }
+function chkAlarmaConfig(checklistId){
+  const todas = DB.get('checklist_alarmas', {});
+  let cfg = todas[checklistId];
+  if(!cfg){
+    // Migración: "Mise en place de servicio" ya tenía una alarma guardada
+    // con el sistema anterior — se reaprovecha como Turno 1 para no
+    // perder lo que ya estaba configurado.
+    if(checklistId === 'chk_mise_servicio'){
+      const vieja = DB.get('alarma_mise_servicio', null);
+      cfg = { turno1: Object.assign(chkAlarmaDefaultTurno(), vieja ? { hora: vieja.hora || '', activa: !!vieja.activa } : {}), turno2: chkAlarmaDefaultTurno() };
+    } else {
+      cfg = { turno1: chkAlarmaDefaultTurno(), turno2: chkAlarmaDefaultTurno() };
+    }
+  }
+  cfg = { turno1: Object.assign(chkAlarmaDefaultTurno(), cfg.turno1 || {}), turno2: Object.assign(chkAlarmaDefaultTurno(), cfg.turno2 || {}) };
+  return cfg;
+}
+function chkAlarmaGuardar(checklistId, turnoKey, cambios){
+  const todas = DB.get('checklist_alarmas', {});
+  const cfg = chkAlarmaConfig(checklistId);
+  cfg[turnoKey] = Object.assign({}, cfg[turnoKey], cambios);
+  todas[checklistId] = cfg;
+  DB.set('checklist_alarmas', todas);
+  chkAlarmaSincronizarTareaHoy(checklistId, turnoKey);
+}
+// Deja (o actualiza) la tarea de hoy en Planificación para este checklist y
+// turno. Si el turno se desactiva o se le quita el responsable, no borra
+// una tarea que ya exista (podría estar completada) — solo deja de crear
+// nuevas, para no tocar historial de otros días.
+function chkAlarmaSincronizarTareaHoy(checklistId, turnoKey){
+  const info = chkInfo(checklistId);
+  if(!info) return;
+  const cfg = chkAlarmaConfig(checklistId);
+  const turno = cfg[turnoKey];
+  const hoy = hoyStr();
+  const sede = sedeParaGuardar();
+  const arr = DB.get('tareas_asignadas', []);
+  const idx = arr.findIndex(t => t.fecha === hoy && t.sede === sede && t.checklistId === checklistId && t.origenAlarma === true && t.turnoAlarma === turnoKey);
+  if(!turno.activa || !turno.responsable) return;
+  const turnoLabel = (turnoKey === 'turno1' ? 'Turno 1' : 'Turno 2') + (turno.hora ? ' · ' + turno.hora : '');
+  if(idx !== -1){
+    arr[idx].asignadoA = turno.responsable;
+    arr[idx].asignadoANombre = turno.responsableNombre || '';
+    arr[idx].turno = turnoLabel;
+    DB.set('tareas_asignadas', arr);
+  } else {
+    DB.push('tareas_asignadas', {
+      fecha: hoy, area: info.area, turno: turnoLabel, tipo:'checklist', descripcion:'',
+      checklistId, checklistLabel: info.label, sede,
+      creadoPor:'Alarma del checklist', creadoPorUsuario:'sistema',
+      asignadoA: turno.responsable, asignadoANombre: turno.responsableNombre || '',
+      origenAlarma: true, turnoAlarma: turnoKey
+    });
+  }
+}
+function chkAlarmaTurnoBoxHtml(checklistId, turnoKey, turnoLabel, cfg){
+  const t = cfg[turnoKey];
+  const usuarios = planifUsuariosDisponibles();
+  const opciones = usuarios.map(u => `<option value="${u.usuario}" ${t.responsable===u.usuario?'selected':''}>${u.nombre}</option>`).join('');
+  const idHora = 'chka_hora_' + checklistId + '_' + turnoKey;
+  const idResp = 'chka_resp_' + checklistId + '_' + turnoKey;
+  return `
+    <div style="background:var(--tint-dorado);border:1px solid var(--border);border-radius:8px;padding:12px 14px;margin-bottom:10px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
+      <div style="font-size:20px;">⏰</div>
+      <div style="flex:1;min-width:170px;">
+        <b style="font-size:13px;color:var(--text);">${turnoLabel}</b>
+        <p style="font-size:11px;color:var(--text-light);margin-top:2px;">Hora, responsable y aviso de voz de este checklist. Al guardar, queda asignado en Planificación de hoy.</p>
+      </div>
+      <input type="time" id="${idHora}" value="${t.hora}" onchange="chkAlarmaGuardarDesdeUI('${checklistId}','${turnoKey}')" style="padding:6px 9px;border:1px solid var(--border);border-radius:8px;font-size:13px;">
+      <select id="${idResp}" onchange="chkAlarmaGuardarDesdeUI('${checklistId}','${turnoKey}')" style="padding:6px 9px;border:1px solid var(--border);border-radius:8px;font-size:12.5px;min-width:160px;">
+        <option value="">Responsable...</option>
+        ${opciones}
+      </select>
+      <div class="toggle-yn">
+        <button type="button" class="yn-btn yes ${t.activa?'active':''}" onclick="chkAlarmaSetActiva('${checklistId}','${turnoKey}',true)">Activa</button>
+        <button type="button" class="yn-btn no ${!t.activa?'active':''}" onclick="chkAlarmaSetActiva('${checklistId}','${turnoKey}',false)">Inactiva</button>
+      </div>
+      <button type="button" class="tab-btn" onclick="chkAlarmaProbar('${checklistId}','${turnoKey}')">Probar ahora</button>
+    </div>`;
+}
+function chkAlarmaBoxHtml(checklistId){
+  const info = chkInfo(checklistId);
+  if(!info) return '';
+  const cfg = chkAlarmaConfig(checklistId);
+  return `<div id="chkAlarmaBox" data-checklist-id="${checklistId}" style="margin:14px 0 4px;">
+    ${chkAlarmaTurnoBoxHtml(checklistId, 'turno1', 'Turno 1', cfg)}
+    ${chkAlarmaTurnoBoxHtml(checklistId, 'turno2', 'Turno 2 (opcional — para que suene dos veces)', cfg)}
+  </div>`;
+}
+function chkAlarmaGuardarDesdeUI(checklistId, turnoKey){
+  const horaEl = document.getElementById('chka_hora_' + checklistId + '_' + turnoKey);
+  const selEl = document.getElementById('chka_resp_' + checklistId + '_' + turnoKey);
+  const hora = horaEl ? horaEl.value : '';
+  const responsable = selEl ? selEl.value : '';
+  const responsableNombre = (selEl && selEl.selectedIndex >= 0 && responsable) ? selEl.options[selEl.selectedIndex].text : '';
+  chkAlarmaGuardar(checklistId, turnoKey, { hora, responsable, responsableNombre });
+}
+function chkAlarmaSetActiva(checklistId, turnoKey, activa){
+  chkAlarmaGuardar(checklistId, turnoKey, { activa });
+  const box = document.getElementById('chkAlarmaBox');
+  if(box) box.outerHTML = chkAlarmaBoxHtml(checklistId);
+}
+function chkAlarmaProbar(checklistId, turnoKey){
+  const info = chkInfo(checklistId);
+  const cfg = chkAlarmaConfig(checklistId);
+  chkAlarmaDecirMensaje(info ? info.label : checklistId, cfg[turnoKey].responsableNombre);
+}
+function chkAlarmaDecirMensaje(label, responsableNombre){
+  const msg = 'Es hora del checklist: ' + label + (responsableNombre ? '. Responsable: ' + responsableNombre : '');
+  try{
+    if('speechSynthesis' in window){
+      const u = new SpeechSynthesisUtterance(msg);
+      u.lang = 'es-CO'; u.rate = 0.95;
+      window.speechSynthesis.cancel();
+      window.speechSynthesis.speak(u);
+    }
+  }catch(e){ /* si el navegador no soporta voz, queda igual el aviso visual */ }
+  chkAlarmaMostrarBanner(msg);
+}
+function chkAlarmaMostrarBanner(msg){
+  const existente = document.getElementById('chkAlarmaBanner');
+  if(existente) existente.remove();
+  const div = document.createElement('div');
+  div.id = 'chkAlarmaBanner';
+  div.style.cssText = 'position:fixed;top:16px;right:16px;z-index:9999;background:var(--bronce);color:#fff;padding:14px 18px;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.25);font-size:13.5px;font-weight:600;max-width:320px;display:flex;align-items:center;gap:10px;';
+  div.innerHTML = '<span style="font-size:18px;">⏰</span><span>' + msg + '</span><button onclick="this.parentElement.remove()" style="margin-left:auto;background:none;border:none;color:#fff;font-size:16px;cursor:pointer;">&times;</button>';
+  document.body.appendChild(div);
+  setTimeout(()=>{ const el = document.getElementById('chkAlarmaBanner'); if(el) el.remove(); }, 20000);
+}
+function chkAlarmaYaDisparadaHoy(checklistId, turnoKey){
+  const registro = DB.get('checklist_alarmas_disparadas', {});
+  return registro[checklistId + '__' + turnoKey] === hoyStr();
+}
+function chkAlarmaMarcarDisparada(checklistId, turnoKey){
+  const registro = DB.get('checklist_alarmas_disparadas', {});
+  registro[checklistId + '__' + turnoKey] = hoyStr();
+  DB.set('checklist_alarmas_disparadas', registro);
+}
+function chkAlarmaCheckTodas(){
+  chkCatalogo().forEach(info => {
+    const cfg = chkAlarmaConfig(info.id);
+    ['turno1','turno2'].forEach(turnoKey => {
+      const turno = cfg[turnoKey];
+      chkAlarmaSincronizarTareaHoy(info.id, turnoKey);
+      if(!turno.activa || !turno.hora) return;
+      if(!alarmaAplicaParaSesion(info.area)) return;
+      if(chkAlarmaYaDisparadaHoy(info.id, turnoKey)) return;
+      const partes = turno.hora.split(':');
+      const hh = Number(partes[0]), mm = Number(partes[1]);
+      if(isNaN(hh) || isNaN(mm)) return;
+      const ahora = new Date();
+      const objetivo = new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate(), hh, mm, 0);
+      const diffMin = (ahora - objetivo) / 60000;
+      if(diffMin >= 0 && diffMin <= 60){
+        chkAlarmaMarcarDisparada(info.id, turnoKey);
+        chkAlarmaDecirMensaje(info.label, turno.responsableNombre);
+      }
+    });
+  });
+}
+let chkAlarmaInterval = null;
+function chkAlarmaIniciar(){
+  if(chkAlarmaInterval) return;
+  chkAlarmaCheckTodas();
+  chkAlarmaInterval = setInterval(chkAlarmaCheckTodas, 20000);
+}
+window.chkAlarmaIniciar = chkAlarmaIniciar;
+// Inyecta el bloque de alarma+responsable arriba de la pantalla del
+// checklist que esté abierto (según el hash de la URL), sin tener que
+// tocar cada función de render — igual que chkEnhanceSecciones.
+function chkInyectarAlarmaBox(){
+  const id = chkChecklistIdActual();
+  const panel = document.querySelector('#content .panel');
+  const existente = document.getElementById('chkAlarmaBox');
+  if(!id || !panel){
+    if(existente) existente.remove();
+    return;
+  }
+  if(existente && existente.getAttribute('data-checklist-id') === id) return;
+  if(existente) existente.remove();
+  const html = chkAlarmaBoxHtml(id);
+  if(!html) return;
+  const header = panel.querySelector('.panel-header');
+  if(header) header.insertAdjacentHTML('afterend', html);
+  else panel.insertAdjacentHTML('afterbegin', html);
+}
 (function chkInitObserver(){
+  function correr(){ chkEnhanceSecciones(); chkInyectarAlarmaBox(); }
   function attach(){
     const root = document.getElementById('content');
     if(!root) return false;
-    chkEnhanceSecciones();
-    const mo = new MutationObserver(() => chkEnhanceSecciones());
+    correr();
+    const mo = new MutationObserver(() => correr());
     mo.observe(root, { childList:true, subtree:true });
+    window.addEventListener('hashchange', correr);
     return true;
   }
   if(!attach()){
