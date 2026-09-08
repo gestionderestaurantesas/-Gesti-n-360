@@ -481,7 +481,7 @@
   .form-field input:focus, .form-field textarea:focus{ outline:none; border-color:var(--bronce); }
   .form-field input:disabled{ background:var(--crema); color:var(--text-light); }
 
-  .toggle-list{ display:flex; flex-direction:column; gap:1px; border:1px solid var(--border); border-radius:10px; overflow:hidden; margin-bottom:6px; }
+  .toggle-list{ display:flex; flex-direction:column; gap:1px; border:1px solid var(--border); border-radius:10px; overflow:hidden; margin-bottom:6px; max-width:620px; }
   .toggle-row{ display:flex; align-items:center; justify-content:space-between; padding:11px 14px; background:var(--white); font-size:13px; }
   .toggle-row:nth-child(even){ background:var(--marfil); }
   .toggle-yn{ display:flex; gap:6px; }
@@ -529,8 +529,8 @@
   .compact-form .datafono-check-row{ padding:4px 2px; gap:10px; margin-bottom:2px; }
   .compact-form .datafono-check{ font-size:11.5px; }
   .compact-form small{ display:block; margin:1px 0 5px; font-size:10.5px; }
-  .compact-form .toggle-list{ margin-bottom:4px; }
-  .compact-form .check-row3{ padding:6px 12px; gap:8px; font-size:12px; }
+  .compact-form .toggle-list{ margin-bottom:4px; max-width:520px; }
+  .compact-form .check-row3{ padding:6px 12px; gap:16px; font-size:12px; max-width:520px; }
   .compact-form .toggle-yn{ gap:4px; }
   .compact-form .yn-btn{ padding:4px 10px; font-size:11.5px; }
   .switch{ position:relative; display:inline-block; width:40px; height:22px; flex-shrink:0; }
@@ -541,7 +541,7 @@
   .switch input:checked + .slider:before{ transform:translateX(18px); }
   .switch input:disabled + .slider{ opacity:.55; cursor:not-allowed; }
   .compact-form .progress-box2{ margin-bottom:12px; }
-  .check-row3{ display:flex; align-items:center; justify-content:space-between; gap:10px; padding:10px 14px; background:var(--white); font-size:12.5px; }
+  .check-row3{ display:flex; align-items:center; justify-content:space-between; gap:18px; padding:10px 14px; background:var(--white); font-size:12.5px; max-width:620px; }
   .check-row3:nth-child(even){ background:var(--marfil); }
   .verif-box{ display:flex; align-items:center; gap:8px; padding:8px 12px; border-radius:8px; font-size:12.5px; font-weight:600; margin-top:6px; }
   .verif-box.ok{ background:var(--tint-verde); color:var(--verde); }
