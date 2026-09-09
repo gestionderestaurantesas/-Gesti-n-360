@@ -68,9 +68,22 @@ module.exports = async function handler(req, res){
       body: JSON.stringify({
         text: texto,
         model_id: MODELO_ELEVENLABS,
-        // speed > 1.0 = un poco más rápida que el ritmo natural de la voz
-        // clonada (rango permitido por ElevenLabs: 0.7 a 1.2).
-        voice_settings: { stability: 0.5, similarity_boost: 0.75, speed: 1.1 }
+        voice_settings: {
+          // stability más baja = más variación natural de tono y ritmo
+          // (menos "plano"/robótico); muy baja se vuelve inestable, por
+          // eso se deja en un punto medio-bajo en vez del 0.5 de antes.
+          stability: 0.4,
+          similarity_boost: 0.8,
+          // style > 0 agrega expresividad/entonación (el modelo v2 la
+          // soporta) — sin esto, ElevenLabs entrega una lectura más plana.
+          style: 0.35,
+          // Reduce ruido/sibilancias y refuerza el parecido con la voz
+          // clonada, ayuda a que la modulación se escuche más clara.
+          use_speaker_boost: true,
+          // Un poco menos veloz que antes (1.1) para que la entonación
+          // alcance a notarse en vez de sonar apurada.
+          speed: 1.03
+        }
       })
     });
 
