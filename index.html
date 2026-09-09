@@ -3679,9 +3679,6 @@ function goHome(){
   html += homeIntroHtml();
   html += homeMetricasHtml(d);
   html += homeAccesosHtml();
-  if(homeEsGerencia()){
-    html += `<div class="hm-grid-2">${homeAtencionHtml()}${homeAreasHtml(d)}</div>`;
-  }
   html += homeAgendaHtml();
   html += homeColumnasHtml();
   html += `<section class="hm-panel">${asistenteWidgetHtml()}</section>`;
