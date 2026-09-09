@@ -831,6 +831,217 @@ input:focus,select:focus,textarea:focus{outline:3px solid rgba(143,185,42,.12)!i
   #sidebar{width:min(290px,88vw);}
   #topbar{padding:10px 14px;}main#content{padding:18px 14px 32px;}.tutorial-modal-card{padding:22px 18px 18px;}
 }
+
+/* ============================================================
+   INICIO — TABLERO DE OPERACIÓN (clases con prefijo hm-)
+   Rediseño 2026. Todo va con prefijo propio para no tocar el
+   aspecto de ningún módulo existente. Usa los mismos tokens de
+   color de la marca, así que respeta el tema claro/oscuro solo.
+   ============================================================ */
+.hm-wrap{ max-width:1420px; margin:0 auto; }
+.hm-wrap h1,.hm-wrap h2,.hm-wrap h3{ color:var(--espresso); }
+
+/* — Encabezado — */
+.hm-intro{ display:flex; justify-content:space-between; align-items:flex-end; gap:20px; margin-bottom:24px; flex-wrap:wrap; }
+.hm-eyebrow{ font-size:11px; text-transform:uppercase; letter-spacing:.13em; font-weight:700; color:var(--text-light); margin-bottom:6px; }
+.hm-intro h1{ font-size:clamp(22px,2.4vw,31px); letter-spacing:-.03em; line-height:1.15; font-weight:700; }
+.hm-intro>div>p{ font-size:13.5px; color:var(--text-light); margin-top:8px; }
+.hm-fecha{ display:flex; align-items:center; gap:9px; font-size:13px; color:var(--text-light); white-space:nowrap; }
+.hm-fecha svg{ color:var(--dorado); flex-shrink:0; }
+
+/* — Cabeceras de sección y panel — */
+.hm-section{ margin-bottom:26px; }
+.hm-section-head,.hm-panel-head{ display:flex; justify-content:space-between; align-items:center; gap:16px; margin-bottom:15px; }
+.hm-section-head h2,.hm-panel-head h2{ font-size:16.5px; font-weight:700; letter-spacing:-.015em; }
+.hm-section-head p,.hm-panel-head p{ font-size:12.5px; color:var(--text-light); margin-top:3px; }
+.hm-panel-head>svg{ color:var(--text-light); flex-shrink:0; }
+.hm-legend-inline{ display:flex; gap:14px; flex-wrap:wrap; color:var(--text-light); font-size:11.5px; }
+.hm-legend-inline span{ display:inline-flex; align-items:center; gap:6px; }
+.hm-dot{ width:7px; height:7px; border-radius:50%; display:inline-block; background:var(--border); flex:0 0 7px; }
+.hm-dot.good{ background:var(--bronce); }
+.hm-dot.warn{ background:#C89B3C; }
+.hm-dot.bad{ background:var(--rojo); }
+
+/* — Tarjetas de indicador — */
+.hm-metrics{ display:grid; grid-template-columns:1.35fr 1fr 1fr 1fr; gap:14px; }
+.hm-metric{ background:var(--white); border:1px solid var(--border); border-radius:16px; box-shadow:var(--shadow); overflow:hidden; display:flex; flex-direction:column; min-width:0; }
+.hm-metric.destacada{ border-top:3px solid var(--bronce); }
+.hm-metric-body{ padding:17px 18px 15px; flex:1; }
+.hm-metric-head{ display:flex; align-items:center; justify-content:space-between; gap:10px; }
+.hm-metric-head h3{ font-size:13px; font-weight:600; }
+.hm-metric-head svg{ color:var(--text-light); flex-shrink:0; }
+.hm-metric-anillo{ display:flex; align-items:center; gap:15px; margin-top:12px; }
+.hm-metric-num{ font-size:36px; font-weight:700; letter-spacing:-.04em; line-height:1.1; margin:16px 0 4px; color:var(--espresso); font-variant-numeric:tabular-nums; }
+.hm-metric-num.good{ color:#347A4A; }
+.hm-metric-num.warn{ color:#8A6410; }
+.hm-metric-num.bad{ color:var(--rojo); }
+.hm-metric-cap{ font-size:12.5px; color:var(--text-light); line-height:1.5; }
+.hm-metric-foot{ border-top:1px solid var(--border); padding:10px 16px; display:flex; justify-content:space-between; align-items:center; gap:8px; background:var(--crema); min-height:44px; }
+.hm-pill{ display:inline-flex; align-items:center; gap:5px; padding:3px 9px; border-radius:7px; font-size:11.5px; font-weight:700; white-space:nowrap; }
+.hm-pill.good{ color:#3D6410; background:var(--tint-verde); }
+.hm-pill.warn{ color:#805C10; background:#FBF4E4; }
+.hm-pill.bad{ color:#A03730; background:var(--tint-rojo); }
+.hm-pill.neutral{ color:var(--text-light); background:var(--tint-gris); }
+.hm-link{ border:0; background:none; padding:2px; display:inline-flex; align-items:center; gap:5px; color:var(--dorado); font-size:11.5px; font-weight:700; cursor:pointer; font-family:inherit; }
+.hm-link:hover{ text-decoration:underline; }
+
+/* — Anillo de porcentaje — */
+.hm-ring-wrap{ position:relative; width:104px; height:104px; flex:0 0 104px; }
+.hm-ring-wrap.destacado{ width:118px; height:118px; flex-basis:118px; }
+.hm-ring{ display:block; width:100%; height:100%; transform:rotate(-90deg); }
+.hm-ring.good{ color:var(--bronce); }
+.hm-ring.warn{ color:#C89B3C; }
+.hm-ring.bad{ color:var(--rojo); }
+.hm-ring.neutral{ color:var(--border); }
+.hm-ring-track{ fill:none; stroke:var(--border); stroke-width:8; opacity:.55; }
+.hm-ring-arc{ fill:none; stroke:currentColor; stroke-width:8; stroke-linecap:butt; transition:stroke-dasharray .5s ease; }
+.hm-ring-center{ position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; }
+.hm-ring-center strong{ font-size:26px; font-weight:700; letter-spacing:-.04em; color:var(--espresso); line-height:1.05; font-variant-numeric:tabular-nums; }
+.hm-ring-center small{ color:var(--text-light); font-size:11px; margin-top:4px; }
+.hm-ring-legend{ display:grid; gap:9px; flex:1; min-width:0; }
+.hm-ring-legend-row{ display:grid; grid-template-columns:8px minmax(0,1fr) auto; align-items:center; gap:7px; font-size:11.5px; color:var(--text-light); }
+.hm-ring-legend-row strong{ color:var(--espresso); font-weight:700; font-variant-numeric:tabular-nums; }
+
+/* — Paneles — */
+.hm-panel{ background:var(--white); border:1px solid var(--border); border-radius:16px; padding:20px; box-shadow:var(--shadow); margin-bottom:22px; min-width:0; }
+.hm-grid-2{ display:grid; grid-template-columns:1.15fr 1fr; gap:20px; align-items:start; }
+.hm-grid-2>.hm-panel{ margin-bottom:22px; }
+.hm-count{ font-size:11.5px; font-weight:700; background:#FBF4E4; color:#805C10; padding:3px 9px; border-radius:7px; }
+.hm-empty{ display:flex; flex-direction:column; align-items:center; text-align:center; gap:3px; padding:24px 14px; background:var(--crema); border:1px dashed var(--border); border-radius:12px; }
+.hm-empty svg{ color:var(--bronce); margin-bottom:6px; }
+.hm-empty strong{ font-size:13.5px; color:var(--espresso); }
+.hm-empty span{ font-size:12.5px; color:var(--text-light); }
+
+/* — Accesos rápidos — */
+.hm-accesos{ display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); gap:11px; }
+.hm-acceso{ position:relative; text-align:left; border:1px solid var(--border); border-radius:13px; background:var(--white); padding:15px 13px 13px; min-height:118px; min-width:0; cursor:pointer; font-family:inherit; display:flex; flex-direction:column; transition:transform .15s ease, border-color .15s ease, box-shadow .15s ease; }
+.hm-acceso:hover{ transform:translateY(-3px); border-color:var(--bronce); box-shadow:0 8px 18px rgba(12,60,78,.09); }
+.hm-acceso-ic{ width:34px; height:34px; border-radius:10px; background:var(--tint-verde); color:#3D6410; display:flex; align-items:center; justify-content:center; margin-bottom:11px; flex-shrink:0; }
+.hm-acceso:nth-child(3n+2) .hm-acceso-ic{ background:var(--tint-dorado); color:var(--dorado); }
+.hm-acceso:nth-child(3n) .hm-acceso-ic{ background:var(--crema); color:var(--text-light); }
+.hm-acceso strong{ font-size:13px; color:var(--espresso); line-height:1.3; font-weight:600; overflow-wrap:anywhere; }
+.hm-acceso small{ font-size:11px; color:var(--text-light); margin-top:5px; display:block; overflow-wrap:anywhere; }
+.hm-acceso-corner{ position:absolute; top:13px; right:12px; color:var(--text-light); opacity:.45; }
+.hm-acceso.add{ border-style:dashed; background:var(--crema); align-items:center; justify-content:center; text-align:center; color:var(--dorado); }
+.hm-acceso.add .hm-acceso-ic{ background:var(--white); border:1px solid var(--border); color:var(--dorado); }
+.hm-accesos-nota{ margin-top:13px; font-size:11.5px; color:var(--text-light); display:flex; align-items:center; gap:7px; }
+
+/* — Alertas — */
+.hm-alert{ display:flex; gap:12px; align-items:center; width:100%; text-align:left; padding:14px 4px; border:0; border-bottom:1px solid var(--border); background:none; cursor:pointer; font-family:inherit; }
+.hm-alert:last-child{ border-bottom:0; }
+.hm-alert:hover{ background:var(--crema); }
+.hm-alert-ic{ width:35px; height:35px; border-radius:10px; display:flex; align-items:center; justify-content:center; background:#FBF4E4; color:#805C10; flex:0 0 35px; }
+.hm-alert-txt{ flex:1; min-width:0; }
+.hm-alert-txt strong{ display:block; font-size:13px; font-weight:600; color:var(--espresso); }
+.hm-alert-txt small{ display:block; font-size:12px; color:var(--text-light); margin-top:3px; }
+.hm-alert>svg{ color:var(--text-light); flex-shrink:0; }
+
+/* — Cumplimiento por área — */
+.hm-area-row{ display:grid; grid-template-columns:110px 1fr 46px; align-items:center; gap:12px; margin-top:15px; font-size:13px; }
+.hm-area-name{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--text); }
+.hm-stack{ display:flex; gap:2px; height:9px; border-radius:6px; overflow:hidden; background:var(--border); min-width:0; }
+.hm-stack-part{ height:100%; min-width:0; display:block; }
+.hm-stack-part.good{ background:var(--bronce); }
+.hm-stack-part.warn{ background:#C89B3C; }
+.hm-area-total{ text-align:right; font-size:12px; font-weight:700; color:var(--espresso); font-variant-numeric:tabular-nums; }
+.hm-area-foot{ border-top:1px solid var(--border); margin-top:18px; padding-top:13px; font-size:12.5px; color:var(--text-light); }
+.hm-area-foot strong{ color:var(--espresso); font-weight:700; }
+
+/* — Agenda — */
+.hm-task{ display:flex; align-items:center; gap:11px; padding:12px 0; border-bottom:1px solid var(--border); }
+.hm-task:last-of-type{ border-bottom:0; }
+.hm-task-hora{ font-size:12px; color:var(--text-light); font-variant-numeric:tabular-nums; flex:0 0 58px; }
+.hm-task-txt{ flex:1; min-width:0; }
+.hm-task-txt strong{ display:block; font-size:13px; color:var(--espresso); font-weight:600; }
+.hm-task-txt small{ display:block; font-size:11.5px; color:var(--text-light); margin-top:3px; }
+
+/* — Explorar — */
+
+/* — Botones propios del tablero — */
+.hm-btn{ display:inline-flex; align-items:center; justify-content:center; gap:8px; border-radius:10px; border:1px solid var(--border); background:var(--white); color:var(--text); padding:9px 13px; font-size:13px; font-weight:600; font-family:inherit; cursor:pointer; transition:background .15s ease; }
+.hm-btn:hover{ background:var(--crema); }
+.hm-btn.primary{ background:var(--espresso); border-color:var(--espresso); color:#F2F8FA; }
+.hm-btn.primary:hover{ background:#17586E; }
+.hm-btn.mini{ padding:6px 11px; font-size:11.5px; border-radius:8px; }
+.hm-btn.icon{ padding:7px; min-width:32px; }
+.hm-btn.danger{ color:var(--rojo); }
+
+.hm-pie{ display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap; font-size:11.5px; color:var(--text-light); padding-top:6px; }
+
+/* — Ventana modal del tablero (editor de accesos y catálogo) — */
+.hm-modal-overlay{ position:fixed; inset:0; z-index:220; background:rgba(6,27,39,.62); display:flex; align-items:center; justify-content:center; padding:18px; }
+.hm-modal{ background:var(--white); border:1px solid var(--border); border-radius:18px; box-shadow:0 30px 90px rgba(0,21,33,.34); width:min(920px,100%); max-height:90vh; display:flex; flex-direction:column; overflow:hidden; }
+.hm-modal.sm{ width:min(540px,100%); }
+.hm-modal-head{ padding:18px 20px; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; gap:18px; }
+.hm-modal-head h2{ font-size:18px; font-weight:700; letter-spacing:-.02em; }
+.hm-modal-head p{ font-size:12.5px; color:var(--text-light); margin-top:4px; }
+.hm-modal-body{ overflow-y:auto; padding:20px; }
+.hm-modal-foot{ border-top:1px solid var(--border); padding:14px 20px; display:flex; justify-content:space-between; align-items:center; gap:14px; background:var(--crema); flex-wrap:wrap; }
+.hm-modal-foot small{ font-size:11.5px; color:var(--text-light); }
+.hm-modal-acciones{ display:flex; gap:8px; margin-left:auto; }
+.hm-editor{ display:grid; grid-template-columns:1fr 1fr; gap:22px; }
+.hm-editor h3{ font-size:14px; font-weight:700; margin-bottom:6px; }
+.hm-editor .desc{ font-size:12px; color:var(--text-light); margin-bottom:13px; }
+.hm-sel-list{ display:grid; gap:9px; }
+.hm-sel-row{ border:1px solid var(--border); border-radius:11px; background:var(--crema); padding:11px; }
+.hm-sel-top{ display:flex; align-items:center; gap:8px; }
+.hm-sel-ic{ color:var(--dorado); flex-shrink:0; display:flex; }
+.hm-sel-row input,.hm-sel-row select{ border:1px solid var(--border); border-radius:8px; padding:7px 9px; font-size:12.5px; font-family:inherit; background:var(--white); color:var(--text); min-width:0; }
+.hm-sel-row input{ flex:1; }
+.hm-sel-tools{ display:flex; align-items:center; gap:6px; margin-top:9px; }
+.hm-sel-tools small{ margin-right:auto; font-size:11px; color:var(--text-light); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.hm-buscar{ position:relative; margin-bottom:11px; }
+.hm-buscar svg{ position:absolute; left:11px; top:50%; transform:translateY(-50%); color:var(--text-light); pointer-events:none; }
+.hm-buscar input{ width:100%; padding:10px 12px 10px 36px; border:1px solid var(--border); border-radius:10px; font-size:13px; font-family:inherit; background:var(--white); color:var(--text); }
+.hm-picker{ display:grid; gap:7px; max-height:320px; overflow-y:auto; padding:2px; }
+.hm-picker-row{ display:flex; align-items:center; gap:11px; width:100%; text-align:left; border:1px solid var(--border); border-radius:10px; background:var(--white); padding:10px 12px; cursor:pointer; font-family:inherit; }
+.hm-picker-row:hover:not(:disabled){ border-color:var(--bronce); background:var(--tint-verde); }
+.hm-picker-row:disabled{ opacity:.45; cursor:not-allowed; }
+.hm-picker-row>svg{ color:var(--dorado); flex-shrink:0; }
+.hm-picker-row span{ flex:1; min-width:0; }
+.hm-picker-row strong{ display:block; font-size:12.5px; font-weight:600; color:var(--espresso); }
+.hm-picker-row small{ display:block; font-size:11px; color:var(--text-light); }
+.hm-nueva-web{ margin-top:12px; border:1px dashed var(--border); border-radius:11px; padding:12px; background:var(--crema); }
+.hm-nueva-web input{ width:100%; padding:8px 10px; border:1px solid var(--border); border-radius:8px; font-size:12.5px; font-family:inherit; margin-bottom:8px; background:var(--white); color:var(--text); }
+.hm-error{ color:var(--rojo); font-size:12.5px; margin-top:10px; }
+.hm-error:empty{ display:none; }
+
+@media(max-width:1500px){
+  .hm-accesos{ grid-template-columns:repeat(4,minmax(0,1fr)); }
+}
+@media(max-width:1240px){
+  .hm-metrics{ grid-template-columns:repeat(2,minmax(0,1fr)); }
+}
+@media(max-width:1000px){
+  .hm-grid-2{ grid-template-columns:1fr; }
+  .hm-accesos{ grid-template-columns:repeat(3,minmax(0,1fr)); }
+  .hm-editor{ grid-template-columns:1fr; }
+}
+@media(max-width:700px){
+  .hm-metrics{ grid-template-columns:1fr; }
+  .hm-accesos{ grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .hm-fecha{ display:none; }
+  .hm-panel{ padding:16px; }
+  .hm-metric-anillo{ flex-direction:column; align-items:flex-start; }
+  .hm-ring-wrap,.hm-ring-wrap.destacado{ align-self:center; }
+  .hm-ring-legend{ width:100%; }
+  .hm-area-row{ grid-template-columns:84px 1fr 42px; gap:10px; }
+  .hm-section-head .hm-legend-inline{ display:none; }
+  .hm-task{ flex-wrap:wrap; }
+}
+
+/* ============================================================
+   REFRESCO VISUAL TRANSVERSAL — ajustes suaves que suben el
+   nivel de toda la app sin cambiar ninguna estructura: barra
+   superior fija con sombra al desplazar, tarjetas con esquinas
+   y sombras más consistentes, y foco de teclado visible.
+   ============================================================ */
+#topbar{ position:sticky; top:0; z-index:35; backdrop-filter:saturate(1.4) blur(6px); }
+.panel{ border-radius:16px; }
+.module-card{ transition:transform .15s ease, box-shadow .15s ease, border-color .15s ease; }
+.module-card:hover{ transform:translateY(-2px); box-shadow:0 8px 20px rgba(12,60,78,.09); border-color:var(--bronce); }
+button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{ outline:2px solid var(--bronce); outline-offset:2px; }
+
 </style>
 <script>
 /*! xlsx.js (C) 2013-present SheetJS -- http://sheetjs.com */
@@ -2799,150 +3010,339 @@ function toggleSection(secId){
 }
 
 /* ==================================================================
-   RENDER: INICIO
-   ================================================================== */
-// Solo estas 3 secciones aparecen como columnas en Inicio (Checklists,
-// Operación, Gerencia). El Asistente Córdova ya no es una cuarta columna:
-// vive embebido debajo, y sigue disponible aparte en el menú lateral.
-const HOME_COLUMNAS_IDS = ['checklists','operacion','gerencia'];
-// Qué columnas están desplegadas ahora mismo (persiste entre renders de
-// Inicio para que un envío de mensaje del asistente, por ejemplo, no las
-// vuelva a cerrar de golpe).
-let homeColsAbiertas = new Set();
+   RENDER: INICIO — TABLERO DE OPERACIÓN
+   ------------------------------------------------------------------
+   Rediseño: antes, Inicio repetía el mismo árbol de módulos que ya
+   muestra el menú lateral (las 3 columnas desplegables). Eso era la
+   duplicación que se sentía al usar la app: dos formas distintas de
+   ver exactamente la misma lista. Ahora el menú lateral sigue siendo
+   el navegador de la app, e Inicio pasó a ser un tablero de trabajo:
+   qué tan va el día, qué requiere atención, qué le toca a la persona,
+   sus accesos rápidos (que cada quien arma) y tres puertas de entrada
+   con buscador para el resto.
 
-/* ==================================================================
-   INICIO — vistazo del día para gerencia/administración, más un
-   estante de "Accesos rápidos" para todos. Todo lo que muestran estas
-   tres funciones reutiliza señales que YA calculan el Reporte general
-   360 y la campana de notificaciones del topbar — no inventan datos
-   nuevos, solo los ponen a la vista apenas se entra a la app.
+   Regla de honestidad de los datos: todo lo que se muestra reutiliza
+   señales que YA calculan el Reporte general 360, la campana de
+   notificaciones y Planificación — no se inventa ningún dato. Los
+   anillos de porcentaje solo se usan cuando existe un total conocido
+   (cumplidos sobre programados); los demás indicadores se muestran
+   como número con color de estado, nunca como porcentaje inventado.
    ================================================================== */
-function homeResumenGerencialHtml(){
-  if(!SESSION || (SESSION.rol !== 'gerencia' && SESSION.rol !== 'administracion')) return '';
-  const hoy = hoyStr();
-  let pctChecklistHoy = 0, incumplimientosHoy = 0;
+// Estas 3 secciones siguen apareciendo como columnas desplegables en
+// Inicio, igual que siempre (Checklists, Operación, Gerencia).
+const HOME_COLUMNAS_IDS = ['checklists','operacion','gerencia'];
+// Qué columnas están desplegadas ahora mismo (se conserva entre
+// repintados de Inicio para que no se cierren solas).
+let homeColsAbiertas = new Set();
+const HOME_ACCESOS_MAX = 12;
+const HOME_ACCESOS_ICONOS = ['star','cash','camera','box','calendar','checklist','chart','wrench','external','user','users','tray','bell','clock','chef','glass','truck','megaphone','target','shield'];
+const HOME_ACCESOS_SUGERIDOS = ['coc_fotos_platos','cf_caja','mant_solicitudes','mant_preventivo','coc_bajas','ger_reporte_general360'];
+
+function homeEsc(v){
+  return String(v == null ? '' : v).replace(/[&<>"']/g, function(c){
+    return ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' })[c];
+  });
+}
+function homeEsGerencia(){
+  return !!(SESSION && (SESSION.rol === 'gerencia' || SESSION.rol === 'administracion'));
+}
+
+/* ------------------------------------------------------------------
+   Datos del día — una sola pasada que agrupa las señales que ya
+   existen, para no recalcular lo mismo en cada tarjeta.
+   ------------------------------------------------------------------ */
+/* Algunas definiciones de incumplimiento guardan en "area" el id de un
+   checklist (chk_aseo_bar, chk_higiene…) en vez de un área. Ahí hay que
+   preguntarle al menú a qué área pertenece ese checklist; si no tiene
+   una, se agrupan todos juntos como aseo de áreas comunes en vez de
+   quedar como filas sueltas de "otras áreas". */
+function homeAreaDeItemNav(itemId){
   try{
-    const resultadosHoy = (typeof incumplimientosDetectarDia === 'function') ? incumplimientosDetectarDia(hoy) : [];
-    const cumplidosHoy = resultadosHoy.filter(r=>r.cumplido).length;
-    pctChecklistHoy = resultadosHoy.length ? Math.round((cumplidosHoy/resultadosHoy.length)*100) : 0;
-    incumplimientosHoy = resultadosHoy.length - cumplidosHoy;
+    for(const sec of NAV){
+      for(const g of sec.groups){
+        const it = (g.items || []).find(x => x.id === itemId);
+        if(it) return it.area || '';
+      }
+    }
   }catch(e){}
-  const incidentesAbiertos = filtrarPorSede(DB.get('incidentes', [])).filter(r=>r.estado!=='cerrado').length;
-  const solicitudesMantAbiertas = filtrarPorSede(DB.get('mant_solicitudes', [])).filter(s=>s.estado!=='cerrada').length;
-  return `<div class="panel" style="margin-bottom:18px;">
-    <div class="panel-header"><h3>Resumen de hoy</h3></div>
-    <div class="v360-stat-row">
-      ${v360Kpi(pctChecklistHoy>=80?'#2E7D32':'#C0392B', pctChecklistHoy+'%', 'Cumplimiento de checklist')}
-      ${v360Kpi(incumplimientosHoy>0?'#C0392B':'#2E7D32', incumplimientosHoy, 'Incumplimientos de hoy')}
-      ${v360Kpi(incidentesAbiertos>0?'#C0392B':'#2E7D32', incidentesAbiertos, 'Sucesos abiertos')}
-      ${v360Kpi(solicitudesMantAbiertas>0?'#C0392B':'#2E7D32', solicitudesMantAbiertas, 'Mantenimiento pendiente')}
+  return '';
+}
+function homeAreaDeDef(def){
+  if(!def) return 'otros';
+  if(def.area){
+    if(String(def.area).indexOf('chk_') === 0){
+      return homeAreaDeItemNav(def.area) || 'areas_comunes';
+    }
+    return def.area;
+  }
+  if(def.tipo === 'mise_cocina') return 'cocina';
+  if(def.id === 'apertura_caja') return 'contabilidad';
+  if(def.id === 'briefing_cocina') return 'cocina';
+  if(def.id === 'briefing_servicio') return 'servicio_cliente';
+  return 'otros';
+}
+const HOME_AREA_LABEL_EXTRA = { areas_comunes:'Aseo de áreas comunes', otros:'Otras áreas' };
+function homeDatosDelDia(){
+  const hoy = (typeof hoyStr === 'function') ? hoyStr() : '';
+  let resultados = [];
+  try{
+    resultados = (typeof incumplimientosDetectarDia === 'function') ? incumplimientosDetectarDia(hoy) : [];
+  }catch(e){ resultados = []; }
+  const total = resultados.length;
+  const cumplidos = resultados.filter(r => r.cumplido).length;
+  const pendientes = total - cumplidos;
+  const pct = total ? Math.round((cumplidos / total) * 100) : 0;
+  const mapa = {};
+  resultados.forEach(r => {
+    let def = null;
+    try{ def = INCUMPLIMIENTOS_DEFINICIONES.find(d => d.id === r.defId) || null; }catch(e){}
+    const key = homeAreaDeDef(def);
+    if(!mapa[key]) mapa[key] = { key:key, label:(AREA_META[key] || {}).label || HOME_AREA_LABEL_EXTRA[key] || 'Otras áreas', cumplidos:0, pendientes:0 };
+    if(r.cumplido) mapa[key].cumplidos++; else mapa[key].pendientes++;
+  });
+  const areas = Object.keys(mapa).map(k => mapa[k])
+    .sort((a,b) => (b.cumplidos + b.pendientes) - (a.cumplidos + a.pendientes));
+  let incidentes = 0, mantenimiento = 0;
+  try{ incidentes = filtrarPorSede(DB.get('incidentes', [])).filter(r => r.estado !== 'cerrado').length; }catch(e){}
+  try{ mantenimiento = filtrarPorSede(DB.get('mant_solicitudes', [])).filter(s => s.estado !== 'cerrada').length; }catch(e){}
+  return { hoy:hoy, total:total, cumplidos:cumplidos, pendientes:pendientes, pct:pct, areas:areas, incidentes:incidentes, mantenimiento:mantenimiento };
+}
+
+/* Navegación desde el tablero: siempre resolviendo contra el índice de
+   pantallas permitidas para esta cuenta, así nunca aparece un botón
+   hacia un módulo que la persona no puede abrir. */
+function homeItemPorId(itemId){
+  try{
+    return (typeof topbarIndiceBusqueda === 'function')
+      ? (topbarIndiceBusqueda().find(x => x.item.id === itemId) || null)
+      : null;
+  }catch(e){ return null; }
+}
+function homeIrA(itemId){
+  const x = homeItemPorId(itemId);
+  if(x) openModule(x.sec, x.group, x.item);
+}
+function homeIrAReporte360(tab){
+  if(!homeItemPorId('ger_reporte_general360')) return;
+  openModuleById('gerencia','general','ger_reporte_general360');
+  setTimeout(function(){
+    if(typeof reporteGeneral360SetTab === 'function') reporteGeneral360SetTab(tab);
+  }, 60);
+}
+
+/* ------------------------------------------------------------------
+   Bloques visuales
+   ------------------------------------------------------------------ */
+function homeIntroHtml(){
+  let nombreNegocio = '';
+  try{ nombreNegocio = (paramsRestaurante() || {}).nombreRestaurante || ''; }catch(e){}
+  const hora = new Date().getHours();
+  const saludo = hora < 12 ? 'Buenos días' : (hora < 19 ? 'Buenas tardes' : 'Buenas noches');
+  const primerNombre = String((SESSION && SESSION.nombre) || '').split(' ')[0];
+  let fecha = new Date().toLocaleDateString('es-CO', { weekday:'long', day:'2-digit', month:'long', year:'numeric' });
+  fecha = fecha.charAt(0).toUpperCase() + fecha.slice(1);   // solo la primera letra
+  return `<header class="hm-intro">
+    <div>
+      ${nombreNegocio ? `<div class="hm-eyebrow">${homeEsc(nombreNegocio)}</div>` : ''}
+      <h1>Tu operación, en un vistazo.</h1>
+      <p>${saludo}${primerNombre ? ', ' + homeEsc(primerNombre) : ''}. Estas son las prioridades de tu jornada.</p>
     </div>
+    <div class="hm-fecha">${ic('calendar',18)}<span>${fecha}</span></div>
+  </header>`;
+}
+
+function homeRingHtml(pct, tono, centro, sub, destacado){
+  const r = 52, circ = 2 * Math.PI * r;
+  const valor = Math.max(0, Math.min(100, Number(pct) || 0));
+  const dash = (valor / 100) * circ;
+  // Los atributos fill/stroke van escritos en el propio SVG (no solo en
+  // el CSS) para que el anillo se vea igual aunque la hoja de estilos
+  // no llegue a aplicarse — por ejemplo al imprimir o exportar.
+  return `<div class="hm-ring-wrap${destacado ? ' destacado' : ''}">
+    <svg class="hm-ring ${tono}" viewBox="0 0 120 120" aria-hidden="true">
+      <circle class="hm-ring-track" cx="60" cy="60" r="${r}" fill="none" stroke-width="8"></circle>
+      <circle class="hm-ring-arc" cx="60" cy="60" r="${r}" fill="none" stroke="currentColor" stroke-width="8" stroke-dasharray="${dash.toFixed(1)} ${(circ - dash).toFixed(1)}"></circle>
+    </svg>
+    <div class="hm-ring-center"><strong>${centro}</strong>${sub ? '<small>' + sub + '</small>' : ''}</div>
   </div>`;
 }
-function homeAtencionRequeridaHtml(){
-  if(!SESSION || (SESSION.rol !== 'gerencia' && SESSION.rol !== 'administracion')) return '';
-  const notifs = (typeof topbarNotificacionesDatos === 'function') ? topbarNotificacionesDatos() : [];
+
+function homeContadorHtml(opts){
+  return `<article class="hm-metric">
+    <div class="hm-metric-body">
+      <div class="hm-metric-head"><h3>${opts.titulo}</h3>${ic(opts.icono,17)}</div>
+      <div class="hm-metric-num ${opts.tono}">${opts.valor}</div>
+      <p class="hm-metric-cap">${opts.texto}</p>
+    </div>
+    <div class="hm-metric-foot">
+      <span class="hm-pill ${opts.tono}">${opts.pill}</span>
+      ${opts.accion ? `<button type="button" class="hm-link" onclick="${opts.accion}">Ver detalle ${ic('external',13)}</button>` : ''}
+    </div>
+  </article>`;
+}
+
+function homeMetricasHtml(d){
+  if(!homeEsGerencia()) return '';
+  const tonoPct = d.total === 0 ? 'neutral' : (d.pct >= 80 ? 'good' : (d.pct >= 50 ? 'warn' : 'bad'));
+  const verReporte = homeItemPorId('ger_reporte_general360') ? "homeIrAReporte360('incumplimientos')" : '';
+  const verSucesos = homeItemPorId('ger_reporte_general360') ? "homeIrAReporte360('sucesos')" : '';
+  const verMant = homeItemPorId('mant_solicitudes') ? "homeIrA('mant_solicitudes')" : '';
+
+  let html = `<section class="hm-section">
+    <div class="hm-section-head">
+      <div><h2>Resumen de hoy</h2><p>Las mismas señales del Reporte general, apenas entras.</p></div>
+      <div class="hm-legend-inline">
+        <span><i class="hm-dot good"></i>Cumplido</span>
+        <span><i class="hm-dot warn"></i>Pendiente</span>
+        <span><i class="hm-dot"></i>Sin datos</span>
+      </div>
+    </div>
+    <div class="hm-metrics">
+      <article class="hm-metric destacada">
+        <div class="hm-metric-body">
+          <div class="hm-metric-head"><h3>Cumplimiento de checklists</h3>${ic('checklist',17)}</div>
+          <div class="hm-metric-anillo">
+            ${homeRingHtml(d.pct, tonoPct, d.total ? d.pct + '%' : '—', d.total ? 'de ' + d.total : 'sin datos', true)}
+            <div class="hm-ring-legend">
+              <div class="hm-ring-legend-row"><i class="hm-dot good"></i><span>Cumplidos</span><strong>${d.cumplidos}</strong></div>
+              <div class="hm-ring-legend-row"><i class="hm-dot warn"></i><span>Pendientes</span><strong>${d.pendientes}</strong></div>
+              <div class="hm-ring-legend-row"><i class="hm-dot"></i><span>Programados</span><strong>${d.total}</strong></div>
+            </div>
+          </div>
+        </div>
+        <div class="hm-metric-foot">
+          <span class="hm-pill ${tonoPct}">${d.total === 0 ? 'Sin registros aún' : (d.pct >= 80 ? 'Buen ritmo' : 'Requiere seguimiento')}</span>
+          ${verReporte ? `<button type="button" class="hm-link" onclick="${verReporte}">Ver detalle ${ic('external',13)}</button>` : ''}
+        </div>
+      </article>`;
+
+  html += homeContadorHtml({
+    titulo:'Pendientes de hoy', icono:'shield', valor:d.pendientes,
+    tono: d.total === 0 ? 'neutral' : (d.pendientes > 0 ? 'bad' : 'good'),
+    texto: d.total === 0 ? 'Todavía no hay checklists registrados hoy.' : (d.pendientes > 0 ? 'Checklists programados que aún no quedan cerrados.' : 'Todos los checklists del día quedaron cerrados.'),
+    pill: d.total === 0 ? 'Sin datos' : (d.pendientes > 0 ? 'Por cerrar' : 'Al día'),
+    accion: verReporte
+  });
+
+  html += homeContadorHtml({
+    titulo:'Sucesos abiertos', icono:'bell', valor:d.incidentes,
+    tono: d.incidentes > 0 ? 'warn' : 'good',
+    texto: d.incidentes > 0 ? 'Reportes de suceso que siguen sin cerrarse.' : 'No hay sucesos abiertos en este momento.',
+    pill: d.incidentes > 0 ? 'Requiere revisión' : 'Al día',
+    accion: verSucesos
+  });
+
+  html += homeContadorHtml({
+    titulo:'Mantenimiento', icono:'wrench', valor:d.mantenimiento,
+    tono: d.mantenimiento > 0 ? 'warn' : 'good',
+    texto: d.mantenimiento > 0 ? 'Solicitudes de daño o mantenimiento sin cerrar.' : 'Sin solicitudes de mantenimiento pendientes.',
+    pill: d.mantenimiento > 0 ? 'En cola' : 'Al día',
+    accion: verMant
+  });
+
+  return html + '</div></section>';
+}
+
+function homeAreasHtml(d){
+  if(!homeEsGerencia()) return '';
+  const cabeza = `<div class="hm-panel-head"><div><h2>Cumplimiento por área</h2><p>Checklists cumplidos sobre programados.</p></div>${ic('chart',18)}</div>`;
+  if(!d.areas.length){
+    return `<section class="hm-panel">${cabeza}
+      <div class="hm-empty">${ic('check',26)}<strong>Todavía no hay registros de hoy</strong><span>Apenas el equipo empiece a marcar checklists, este cuadro se llena solo.</span></div>
+    </section>`;
+  }
+  const filas = d.areas.map(a => {
+    const tot = a.cumplidos + a.pendientes;
+    const pGood = tot ? (a.cumplidos / tot) * 100 : 0;
+    const pPend = tot ? (a.pendientes / tot) * 100 : 0;
+    return `<div class="hm-area-row">
+      <span class="hm-area-name" title="${homeEsc(a.label)}">${homeEsc(a.label)}</span>
+      <span class="hm-stack">
+        ${pGood ? `<i class="hm-stack-part good" style="width:${pGood.toFixed(1)}%"></i>` : ''}
+        ${pPend ? `<i class="hm-stack-part warn" style="width:${pPend.toFixed(1)}%"></i>` : ''}
+      </span>
+      <span class="hm-area-total">${a.cumplidos}/${tot}</span>
+    </div>`;
+  }).join('');
+  return `<section class="hm-panel">${cabeza}${filas}
+    <div class="hm-area-foot">Hoy van <strong>${d.cumplidos}</strong> de <strong>${d.total}</strong> registros al día.</div>
+  </section>`;
+}
+
+function homeAtencionHtml(){
+  if(!homeEsGerencia()) return '';
+  let notifs = [];
+  try{ notifs = (typeof topbarNotificacionesDatos === 'function') ? topbarNotificacionesDatos() : []; }catch(e){}
   window._homeAtencionNotifs = notifs;
-  return `<div class="panel" style="margin-bottom:22px;">
-    <div class="panel-header"><h3>Atención requerida</h3></div>
-    ${notifs.length
-      ? notifs.map((n,i) => `<div class="v360-alert warning" style="cursor:pointer;" onclick="homeAtencionAccion(${i})"><span class="ic">⚠️</span><div><b>${n.titulo}</b><span>${n.detalle}</span></div></div>`).join('')
-      : '<div class="v360-alert-empty">✅ Todo al día — sin pendientes que requieran atención.</div>'}
-  </div>`;
+  const cuerpo = notifs.length
+    ? notifs.map((n,i) => `<button type="button" class="hm-alert" onclick="homeAtencionAccion(${i})">
+        <span class="hm-alert-ic">${ic('bell',17)}</span>
+        <span class="hm-alert-txt"><strong>${homeEsc(n.titulo)}</strong><small>${homeEsc(n.detalle)}</small></span>
+        ${ic('external',15)}
+      </button>`).join('')
+    : `<div class="hm-empty">${ic('check',26)}<strong>Todo al día</strong><span>No hay nada pendiente que requiera tu atención ahora mismo.</span></div>`;
+  return `<section class="hm-panel">
+    <div class="hm-panel-head">
+      <div><h2>Atención requerida</h2><p>Lo importante, primero.</p></div>
+      ${notifs.length ? `<span class="hm-count">${notifs.length}</span>` : ''}
+    </div>
+    ${cuerpo}
+  </section>`;
 }
 function homeAtencionAccion(i){
   const n = (window._homeAtencionNotifs || [])[i];
   if(n && typeof n.accion === 'function') n.accion();
 }
-function homeAccesosRapidosHtml(){
-  const candidatos = [
-    { itemId:'coc_fotos_platos', icon:'camera' },
-    { itemId:'cf_caja', icon:'cash' },
-    { itemId:'mant_solicitudes', icon:'wrench' },
-    { itemId:'mant_preventivo', icon:'calendar' },
-    { itemId:'coc_bajas', icon:'down' },
-    { itemId:'ger_reporte_general360', icon:'chart' }
-  ];
-  const indice = topbarIndiceBusqueda();
-  const disponibles = candidatos.map(c => { const x = indice.find(r=>r.item.id===c.itemId); return x ? Object.assign({}, x, { icon:c.icon }) : null; }).filter(Boolean);
-  if(!disponibles.length) return '';
-  return `<div class="panel" style="margin-bottom:22px;">
-    <div class="panel-header"><h3>Accesos rápidos</h3></div>
-    <div style="display:flex;flex-wrap:wrap;gap:10px;">
-      ${disponibles.map(x => `<button type="button" class="tab-btn" style="display:inline-flex;align-items:center;gap:7px;" onclick='openModuleById("${x.sec.id}","${x.group.id}","${x.item.id}")'>${ic(x.icon,15)}${x.item.label}</button>`).join('')}
-    </div>
-  </div>`;
-}
 
-// "Mis tareas de hoy" — visible a CUALQUIER persona que haya iniciado
-// sesión, sin importar su rol (a diferencia de los paneles de arriba,
-// que son solo para gerencia/administración). Muestra únicamente las
-// tareas de Planificación que quedaron asignadas a este mismo usuario
-// para el día de hoy. No usa planifMarcarCompletada (esa función asume
-// que se está dentro del módulo de Planificación) — tiene su propia
-// función de marcar hecha para no interferir con la pantalla de Inicio.
-function homeMisTareasHtml(){
+/* Agenda del día de ESTA persona (cualquier rol): solo lo que quedó
+   asignado a su usuario en Planificación para hoy. */
+function homeAgendaHtml(){
   if(!SESSION || !SESSION.usuario) return '';
   const hoy = hoyStr();
-  const mias = filtrarPorSede(DB.get('tareas_asignadas', [])).filter(t => t.fecha===hoy && t.asignadoA===SESSION.usuario);
-  if(!mias.length) return '';
-  const completadasIds = new Set(DB.get('tareas_completadas', []).map(c=>c.tareaId));
+  const mias = filtrarPorSede(DB.get('tareas_asignadas', [])).filter(t => t.fecha === hoy && t.asignadoA === SESSION.usuario);
+  const completadasIds = new Set(DB.get('tareas_completadas', []).map(c => c.tareaId));
   const pendientes = mias.filter(t => !completadasIds.has(t.id));
   const hechas = mias.filter(t => completadasIds.has(t.id));
-  const filaTarea = t => {
-    const label = t.tipo==='checklist' ? (t.checklistLabel || 'Checklist') : t.descripcion;
-    const turnoLabel = (PLANIF_TURNOS.find(x=>x.id===t.turno)||{}).label || t.turno;
-    const areaLabel = (AREA_META[t.area]||{label:t.area}).label;
-    return `<div class="check-row3">
-      <span>${label} <span style="color:var(--text-light);font-size:11px;">(${areaLabel} · ${turnoLabel})</span></span>
-      <button type="button" class="btn-secondary" style="padding:5px 10px;font-size:11.5px;" onclick="homeMarcarTareaHecha('${t.id}','${t.fecha}','${t.area}')">Marcar hecha</button>
+  const fila = t => {
+    const label = t.tipo === 'checklist' ? (t.checklistLabel || 'Checklist') : (t.descripcion || 'Tarea');
+    let turnoLabel = '';
+    try{ turnoLabel = (PLANIF_TURNOS.find(x => x.id === t.turno) || {}).label || t.turno || ''; }catch(e){ turnoLabel = t.turno || ''; }
+    const areaLabel = (AREA_META[t.area] || { label:t.area || '' }).label;
+    return `<div class="hm-task">
+      <span class="hm-task-hora">${homeEsc(t.hora || turnoLabel || '—')}</span>
+      <span class="hm-task-txt"><strong>${homeEsc(label)}</strong><small>${homeEsc(areaLabel)}${turnoLabel ? ' · ' + homeEsc(turnoLabel) : ''}</small></span>
+      <button type="button" class="hm-btn mini" onclick="homeMarcarTareaHecha('${t.id}','${t.fecha}','${t.area}')">Marcar hecha</button>
     </div>`;
   };
-  return `<div class="panel" style="margin-bottom:22px;">
-    <div class="panel-header"><h3>Mis tareas de hoy</h3></div>
-    ${pendientes.length ? pendientes.map(filaTarea).join('') : '<div class="v360-alert-empty">✅ No tienes tareas pendientes por hoy.</div>'}
-    ${hechas.length ? `<p style="color:var(--text-light);font-size:11.5px;margin-top:8px;">${hechas.length} tarea(s) ya marcada(s) hecha(s) hoy.</p>` : ''}
-  </div>`;
+  const cuerpo = pendientes.length
+    ? pendientes.map(fila).join('')
+    : `<div class="hm-empty">${ic('check',26)}<strong>Sin tareas pendientes</strong><span>${mias.length ? 'Ya cerraste todo lo que tenías asignado para hoy.' : 'Hoy no tienes tareas asignadas en Planificación.'}</span></div>`;
+  return `<section class="hm-panel">
+    <div class="hm-panel-head"><div><h2>Mi agenda de hoy</h2><p>Tu siguiente paso en la operación.</p></div>${ic('clock',18)}</div>
+    ${cuerpo}
+    ${hechas.length ? `<div class="hm-area-foot">${hechas.length} tarea(s) ya marcada(s) como hecha(s) hoy.</div>` : ''}
+  </section>`;
 }
 function homeMarcarTareaHecha(tareaId, fecha, area){
   DB.push('tareas_completadas', {
-    tareaId, fecha, area,
+    tareaId:tareaId, fecha:fecha, area:area,
     sede: sedeParaGuardar(), responsable: SESSION.nombre, usuario: SESSION.usuario
   });
   goHome();
 }
 
-function goHome(){
-  navEmpujarHash('#');
-  setActiveNav(null);
-  document.getElementById('crumbLabel').innerHTML = '<b>Inicio</b>';
-  asistenteVistaActual = 'home';
-  const sectionsWithContent = NAV.filter(sec => HOME_COLUMNAS_IDS.includes(sec.id))
+/* Las 3 categorías (Checklists, Operación, Gerencia) una al lado de la
+   otra, tal como estaban: cada casilla se toca para desplegar u ocultar,
+   debajo, el cuadro con sus subáreas. Empiezan cerradas para que Inicio
+   se vea limpio. */
+function homeColumnasHtml(){
+  const secciones = NAV.filter(sec => HOME_COLUMNAS_IDS.indexOf(sec.id) !== -1)
     .filter(sectionVisible)
-    .map(sec => ({ sec, groups: visibleGroupsOf(sec) }))
+    .map(sec => ({ sec:sec, groups: visibleGroupsOf(sec) }))
     .filter(x => x.groups.length > 0);
-  const sedes = DB.get('sedes', []);
-  const sedeNombre = SESSION.sede === 'todas' ? 'Todas las sedes' : ((sedes.find(s=>s.id===SESSION.sede)||{}).nombre || SESSION.sede);
-
-  let html = '<div class="home-header">';
-  html += '<h2>HJP FoodTech</h2>';
-  html += '<p>Sesión iniciada como <b>'+SESSION.nombre+'</b> ('+(SESSION.cargo||'')+') · Sede '+sedeNombre+'</p>';
-  html += '</div>';
-
-  // Para gerencia/administración: un vistazo del día (mismas señales que
-  // ya calcula el Reporte general 360 y la campana de notificaciones,
-  // solo presentadas de una vez al entrar) antes de bajar a las 3
-  // columnas de módulos.
-  html += homeResumenGerencialHtml();
-  html += homeAtencionRequeridaHtml();
-  html += homeMisTareasHtml();
-  html += homeAccesosRapidosHtml();
-
-  // Las 3 categorías van una al lado de la otra (3 columnas). Cada casilla
-  // se puede tocar para desplegar/ocultar, debajo, el cuadro con sus
-  // subáreas — empiezan ocultas para que Inicio se vea limpio.
-  html += '<div class="home-cols">';
-  sectionsWithContent.forEach(({sec})=>{
+  if(!secciones.length) return '';
+  let html = '<div class="home-cols">';
+  secciones.forEach(({sec}) => {
     const abierta = homeColsAbiertas.has(sec.id);
     html += `
     <div class="home-col">
@@ -2954,21 +3354,7 @@ function goHome(){
       <div class="home-fixed-box ${abierta?'':'hidden'}" id="home_box_${sec.id}">${homeSectionBodyHtml(sec)}</div>
     </div>`;
   });
-  html += '</div>';
-
-  const fecha = new Date().toLocaleDateString('es-CO', { day:'2-digit', month:'long', year:'numeric' });
-  html += `<div class="status-bar" style="margin-bottom:22px;">
-    <span>${ic('pin',15)} Sede activa: <b>${sedeNombre}</b></span>
-    <span>${ic('clock',15)} Fecha: <b>${fecha}</b></span>
-    <span>${ic('shield',15)} Datos guardados en este navegador (nivel medio) — listo para conectar a la nube</span>
-  </div>`;
-
-  // El Asistente Córdova queda embebido debajo de las 3 columnas.
-  html += `<div class="panel">${asistenteWidgetHtml()}</div>`;
-
-  document.getElementById('content').innerHTML = html;
-  const cont = document.getElementById('ast_mensajes');
-  if(cont) cont.scrollTop = cont.scrollHeight;
+  return html + '</div>';
 }
 
 // Despliega/oculta, sin recargar toda la pantalla, el cuadro de subáreas
@@ -2985,22 +3371,17 @@ function homeToggleCol(secId){
 }
 
 /* Contenido de subáreas de una categoría de Inicio: una sola columna con
-   el título de cada subárea seguido de sus ítems, uno debajo de otro. Se
-   muestra siempre fijo debajo de la casilla — no requiere hacer clic. */
+   el título de cada subárea seguido de sus ítems, uno debajo de otro. */
 function homeSectionBodyHtml(sec){
   const groups = visibleGroupsOf(sec);
   let html = '';
   if(sec.flatDisplay){
-    // Una sola columna con todos los ítems, uno debajo de otro, ordenados
-    // por tipo (ver flatItemsOrdenados), sin subtítulos de subárea.
     flatItemsOrdenados(groups).forEach(({it, groupId})=>{
       html += it.link
         ? `<div class="home-sub-item" onclick="window.open('${it.link}','_blank')">${ic(it.icon,14)}${itemDisplayLabel(it)} ${ic('external',12)}</div>`
         : `<div class="home-sub-item" onclick='openModuleById("${sec.id}","${groupId}","${it.id}")'>${ic(it.icon,14)}${itemDisplayLabel(it)}</div>`;
     });
   } else {
-    // Cada subárea con su título, y sus ítems justo debajo — todo dentro
-    // del mismo cuadro, una subárea debajo de la otra.
     groups.forEach(({group, items})=>{
       if(group.label){
         html += `<div class="home-sub-title"><span class="dot" style="background:${sec.color}"></span>${group.label}</div>`;
@@ -3017,6 +3398,299 @@ function homeSectionBodyHtml(sec){
     });
   }
   return html;
+}
+
+function homePieHtml(){
+  let nombreNegocio = '';
+  try{ nombreNegocio = (paramsRestaurante() || {}).nombreRestaurante || ''; }catch(e){}
+  return `<footer class="hm-pie">
+    <span><strong>HJP FoodTech</strong> · Toda tu operación, conectada.</span>
+    <span>${homeEsc(nombreNegocio)}</span>
+  </footer>`;
+}
+
+/* ==================================================================
+   ACCESOS RÁPIDOS PERSONALIZABLES
+   Cada usuario arma su propio estante de accesos (hasta 12): módulos
+   de la app o enlaces a páginas web. Se guardan en la colección
+   'home_accesos' por nombre de usuario, así que viajan con la cuenta
+   (misma nube que el resto de la app), no se quedan en un solo
+   dispositivo. Si a alguien le cambian los permisos, los accesos a
+   pantallas que ya no puede ver simplemente dejan de mostrarse.
+   ================================================================== */
+function homeAccesosUsuario(){ return (SESSION && SESSION.usuario) || ''; }
+function homeAccesosGuardados(){
+  const todo = DB.get('home_accesos', {}) || {};
+  const lista = todo[homeAccesosUsuario()];
+  return Array.isArray(lista) ? lista : null;
+}
+function homeAccesosSugeridos(){
+  let idx = [];
+  try{ idx = topbarIndiceBusqueda(); }catch(e){}
+  const out = [];
+  HOME_ACCESOS_SUGERIDOS.forEach(id => {
+    const x = idx.find(r => r.item.id === id);
+    if(x) out.push({ tipo:'modulo', itemId:x.item.id, label:x.item.label, icon:x.item.icon || 'star' });
+  });
+  if(!out.length){
+    idx.slice(0,6).forEach(x => out.push({ tipo:'modulo', itemId:x.item.id, label:x.item.label, icon:x.item.icon || 'star' }));
+  }
+  return out;
+}
+function homeAccesosLista(){
+  const guardados = homeAccesosGuardados();
+  return (guardados || homeAccesosSugeridos()).slice(0, HOME_ACCESOS_MAX);
+}
+function homeAccesosGuardar(lista){
+  const todo = Object.assign({}, DB.get('home_accesos', {}) || {});
+  todo[homeAccesosUsuario()] = lista.slice(0, HOME_ACCESOS_MAX);
+  DB.set('home_accesos', todo);
+}
+/* Resuelve cada acceso contra el índice de pantallas permitidas: así
+   el nombre/ruta que se muestra siempre corresponde a lo que la cuenta
+   puede abrir de verdad hoy. */
+function homeAccesosResueltos(){
+  let idx = [];
+  try{ idx = topbarIndiceBusqueda(); }catch(e){}
+  return homeAccesosLista().map(a => {
+    if(a.tipo === 'link') return Object.assign({}, a, { ruta:'Página web' });
+    const x = idx.find(r => r.item.id === a.itemId);
+    if(!x) return null;
+    return Object.assign({}, a, {
+      secId:x.sec.id, groupId:x.group.id,
+      ruta: x.sec.label + (x.group.label ? ' · ' + x.group.label : '')
+    });
+  }).filter(Boolean);
+}
+function homeAccesosHtml(){
+  const lista = homeAccesosResueltos();
+  window._homeAccesos = lista;
+  const tarjetas = lista.map((a,i) => `
+    <button type="button" class="hm-acceso" onclick="homeAccesoAbrir(${i})" title="${homeEsc(a.label)}">
+      <span class="hm-acceso-corner">${ic('external',13)}</span>
+      <span class="hm-acceso-ic">${ic(a.icon || 'star',18)}</span>
+      <strong>${homeEsc(a.label)}</strong>
+      <small>${homeEsc(a.ruta || '')}</small>
+    </button>`).join('');
+  const agregar = lista.length < HOME_ACCESOS_MAX
+    ? `<button type="button" class="hm-acceso add" onclick="homeAccesosEditorAbrir()">
+        <span class="hm-acceso-ic">${ic('star',18)}</span>
+        <strong>Agregar acceso</strong>
+      </button>`
+    : '';
+  return `<section class="hm-section">
+    <div class="hm-section-head">
+      <div><h2>Mis accesos rápidos</h2><p>Las herramientas que más usas, a tu manera.</p></div>
+      <button type="button" class="hm-btn" onclick="homeAccesosEditorAbrir()">${ic('sliders',16)}Personalizar</button>
+    </div>
+    <div class="hm-accesos">${tarjetas}${agregar}</div>
+    <div class="hm-accesos-nota">${ic('user',13)} Accesos de ${homeEsc((SESSION && SESSION.nombre) || 'tu usuario')} — se guardan en tu cuenta.</div>
+  </section>`;
+}
+function homeAccesoAbrir(i){
+  const a = (window._homeAccesos || [])[i];
+  if(!a) return;
+  if(a.tipo === 'link'){ window.open(a.url, '_blank'); return; }
+  homeIrA(a.itemId);
+}
+
+/* ---------- Editor de accesos (ventana modal) ---------- */
+function homeAccesosEditorAbrir(){
+  window._homeAccesosDraft = homeAccesosLista().map(a => Object.assign({}, a));
+  window._homeAccesosBusqueda = '';
+  window._homeAccesosError = '';
+  let cont = document.getElementById('homeModal');
+  if(!cont){
+    cont = document.createElement('div');
+    cont.id = 'homeModal';
+    document.body.appendChild(cont);
+  }
+  homeAccesosEditorRender();
+}
+function homeAccesosEditorCerrar(){
+  const cont = document.getElementById('homeModal');
+  if(cont) cont.innerHTML = '';
+}
+function homeAccesosEditorRender(){
+  const cont = document.getElementById('homeModal');
+  if(!cont) return;
+  const draft = window._homeAccesosDraft || [];
+  let idx = [];
+  try{ idx = topbarIndiceBusqueda(); }catch(e){}
+  const q = String(window._homeAccesosBusqueda || '').trim();
+  const qn = q ? (typeof compraNormalizar === 'function' ? compraNormalizar(q) : q.toLowerCase()) : '';
+  const yaEsta = itemId => draft.some(a => a.tipo !== 'link' && a.itemId === itemId);
+  const candidatos = idx
+    .filter(x => !qn || (typeof compraNormalizar === 'function' ? compraNormalizar(x.texto) : x.texto.toLowerCase()).includes(qn))
+    .slice(0, 40);
+
+  const opcionesIcono = a => HOME_ACCESOS_ICONOS.map(n =>
+    `<option value="${n}"${(a.icon || 'star') === n ? ' selected' : ''}>${n}</option>`).join('');
+
+  const rutaDe = a => {
+    if(a.tipo === 'link') return a.url || 'Página web';
+    const x = idx.find(r => r.item.id === a.itemId);
+    return x ? (x.sec.label + (x.group.label ? ' · ' + x.group.label : '')) : 'Ya no disponible para tu usuario';
+  };
+  const seleccion = draft.length ? draft.map((a,i) => `
+    <div class="hm-sel-row">
+      <div class="hm-sel-top">
+        <span class="hm-sel-ic">${ic(a.icon || 'star',16)}</span>
+        <input type="text" maxlength="42" value="${homeEsc(a.label)}" aria-label="Nombre del acceso"
+               oninput="homeAccesosDraftLabel(${i}, this.value)">
+        <select aria-label="Ícono" onchange="homeAccesosDraftIcono(${i}, this.value)">${opcionesIcono(a)}</select>
+      </div>
+      <div class="hm-sel-tools">
+        <small title="${homeEsc(rutaDe(a))}">${homeEsc(rutaDe(a))}</small>
+        <button type="button" class="hm-btn icon" title="Subir" onclick="homeAccesosDraftMover(${i},-1)">↑</button>
+        <button type="button" class="hm-btn icon" title="Bajar" onclick="homeAccesosDraftMover(${i},1)">↓</button>
+        <button type="button" class="hm-btn icon danger" title="Quitar" onclick="homeAccesosDraftQuitar(${i})">✕</button>
+      </div>
+    </div>`).join('')
+    : `<div class="hm-empty">${ic('star',24)}<strong>Sin accesos todavía</strong><span>Agrega los que uses a diario desde la lista de la derecha.</span></div>`;
+
+  cont.innerHTML = `<div class="hm-modal-overlay" onclick="if(event.target===this) homeAccesosEditorCerrar()">
+    <div class="hm-modal" role="dialog" aria-modal="true" aria-label="Personalizar accesos rápidos">
+      <div class="hm-modal-head">
+        <div><h2>Tu inicio, a tu manera</h2><p>Agrega accesos, cámbiales el nombre y elige el orden.</p></div>
+        <button type="button" class="hm-btn icon" onclick="homeAccesosEditorCerrar()" aria-label="Cerrar">✕</button>
+      </div>
+      <div class="hm-modal-body">
+        <div class="hm-editor">
+          <section>
+            <h3>Mis accesos (${draft.length}/${HOME_ACCESOS_MAX})</h3>
+            <p class="desc">Usa las flechas para ordenarlos: el primero aparece arriba a la izquierda.</p>
+            <div class="hm-sel-list">${seleccion}</div>
+            <button type="button" class="hm-btn" style="margin-top:12px;width:100%;" onclick="homeAccesosDraftSugeridos()">Restablecer selección sugerida</button>
+          </section>
+          <section>
+            <h3>Agregar una herramienta</h3>
+            <div class="hm-buscar">
+              ${ic('search',17)}
+              <input type="search" id="homeAccesosBuscar" placeholder="Buscar caja, inventario, checklist…"
+                     value="${homeEsc(q)}" oninput="homeAccesosBuscar(this.value)" aria-label="Buscar herramientas">
+            </div>
+            <div class="hm-picker">
+              ${candidatos.length ? candidatos.map(x => `
+                <button type="button" class="hm-picker-row" ${yaEsta(x.item.id) || draft.length >= HOME_ACCESOS_MAX ? 'disabled' : ''}
+                        onclick="homeAccesosDraftAgregar('${x.item.id}')">
+                  ${ic(x.item.icon || 'star',18)}
+                  <span><strong>${homeEsc(x.item.label)}</strong><small>${homeEsc(x.sec.label + (x.group.label ? ' · ' + x.group.label : ''))}</small></span>
+                  ${yaEsta(x.item.id) ? '<span class="hm-pill good">Agregado</span>' : ''}
+                </button>`).join('')
+                : `<div class="hm-empty">${ic('search',24)}<strong>Sin resultados</strong><span>Prueba con otra palabra.</span></div>`}
+            </div>
+            <div class="hm-nueva-web">
+              <input type="text" id="homeAccesoWebNombre" maxlength="42" placeholder="Nombre del acceso (ej. Facturación)">
+              <input type="url" id="homeAccesoWebUrl" placeholder="https://…">
+              <button type="button" class="hm-btn" style="width:100%;" onclick="homeAccesosDraftAgregarWeb()">${ic('external',15)}Agregar acceso a una página web</button>
+            </div>
+          </section>
+        </div>
+        <p class="hm-error">${homeEsc(window._homeAccesosError || '')}</p>
+      </div>
+      <div class="hm-modal-foot">
+        <small>Solo «Guardar cambios» confirma tu selección.</small>
+        <div class="hm-modal-acciones">
+          <button type="button" class="hm-btn" onclick="homeAccesosEditorCerrar()">Cancelar</button>
+          <button type="button" class="hm-btn primary" onclick="homeAccesosEditorGuardar()">Guardar cambios</button>
+        </div>
+      </div>
+    </div>
+  </div>`;
+}
+function homeAccesosBuscar(v){
+  window._homeAccesosBusqueda = v;
+  homeAccesosEditorRender();
+  const input = document.getElementById('homeAccesosBuscar');
+  if(input){ input.focus(); input.setSelectionRange(input.value.length, input.value.length); }
+}
+function homeAccesosDraftLabel(i, v){
+  const draft = window._homeAccesosDraft || [];
+  if(draft[i]) draft[i].label = v;           // sin repintar: no se pierde el cursor
+}
+function homeAccesosDraftIcono(i, v){
+  const draft = window._homeAccesosDraft || [];
+  if(draft[i]) draft[i].icon = v;
+  homeAccesosEditorRender();
+}
+function homeAccesosDraftMover(i, delta){
+  const draft = window._homeAccesosDraft || [];
+  const j = i + delta;
+  if(j < 0 || j >= draft.length) return;
+  const tmp = draft[i]; draft[i] = draft[j]; draft[j] = tmp;
+  homeAccesosEditorRender();
+}
+function homeAccesosDraftQuitar(i){
+  const draft = window._homeAccesosDraft || [];
+  draft.splice(i, 1);
+  homeAccesosEditorRender();
+}
+function homeAccesosDraftAgregar(itemId){
+  const draft = window._homeAccesosDraft || [];
+  if(draft.length >= HOME_ACCESOS_MAX){ window._homeAccesosError = 'Máximo ' + HOME_ACCESOS_MAX + ' accesos.'; homeAccesosEditorRender(); return; }
+  const x = homeItemPorId(itemId);
+  if(!x) return;
+  if(draft.some(a => a.tipo !== 'link' && a.itemId === itemId)) return;
+  draft.push({ tipo:'modulo', itemId:itemId, label:x.item.label, icon:x.item.icon || 'star' });
+  window._homeAccesosError = '';
+  homeAccesosEditorRender();
+}
+function homeAccesosDraftAgregarWeb(){
+  const draft = window._homeAccesosDraft || [];
+  const nombreEl = document.getElementById('homeAccesoWebNombre');
+  const urlEl = document.getElementById('homeAccesoWebUrl');
+  const nombre = nombreEl ? nombreEl.value.trim() : '';
+  const url = urlEl ? urlEl.value.trim() : '';
+  if(draft.length >= HOME_ACCESOS_MAX){ window._homeAccesosError = 'Máximo ' + HOME_ACCESOS_MAX + ' accesos.'; homeAccesosEditorRender(); return; }
+  if(!nombre){ window._homeAccesosError = 'Ponle un nombre al acceso.'; homeAccesosEditorRender(); return; }
+  if(!/^https?:\/\/.+/i.test(url)){ window._homeAccesosError = 'La dirección debe empezar por http:// o https://'; homeAccesosEditorRender(); return; }
+  draft.push({ tipo:'link', url:url, label:nombre, icon:'external' });
+  window._homeAccesosError = '';
+  homeAccesosEditorRender();
+}
+function homeAccesosDraftSugeridos(){
+  window._homeAccesosDraft = homeAccesosSugeridos();
+  window._homeAccesosError = '';
+  homeAccesosEditorRender();
+}
+function homeAccesosEditorGuardar(){
+  const draft = (window._homeAccesosDraft || []).map(a => {
+    const label = String(a.label || '').trim().slice(0, 42);
+    const base = { tipo:a.tipo, label: label || 'Acceso', icon: HOME_ACCESOS_ICONOS.indexOf(a.icon) !== -1 ? a.icon : 'star' };
+    return a.tipo === 'link' ? Object.assign(base, { url:a.url }) : Object.assign(base, { itemId:a.itemId });
+  });
+  homeAccesosGuardar(draft);
+  homeAccesosEditorCerrar();
+  goHome();
+}
+
+/* ==================================================================
+   INICIO
+   ================================================================== */
+function goHome(){
+  navEmpujarHash('#');
+  setActiveNav(null);
+  document.getElementById('crumbLabel').innerHTML = '<b>Inicio</b>';
+  asistenteVistaActual = 'home';
+  const d = homeDatosDelDia();
+
+  let html = '<div class="hm-wrap">';
+  html += homeIntroHtml();
+  html += homeMetricasHtml(d);
+  html += homeAccesosHtml();
+  if(homeEsGerencia()){
+    html += `<div class="hm-grid-2">${homeAtencionHtml()}${homeAreasHtml(d)}</div>`;
+  }
+  html += homeAgendaHtml();
+  html += homeColumnasHtml();
+  html += `<section class="hm-panel">${asistenteWidgetHtml()}</section>`;
+  html += homePieHtml();
+  html += '</div>';
+
+  document.getElementById('content').innerHTML = html;
+  const cont = document.getElementById('ast_mensajes');
+  if(cont) cont.scrollTop = cont.scrollHeight;
 }
 
 function openModuleById(secId, groupId, itemId){
