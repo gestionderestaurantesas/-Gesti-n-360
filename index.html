@@ -6539,11 +6539,36 @@ function asistenteDatosFinancierosGerencia(){
   } catch(e){ return null; }
 }
 
+// Un día antes de la fecha dada (formato YYYY-MM-DD), en componentes
+// locales — igual criterio que hoyStr(), para no toparse con el mismo
+// corrimiento de zona horaria que ya se documentó ahí.
+function fechaMenosDias(fechaStr, dias){
+  const partes = String(fechaStr||'').split('-').map(Number);
+  const dt = new Date(partes[0], (partes[1]||1)-1, partes[2]||1);
+  dt.setDate(dt.getDate() - dias);
+  return dt.getFullYear() + '-' + String(dt.getMonth()+1).padStart(2,'0') + '-' + String(dt.getDate()).padStart(2,'0');
+}
+// Estado de checklists de un día puntual (completado o no, quién quedó
+// como responsable, hora, motivo si falta) — la misma información que ya
+// usa el Reporte de incumplimientos, resumida para que HJ-IA pueda
+// contestar directo en vez de mandar a la persona a revisarlo a mano.
+function asistenteEstadoChecklistsDia(fecha){
+  if(typeof incumplimientosDetectarDia !== 'function') return [];
+  return incumplimientosDetectarDia(fecha).map(r => ({
+    checklist: r.label,
+    completado: r.cumplido,
+    responsable: r.responsable || 'Sin registrar',
+    hora: r.hora || '',
+    motivo: r.motivo || ''
+  }));
+}
 // Datos en vivo que el asistente puede usar para responder preguntas de
 // "interés general" (ej. reseñas por mesero). Las cifras financieras
-// (datosFinancierosGerencia) solo se incluyen cuando SESSION.rol es
-// 'gerencia' — si ese campo no viene, la IA tiene instrucción de no
-// hablar de ventas/caja/finanzas sin importar lo que le insistan.
+// (datosFinancierosGerencia) y el detalle de checklists/responsables
+// (checklistsHoy, checklistsAyer, tareasAsignadasHoy) solo se incluyen
+// cuando SESSION.rol es 'gerencia' — si esos campos no vienen, la IA tiene
+// instrucción de no hablar de ventas/caja/finanzas, ni de quién quedó
+// responsable de qué, sin importar lo que le insistan.
 function asistenteDatosPermitidos(){
   const datos = { fecha: hoyStr(), hora: horaStr(), sede: SESSION.sede };
   try {
@@ -6558,6 +6583,17 @@ function asistenteDatosPermitidos(){
   if(SESSION && SESSION.rol === 'gerencia'){
     const financieros = asistenteDatosFinancierosGerencia();
     if(financieros) datos.datosFinancierosGerencia = financieros;
+    try {
+      const hoy = hoyStr();
+      datos.checklistsHoy = asistenteEstadoChecklistsDia(hoy);
+      datos.checklistsAyer = asistenteEstadoChecklistsDia(fechaMenosDias(hoy, 1));
+      datos.tareasAsignadasHoy = filtrarPorSede(DB.get('tareas_asignadas', []))
+        .filter(t => t.fecha === hoy)
+        .map(t => ({
+          area: t.area, checklist: t.checklistLabel || t.descripcion || '(sin descripción)',
+          turno: t.turno || '', responsable: t.asignadoANombre || 'Sin asignar'
+        }));
+    } catch(e){ /* si algún módulo todavía no cargó datos, seguimos sin ese dato puntual */ }
   }
   return datos;
 }
