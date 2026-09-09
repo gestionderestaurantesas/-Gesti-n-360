@@ -2633,8 +2633,8 @@ const NAV = [
         { id:'cal_capacitacion', label:'Programa de capacitación continua', icon:'book', roles:['administracion','gerencia'], customRender:'renderCalidadCapacitacionModule' },
         { id:'cal_certificados', label:'Certificados de manipulación de alimentos', icon:'users', roles:['administracion','gerencia'], customRender:'renderCalidadCertificadosModule' }
       ]},
-      { id:'cal_reportes', label:'Informes', icon:'printer', matchArea:null, items:[
-        { id:'cal_informes', label:'Informes descargables (PDF)', icon:'printer', roles:['administracion','gerencia'], customRender:'renderCalidadInformesModule' }
+      { id:'cal_reportes', label:'Descargar informes', icon:'printer', matchArea:null, items:[
+        { id:'cal_informes', label:'Descargar informes de Calidad (PDF)', icon:'printer', roles:['administracion','gerencia'], customRender:'renderCalidadInformesModule' }
       ]}
     ]},
   { id:'operacion', label:'Operación', icon:'tray', color:'#2F7A78',
@@ -7130,7 +7130,18 @@ function calTempHistorialHtml(){
    los códigos (RC-F01, RC-F02, RC-F04, FR-PMCPV-01, CR) siguen el mismo
    formato que ya usa el ingeniero de alimentos de Innovafood, para que
    sea el mismo documento en una inspección o en el archivo (AZ). */
+function calInformesConEncabezado(){
+  const chk = document.getElementById('ci_encabezado');
+  return chk ? chk.checked : true;
+}
 function calInformeEncabezado(codigo, titulo){
+  // Encabezado completo (empresa/NIT/código) o solo el título, según el
+  // checkbox "Incluir encabezado con datos de la empresa" del formulario
+  // — así un informe con muchas columnas (RC-F01/RC-F04) puede quitarlo
+  // para caber mejor en una sola hoja.
+  if(!calInformesConEncabezado()){
+    return `<div style="text-align:center;font-weight:700;font-size:13px;margin-bottom:8px;padding-bottom:5px;border-bottom:1px solid #333;">${titulo} <span style="font-weight:400;font-size:11px;">(${codigo})</span></div>`;
+  }
   const p = paramsRestaurante();
   return `
     <div style="border:1px solid #333;padding:10px 14px;margin-bottom:10px;">
@@ -7323,6 +7334,9 @@ function calInformesRender(){
           <div class="form-field" id="ci_desde_wrap"><label>Desde</label><input type="date" id="ci_desde" value="${inicioMes}"></div>
           <div class="form-field" id="ci_hasta_wrap"><label>Hasta</label><input type="date" id="ci_hasta" value="${hoy}"></div>
         </div>
+        <label class="no-print" style="display:flex;align-items:center;gap:6px;font-size:12.5px;margin-top:6px;cursor:pointer;">
+          <input type="checkbox" id="ci_encabezado" checked onchange="calInformesGenerar()"> Incluir encabezado con datos de la empresa (desmárcalo para que quepa mejor en una sola hoja)
+        </label>
         <button class="btn-secondary no-print" style="padding:9px 16px;font-size:12.5px;margin-top:6px;" onclick="calInformesGenerar()">Generar informe</button>
         <button class="btn-primary no-print" style="padding:9px 16px;font-size:12.5px;margin-top:6px;margin-left:8px;" onclick="window.print()">🖨 Imprimir / Descargar PDF</button>
         <div id="ci_preview" style="margin-top:18px;"></div>
