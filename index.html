@@ -3509,15 +3509,9 @@ function alarmaMiseServicioMostrarBanner(msg){
 }
 function alarmaMiseServicioDecirMensaje(){
   const msg = 'Es hora del checklist de servicio al cliente';
-  try{
-    if('speechSynthesis' in window){
-      const u = new SpeechSynthesisUtterance(msg);
-      u.lang = 'es-CO';
-      u.rate = 0.95;
-      window.speechSynthesis.cancel();
-      window.speechSynthesis.speak(u);
-    }
-  }catch(e){ /* si el navegador no soporta voz, se ve igual el aviso visual */ }
+  // Voz clonada de Harol (vía /api/tts), con respaldo automático del
+  // navegador si no está disponible — ver asistenteHablar().
+  if(typeof asistenteHablar === 'function') asistenteHablar(msg);
   alarmaMiseServicioMostrarBanner(msg);
 }
 function alarmaMiseServicioCheck(){
@@ -5887,14 +5881,9 @@ function miseCocinaAlarmaDispararCiclo(){
   if(miseCocinaAlarmaContador % 5 === 1){
     const cfg = MISE_COCINA_ESTACIONES[miseCocinaAlarmaEstacionActual];
     const msg = 'Atención. Falta completar el mise en place de ' + (cfg ? cfg.label : miseCocinaAlarmaEstacionActual) + '.';
-    try{
-      if('speechSynthesis' in window){
-        const u = new SpeechSynthesisUtterance(msg);
-        u.lang = 'es-CO'; u.rate = 0.95;
-        window.speechSynthesis.cancel();
-        window.speechSynthesis.speak(u);
-      }
-    }catch(e){}
+    // Voz clonada de Harol (vía /api/tts), con la voz del navegador como
+    // respaldo automático si no está disponible — ver asistenteHablar().
+    if(typeof asistenteHablar === 'function') asistenteHablar(msg);
   }
 }
 function miseCocinaAlarmaIniciar(){
@@ -18792,14 +18781,10 @@ function chkAlarmaProbar(checklistId, turnoKey){
 }
 function chkAlarmaDecirMensaje(label, responsableNombre){
   const msg = 'Es hora del checklist: ' + label + (responsableNombre ? '. Responsable: ' + responsableNombre : '');
-  try{
-    if('speechSynthesis' in window){
-      const u = new SpeechSynthesisUtterance(msg);
-      u.lang = 'es-CO'; u.rate = 0.95;
-      window.speechSynthesis.cancel();
-      window.speechSynthesis.speak(u);
-    }
-  }catch(e){ /* si el navegador no soporta voz, queda igual el aviso visual */ }
+  // Usa la voz clonada de Harol (la misma que ya habla HJ-IA, vía
+  // /api/tts) y, si no está disponible, cae sola a la voz del navegador —
+  // ver asistenteHablar(), más arriba en el archivo.
+  if(typeof asistenteHablar === 'function') asistenteHablar(msg);
   chkAlarmaMostrarBanner(msg);
 }
 function chkAlarmaMostrarBanner(msg){
