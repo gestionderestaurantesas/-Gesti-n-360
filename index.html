@@ -1692,6 +1692,11 @@ const DB = {
    ------------------------------------------------------------------ */
 const PARAMS_RESTAURANTE_DEFAULT = {
   nombreRestaurante: 'Restaurante Córdova',
+  // Razón social y NIT: se usan en el encabezado de los informes de
+  // Calidad descargables (RC-F01, RC-F02, etc.) para que sean el mismo
+  // documento que ya usa el ingeniero de alimentos a cargo de calidad.
+  razonSocial: 'C&H GESTIÓN DE RESTAURANTE S.A.S.',
+  nit: '901730912-2',
   jornadaEstandarHorasDiarias: 8,
   jornadaEstandarHorasSemanales: 46,
   aplicaRecargoNocturno: true,
@@ -2617,7 +2622,8 @@ const NAV = [
         { id:'cal_lyd', label:'Limpieza y desinfección diaria (RC-F01)', icon:'checklist', categoria:'aseo', roles:['empleado','administracion','gerencia'], customRender:'renderAseoAreaModule' },
         { id:'cal_manip', label:'Inspección de manipuladores (RC-F02)', icon:'user', roles:['administracion','gerencia'], customRender:'renderManipuladoresModule' },
         { id:'cal_residuos', label:'Control de residuos sólidos (RC-F04)', icon:'box', categoria:'aseo', roles:['empleado','administracion','gerencia'], customRender:'renderAseoAreaModule' },
-        { id:'cal_trampas', label:'Limpieza de trampas de grasa', icon:'wrench', roles:['empleado','administracion','gerencia'], customRender:'renderTrampasGrasaModule' }
+        { id:'cal_trampas', label:'Limpieza de trampas de grasa', icon:'wrench', roles:['empleado','administracion','gerencia'], customRender:'renderTrampasGrasaModule' },
+        { id:'cal_temperatura', label:'Temperatura de congeladores y neveras', icon:'target', roles:['empleado','administracion','gerencia'], customRender:'renderCalidadTemperaturaModule' }
       ]},
       { id:'cal_psb', label:'Plagas y agua potable', icon:'search', matchArea:null, items:[
         { id:'cal_plagas', label:'Control de plagas y vectores', icon:'search', roles:['administracion','gerencia'], customRender:'renderCalidadPlagasModule' },
@@ -2626,6 +2632,9 @@ const NAV = [
       { id:'cal_personal', label:'Capacitación y personal', icon:'book', matchArea:null, items:[
         { id:'cal_capacitacion', label:'Programa de capacitación continua', icon:'book', roles:['administracion','gerencia'], customRender:'renderCalidadCapacitacionModule' },
         { id:'cal_certificados', label:'Certificados de manipulación de alimentos', icon:'users', roles:['administracion','gerencia'], customRender:'renderCalidadCertificadosModule' }
+      ]},
+      { id:'cal_reportes', label:'Informes', icon:'printer', matchArea:null, items:[
+        { id:'cal_informes', label:'Informes descargables (PDF)', icon:'printer', roles:['administracion','gerencia'], customRender:'renderCalidadInformesModule' }
       ]}
     ]},
   { id:'operacion', label:'Operación', icon:'tray', color:'#2F7A78',
@@ -7028,6 +7037,323 @@ function certRender(){
     </div>`;
   document.getElementById('content').innerHTML = html;
   if(window.innerWidth <= 820) document.getElementById('sidebar').classList.remove('open');
+}
+
+/* ---- Control de temperatura de congeladores y neveras ---- */
+function calEquiposFrio(){
+  return filtrarPorSede(DB.get('mant_equipos', [])).filter(e => e.activo !== false && /congelador|refrigerador|nevera/i.test(e.nombre||''));
+}
+let calTempValores = {};
+let calTempLastRuta = '';
+function renderCalidadTemperaturaModule(sec, group, item, ruta){
+  if(ruta) calTempLastRuta = ruta;
+  calTempValores = {};
+  calTempRender('registro');
+}
+function calTempSetTab(tabId){ calTempRender(tabId); }
+function calTempRender(activeId){
+  const tabs = [ { id:'registro', label:'Ronda de hoy', icon:'target' }, { id:'historial', label:'Historial', icon:'calendar' } ];
+  const tabsHtml = tabs.map(t => `<button class="tab-btn ${t.id===activeId?'active':''}" onclick="calTempSetTab('${t.id}')">${ic(t.icon,14)}${t.label}</button>`).join('');
+  const bodyHtml = activeId==='registro' ? calTempRegistroHtml() : calTempHistorialHtml();
+  const html = `
+    <div class="panel">
+      <div class="panel-header">
+        <div class="icon-circle" style="background:${hexToRgba('#2F7A78',0.14)}; color:#2F7A78;">${ic('target',21)}</div>
+        <div><h2>Temperatura de congeladores y neveras</h2><div class="path">${calTempLastRuta}</div></div>
+      </div>
+      <div class="tab-bar">${tabsHtml}</div>
+      <div>${bodyHtml}</div>
+    </div>`;
+  document.getElementById('content').innerHTML = html;
+  if(window.innerWidth <= 820) document.getElementById('sidebar').classList.remove('open');
+}
+function calTempInput(equipoId, val){ calTempValores[equipoId] = val; }
+function calTempRegistroHtml(){
+  const equipos = calEquiposFrio();
+  if(!equipos.length){
+    return `<p style="color:var(--text-light);font-size:13px;padding:16px;">Todavía no hay congeladores ni neveras registrados en Mantenimiento → Equipos. Agrégalos ahí (con "congelador", "refrigerador" o "nevera" en el nombre) para que aparezcan acá.</p>`;
+  }
+  const filasHtml = equipos.map(eq => `
+    <div class="check-row3" style="align-items:center;">
+      <span>${eq.nombre}${eq.ubicacion ? ' <span style="color:var(--text-light);font-size:11px;">('+eq.ubicacion+')</span>' : ''}</span>
+      <div style="display:flex;align-items:center;gap:6px;">
+        <input type="number" step="0.1" style="width:90px;" placeholder="°C" oninput="calTempInput('${eq.id}', this.value)">
+        <span style="font-size:12px;color:var(--text-light);">°C</span>
+      </div>
+    </div>`).join('');
+  return `
+    <div style="padding:14px 16px 0;">
+    <div class="compact-form">
+    <div class="form-field"><label>Responsable de la ronda <span class="req-star">*</span></label><input id="ct_responsable" value="${SESSION.nombre}"></div>
+    <div class="toggle-list" style="margin-top:12px;">${filasHtml}</div>
+    </div>
+    <button class="btn-primary" style="width:auto;padding:11px 22px;margin-top:14px;" onclick="guardarCalTemperatura()">Guardar ronda de temperaturas</button>
+    <div id="ct_msg"></div>
+    </div>
+  `;
+}
+function guardarCalTemperatura(){
+  const responsable = document.getElementById('ct_responsable').value.trim();
+  if(!responsable){ showMsg('ct_msg','Escribe el responsable de la ronda.','rojo'); return; }
+  const equipos = calEquiposFrio();
+  const lecturas = equipos
+    .filter(eq => calTempValores[eq.id] !== undefined && calTempValores[eq.id] !== '')
+    .map(eq => ({ equipoId: eq.id, nombre: eq.nombre, temperatura: Number(calTempValores[eq.id]) }));
+  if(!lecturas.length){ showMsg('ct_msg','Escribe al menos una lectura de temperatura.','rojo'); return; }
+  DB.push('calidad_temperaturas', {
+    sede: sedeParaGuardar(), usuario: SESSION.usuario, nombre: SESSION.nombre,
+    fecha: hoyStr(), hora: horaStr(), responsable, lecturas
+  });
+  calTempValores = {};
+  showMsg('ct_msg','Ronda de temperaturas guardada correctamente.','verde');
+  calTempRender('registro');
+}
+function calTempHistorialHtml(){
+  const historial = filtrarPorSede(DB.get('calidad_temperaturas', [])).slice(-15).reverse();
+  if(!historial.length) return `<p style="color:var(--text-light);font-size:13px;padding:16px;">Todavía no hay rondas de temperatura registradas.</p>`;
+  return `
+    <div style="padding:14px 16px;">
+    <table class="mini-table">
+      <thead><tr><th>Fecha</th><th>Responsable</th><th>Equipos leídos</th><th>Detalle</th></tr></thead>
+      <tbody>${historial.map(h => `<tr>
+        <td>${h.fecha} ${h.hora}</td><td>${h.responsable}</td><td>${h.lecturas.length}</td>
+        <td style="font-size:11.5px;">${h.lecturas.map(l=>l.nombre+': '+l.temperatura+'°C').join(' · ')}</td>
+      </tr>`).join('')}</tbody>
+    </table>
+    </div>`;
+}
+
+/* ---- Informes de Calidad descargables (impresión / PDF) ----
+   Reutiliza el patrón ya existente en la app: `.no-print` oculta todo lo
+   que no debe salir en el papel/PDF, y `window.print()` abre el diálogo
+   nativo del navegador, que permite "Guardar como PDF". El encabezado y
+   los códigos (RC-F01, RC-F02, RC-F04, FR-PMCPV-01, CR) siguen el mismo
+   formato que ya usa el ingeniero de alimentos de Innovafood, para que
+   sea el mismo documento en una inspección o en el archivo (AZ). */
+function calInformeEncabezado(codigo, titulo){
+  const p = paramsRestaurante();
+  return `
+    <div style="border:1px solid #333;padding:10px 14px;margin-bottom:10px;">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap;">
+        <div>
+          <div style="font-weight:700;font-size:13px;">${p.razonSocial || appNombreNegocio()}</div>
+          ${p.nit ? `<div style="font-size:11px;">NIT: ${p.nit}</div>` : ''}
+          <div style="font-size:11px;">${appNombreNegocio()}</div>
+        </div>
+        <div style="text-align:right;font-size:11px;">
+          <div><b>Código:</b> ${codigo}</div>
+          <div><b>Fecha de generación:</b> ${hoyStr()}</div>
+        </div>
+      </div>
+      <div style="text-align:center;font-weight:700;font-size:14px;margin-top:8px;border-top:1px solid #333;padding-top:6px;">${titulo}</div>
+    </div>`;
+}
+function calFechasEnRango(desde, hasta){
+  const out = [];
+  if(!desde || !hasta) return out;
+  const [y,m,d] = desde.split('-').map(Number);
+  const [y2,m2,d2] = hasta.split('-').map(Number);
+  const cur = new Date(y,(m||1)-1,d||1);
+  const end = new Date(y2,(m2||1)-1,d2||1);
+  let guard = 0;
+  while(cur <= end && guard < 370){
+    out.push(cur.getFullYear()+'-'+String(cur.getMonth()+1).padStart(2,'0')+'-'+String(cur.getDate()).padStart(2,'0'));
+    cur.setDate(cur.getDate()+1);
+    guard++;
+  }
+  return out;
+}
+function calGridReportHtml(itemsKey, codigo, titulo, desde, hasta){
+  const items = ASEO_AREA_ITEMS[itemsKey] || [];
+  const fechas = calFechasEnRango(desde, hasta);
+  const registros = filtrarPorSede(DB.get('aseo_area', [])).filter(r => r.area === itemsKey && fechas.includes(r.fecha));
+  const porFecha = {};
+  registros.forEach(r => { porFecha[r.fecha] = r; });
+  const encabezadoFechas = fechas.map(f => `<th style="font-size:9px;">${f.slice(8,10)}</th>`).join('');
+  const filasHtml = items.map(it => {
+    const celdas = fechas.map(f => {
+      const r = porFecha[f];
+      let marca = '-';
+      if(r){
+        const encontrado = (r.items||[]).find(x=>x.id===it.id);
+        if(encontrado) marca = encontrado.val === 'Cumple' ? 'C' : (encontrado.val === 'No cumple' ? 'R' : '-');
+      }
+      return `<td style="text-align:center;">${marca}</td>`;
+    }).join('');
+    return `<tr><td style="text-align:left;white-space:nowrap;">${it.label}</td>${celdas}</tr>`;
+  }).join('');
+  return calInformeEncabezado(codigo, titulo) + `
+    <p style="font-size:11px;">Del ${desde} al ${hasta}. Leyenda: C = cumple, R = no cumple / requiere acción correctiva, - = sin registro ese día. Sugerencia: imprime este informe en horizontal desde las opciones de tu navegador.</p>
+    <div style="overflow-x:auto;">
+    <table style="width:100%;border-collapse:collapse;font-size:10px;" border="1">
+      <thead><tr><th style="text-align:left;">Ítem</th>${encabezadoFechas}</tr></thead>
+      <tbody>${filasHtml}</tbody>
+    </table>
+    </div>`;
+}
+function calManipReportHtml(fecha){
+  const registros = filtrarPorSede(DB.get('calidad_manipuladores', [])).filter(r => r.fecha === fecha);
+  const aspectos = manipAspectosFlat();
+  let filas = '';
+  registros.forEach(r => {
+    r.personas.forEach(p => {
+      const celdas = aspectos.map(a => {
+        const v = (p.valores||[]).find(x=>x.id===a.id);
+        const val = v ? v.val : 'N/A';
+        const marca = val==='Cumple' ? 'C' : (val==='No cumple' ? 'NC' : '-');
+        return `<td style="text-align:center;">${marca}</td>`;
+      }).join('');
+      filas += `<tr><td>${r.hora}</td><td>${p.nombre}</td>${celdas}<td>${p.observacion||''}</td></tr>`;
+    });
+  });
+  const encabezados = aspectos.map(a=>`<th style="font-size:8px;">${a.label}</th>`).join('');
+  return calInformeEncabezado('RC-F02', 'Inspección diaria de manipuladores de alimentos') + `
+    <p style="font-size:11px;">Fecha: ${fecha}${registros.length ? ' · Responsable: ' + registros.map(r=>r.responsable).join(', ') : ''}</p>
+    ${registros.length ? `<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:9px;" border="1">
+      <thead><tr><th>Hora</th><th>Manipulador</th>${encabezados}<th>Observación</th></tr></thead>
+      <tbody>${filas}</tbody>
+    </table></div>` : `<p style="font-size:12px;">No hay inspecciones registradas en esta fecha.</p>`}`;
+}
+function calTrampasReportHtml(desde, hasta){
+  const registros = filtrarPorSede(DB.get('calidad_trampas_grasa', [])).filter(r => r.fecha >= desde && r.fecha <= hasta).sort((a,b)=>a.fecha.localeCompare(b.fecha));
+  const filas = registros.map(r => `<tr><td>${r.fecha}</td><td>${r.hora}</td><td>${r.ubicacion}</td><td>${r.tipo==='externa'?'Externa':'Interna'}</td><td>${r.responsable}</td></tr>`).join('');
+  return calInformeEncabezado('CR', 'Registro de limpieza de trampas de grasa') + `
+    <p style="font-size:11px;">Del ${desde} al ${hasta}.</p>
+    <table style="width:100%;border-collapse:collapse;font-size:11px;" border="1">
+      <thead><tr><th>Fecha</th><th>Hora</th><th>Ubicación de la trampa</th><th>Tipo</th><th>Firma de responsable</th></tr></thead>
+      <tbody>${filas || '<tr><td colspan="5" style="text-align:center;">Sin registros en el rango.</td></tr>'}</tbody>
+    </table>`;
+}
+function calPlagasReportHtml(desde, hasta){
+  const registros = filtrarPorSede(DB.get('calidad_plagas', [])).filter(r => r.fecha >= desde && r.fecha <= hasta).sort((a,b)=>a.fecha.localeCompare(b.fecha));
+  if(!registros.length) return calInformeEncabezado('FR-PMCPV-01', 'Control de plagas y vectores') + '<p style="font-size:12px;">Sin monitoreos registrados en el rango.</p>';
+  return registros.map(r => {
+    const filas = r.zonas.map(z => `<tr><td>${z.label}</td><td style="text-align:center;">${z.presencia==='Sí'?'Sí':'No'}</td><td>${z.tipo||'-'}</td><td>${z.grado||'-'}</td><td>${z.accionCorrectiva||'-'}</td></tr>`).join('');
+    return calInformeEncabezado('FR-PMCPV-01', 'Control de plagas y vectores') + `
+      <p style="font-size:11px;">Fecha: ${r.fecha} · Responsable del monitoreo: ${r.responsable}${r.observaciones ? ' · Obs.: ' + r.observaciones : ''}</p>
+      <table style="width:100%;border-collapse:collapse;font-size:10.5px;" border="1">
+        <thead><tr><th>Zona</th><th>Presencia de plaga</th><th>Tipo de plaga</th><th>Grado de infestación</th><th>Acción correctiva</th></tr></thead>
+        <tbody>${filas}</tbody>
+      </table>
+      <div class="print-omit" style="margin:14px 0;border-top:1px dashed #999;"></div>`;
+  }).join('');
+}
+function calAguaReportHtml(desde, hasta){
+  const registros = filtrarPorSede(DB.get('calidad_agua_potable', [])).filter(r => r.fecha >= desde && r.fecha <= hasta).sort((a,b)=>a.fecha.localeCompare(b.fecha));
+  let filas = '';
+  registros.forEach(r => {
+    r.puntos.forEach(p => { filas += `<tr><td>${r.fecha}</td><td>${p.label}</td><td>${p.cumple}</td><td>${p.cloro||'-'}</td><td>${p.ph||'-'}</td><td>${p.observacion||'-'}</td></tr>`; });
+  });
+  return calInformeEncabezado('Sin código oficial (Innovafood aún no lo define)', 'Puntos de control de agua potable') + `
+    <p style="font-size:11px;">Del ${desde} al ${hasta}.</p>
+    <table style="width:100%;border-collapse:collapse;font-size:11px;" border="1">
+      <thead><tr><th>Fecha</th><th>Punto</th><th>Estado</th><th>Cloro (ppm)</th><th>pH</th><th>Observación</th></tr></thead>
+      <tbody>${filas || '<tr><td colspan="6" style="text-align:center;">Sin registros en el rango.</td></tr>'}</tbody>
+    </table>`;
+}
+function calTemperaturaReportHtml(desde, hasta){
+  const registros = filtrarPorSede(DB.get('calidad_temperaturas', [])).filter(r => r.fecha >= desde && r.fecha <= hasta).sort((a,b)=>a.fecha.localeCompare(b.fecha));
+  let filas = '';
+  registros.forEach(r => {
+    r.lecturas.forEach(l => { filas += `<tr><td>${r.fecha}</td><td>${r.hora}</td><td>${l.nombre}</td><td style="text-align:center;">${l.temperatura} °C</td><td>${r.responsable}</td></tr>`; });
+  });
+  return calInformeEncabezado('Sin código oficial', 'Control de temperatura de congeladores y neveras') + `
+    <p style="font-size:11px;">Del ${desde} al ${hasta}.</p>
+    <table style="width:100%;border-collapse:collapse;font-size:11px;" border="1">
+      <thead><tr><th>Fecha</th><th>Hora</th><th>Equipo</th><th>Temperatura</th><th>Responsable</th></tr></thead>
+      <tbody>${filas || '<tr><td colspan="5" style="text-align:center;">Sin registros en el rango.</td></tr>'}</tbody>
+    </table>`;
+}
+function calCapacitacionReportHtml(){
+  const estado = capacitacionEstado();
+  const filas = CAPACITACION_TEMAS.map(t => {
+    const e = estado[t.id];
+    return `<tr><td>${t.tema}</td><td>${t.duracion}</td><td>${t.responsable}</td><td>${t.participantes||'-'}</td><td style="text-align:center;">${e ? 'Dictada ('+e.fecha+')' : 'Pendiente'}</td></tr>`;
+  }).join('');
+  return calInformeEncabezado('Sin código oficial', 'Programa de capacitación continua') + `
+    <table style="width:100%;border-collapse:collapse;font-size:10.5px;" border="1">
+      <thead><tr><th>Tema</th><th>Duración</th><th>Responsable</th><th>Participantes</th><th>Estado</th></tr></thead>
+      <tbody>${filas}</tbody>
+    </table>`;
+}
+function calCertificadosReportHtml(){
+  const usuarios = DB.get('usuarios', []).filter(u => u.activo !== false).slice().sort((a,b)=>a.nombre.localeCompare(b.nombre));
+  const filas = usuarios.map(u => {
+    const est = certEstado(u.certManipFecha);
+    return `<tr><td>${u.nombre}</td><td>${u.cargo||'-'}</td><td>${u.certManipFecha||'Sin registrar'}</td><td>${est.vence||'-'}</td><td>${est.label}</td></tr>`;
+  }).join('');
+  return calInformeEncabezado('Sin código oficial', 'Certificados de manipulación de alimentos') + `
+    <table style="width:100%;border-collapse:collapse;font-size:10.5px;" border="1">
+      <thead><tr><th>Empleado</th><th>Cargo</th><th>Fecha del examen</th><th>Vence</th><th>Estado</th></tr></thead>
+      <tbody>${filas}</tbody>
+    </table>`;
+}
+const CAL_INFORMES_TIPOS = [
+  { id:'lyd', label:'RC-F01 · Limpieza y desinfección diaria', rango:true },
+  { id:'manip', label:'RC-F02 · Inspección de manipuladores', fechaUnica:true },
+  { id:'residuos', label:'RC-F04 · Control de residuos sólidos', rango:true },
+  { id:'trampas', label:'Limpieza de trampas de grasa', rango:true },
+  { id:'plagas', label:'FR-PMCPV-01 · Control de plagas y vectores', rango:true },
+  { id:'agua', label:'Puntos de control de agua potable', rango:true },
+  { id:'temperatura', label:'Temperatura de congeladores y neveras', rango:true },
+  { id:'capacitacion', label:'Programa de capacitación continua' },
+  { id:'certificados', label:'Certificados de manipulación de alimentos' }
+];
+let calInformesLastRuta = '';
+function renderCalidadInformesModule(sec, group, item, ruta){
+  if(ruta) calInformesLastRuta = ruta;
+  calInformesRender();
+}
+function calInformesRender(){
+  const hoy = hoyStr();
+  const inicioMes = hoy.slice(0,8) + '01';
+  const html = `
+    <div class="panel">
+      <div class="panel-header">
+        <div class="icon-circle" style="background:${hexToRgba('#2F7A78',0.14)}; color:#2F7A78;">${ic('printer',21)}</div>
+        <div><h2>Informes descargables de Calidad</h2><div class="path">${calInformesLastRuta}</div></div>
+      </div>
+      <div style="padding:14px 16px;">
+        <p class="no-print" style="font-size:12.5px;color:var(--text-light);margin:0 0 12px;background:var(--marfil);padding:10px 12px;border-radius:8px;">Genera el informe, revisa la vista previa y usa "Imprimir / Descargar PDF" — el diálogo de impresión del navegador permite guardarlo como PDF para mostrarlo a las autoridades o archivarlo en la AZ, con el mismo formato y códigos que usa el ingeniero de alimentos.</p>
+        <div class="no-print form-grid" style="max-width:640px;">
+          <div class="form-field"><label>Tipo de informe</label>
+            <select id="ci_tipo" onchange="calInformesActualizarControles()">${CAL_INFORMES_TIPOS.map(t=>`<option value="${t.id}">${t.label}</option>`).join('')}</select>
+          </div>
+          <div class="form-field" id="ci_fecha_unica_wrap" style="display:none;"><label>Fecha</label><input type="date" id="ci_fecha_unica" value="${hoy}"></div>
+          <div class="form-field" id="ci_desde_wrap"><label>Desde</label><input type="date" id="ci_desde" value="${inicioMes}"></div>
+          <div class="form-field" id="ci_hasta_wrap"><label>Hasta</label><input type="date" id="ci_hasta" value="${hoy}"></div>
+        </div>
+        <button class="btn-secondary no-print" style="padding:9px 16px;font-size:12.5px;margin-top:6px;" onclick="calInformesGenerar()">Generar informe</button>
+        <button class="btn-primary no-print" style="padding:9px 16px;font-size:12.5px;margin-top:6px;margin-left:8px;" onclick="window.print()">🖨 Imprimir / Descargar PDF</button>
+        <div id="ci_preview" style="margin-top:18px;"></div>
+      </div>
+    </div>`;
+  document.getElementById('content').innerHTML = html;
+  calInformesActualizarControles();
+  if(window.innerWidth <= 820) document.getElementById('sidebar').classList.remove('open');
+}
+function calInformesActualizarControles(){
+  const tipo = CAL_INFORMES_TIPOS.find(t => t.id === document.getElementById('ci_tipo').value);
+  document.getElementById('ci_fecha_unica_wrap').style.display = tipo.fechaUnica ? '' : 'none';
+  document.getElementById('ci_desde_wrap').style.display = tipo.rango ? '' : 'none';
+  document.getElementById('ci_hasta_wrap').style.display = tipo.rango ? '' : 'none';
+}
+function calInformesGenerar(){
+  const tipoId = document.getElementById('ci_tipo').value;
+  const desde = document.getElementById('ci_desde').value;
+  const hasta = document.getElementById('ci_hasta').value;
+  const fechaUnica = document.getElementById('ci_fecha_unica').value;
+  let html = '';
+  if(tipoId === 'lyd') html = calGridReportHtml('cal_lyd', 'RC-F01', 'Limpieza y desinfección diaria (LyD)', desde, hasta);
+  else if(tipoId === 'residuos') html = calGridReportHtml('cal_residuos', 'RC-F04', 'Verificación del control de residuos sólidos', desde, hasta);
+  else if(tipoId === 'manip') html = calManipReportHtml(fechaUnica);
+  else if(tipoId === 'trampas') html = calTrampasReportHtml(desde, hasta);
+  else if(tipoId === 'plagas') html = calPlagasReportHtml(desde, hasta);
+  else if(tipoId === 'agua') html = calAguaReportHtml(desde, hasta);
+  else if(tipoId === 'temperatura') html = calTemperaturaReportHtml(desde, hasta);
+  else if(tipoId === 'capacitacion') html = calCapacitacionReportHtml();
+  else if(tipoId === 'certificados') html = calCertificadosReportHtml();
+  document.getElementById('ci_preview').innerHTML = html;
 }
 
 /* ==================================================================
@@ -17320,6 +17646,8 @@ function parametrosGuardarDesdeForm(){
   }
   paramsGuardarRestaurante({
     nombreRestaurante: nombre,
+    razonSocial: (document.getElementById('par_razon_social').value || '').trim(),
+    nit: (document.getElementById('par_nit').value || '').trim(),
     jornadaEstandarHorasDiarias: jornadaDiaria,
     jornadaEstandarHorasSemanales: jornadaSemanal,
     aplicaRecargoNocturno: aplicaRecargo,
@@ -17359,6 +17687,8 @@ function renderParametrosModule(sec, group, item, ruta){
       <p style="color:var(--text-light);font-size:12px;margin-bottom:16px;">Esta es la sección exclusiva para configurar tu negocio en la app: el nombre aparece donde se necesite (comandas, cartas de amonestación, sidebar, Horarios), y la jornada/salario le permiten a Horarios sugerir solo el valor de la hora y del recargo nocturno de cada empleado nuevo — siempre podés ajustar la tarifa de una persona en particular después. Esta primera versión funciona como un solo negocio: no hay que elegir "sede", todo se configura acá con su nombre.</p>
       <div class="form-grid" style="max-width:520px;">
         <div class="form-field" style="grid-column:1/-1;"><label>Nombre del restaurante</label><input type="text" id="par_nombre" value="${(p.nombreRestaurante||'').replace(/"/g,'&quot;')}"></div>
+        <div class="form-field"><label>Razón social</label><input type="text" id="par_razon_social" value="${(p.razonSocial||'').replace(/"/g,'&quot;')}" placeholder="Ej: C&H Gestión de Restaurante S.A.S."></div>
+        <div class="form-field"><label>NIT</label><input type="text" id="par_nit" value="${(p.nit||'').replace(/"/g,'&quot;')}" placeholder="Opcional"></div>
         <div class="form-field"><label>Jornada estándar — horas diarias</label><input type="number" id="par_jornada_diaria" min="0" step="0.5" value="${p.jornadaEstandarHorasDiarias}"></div>
         <div class="form-field"><label>Jornada estándar — horas semanales</label><input type="number" id="par_jornada_semanal" min="0" step="0.5" value="${p.jornadaEstandarHorasSemanales}"></div>
         <div class="form-field"><label>¿Se liquidan recargos nocturnos?</label>
