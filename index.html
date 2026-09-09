@@ -673,6 +673,18 @@ h1,h2,h3,h4{font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;lett
 .g360-wordmark strong{display:block;font-size:14px;letter-spacing:.025em;white-space:nowrap;}
 .g360-wordmark b{color:#8FB92A;}
 
+/* Animación de entrada del logo — SOLO en la pantalla de login (una vez,
+   al cargar; el del sidebar se queda quieto para no distraer mientras se
+   trabaja). El ícono usa SVG con SMIL (<animate>/<animateTransform>) y el
+   wordmark de al lado usa CSS — ambos "fill:freeze"/"both" para que
+   terminen y se queden así, sin repetirse en bucle. */
+.g360-mark-svg{ width:43px; height:43px; flex:0 0 43px; overflow:visible; }
+.g360-login-intro .g360-wordmark small,
+.g360-login-intro .g360-wordmark strong{ opacity:0; animation:hjpTextIn .5s ease-out both; }
+.g360-login-intro .g360-wordmark small{ animation-delay:.55s; }
+.g360-login-intro .g360-wordmark strong{ animation-delay:.68s; }
+@keyframes hjpTextIn{ from{ opacity:0; transform:translateY(6px); } to{ opacity:1; transform:translateY(0); } }
+
 /* Acceso */
 #loginScreen{display:grid;grid-template-columns:minmax(410px,40%) 1fr;padding:0;background:#F7F8F9;min-height:100vh;}
 .g360-login-intro{background:radial-gradient(circle at 85% 18%,rgba(143,185,42,.14),transparent 34%),linear-gradient(145deg,var(--g360-sidebar),var(--g360-sidebar-2));color:#fff;padding:44px 7vw 46px 44px;display:flex;flex-direction:column;min-height:100vh;}
@@ -830,7 +842,38 @@ https://github.com/nodeca/pako/blob/main/LICENSE
 <div id="loginScreen">
   <section class="g360-login-intro" aria-label="Presentación de HJP FoodTech">
     <div class="g360-brand">
-      <span class="g360-mark" aria-hidden="true"></span>
+      <svg class="g360-mark-svg" aria-hidden="true" viewBox="60 82 445 380" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="hjpAnimAzul" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" stop-color="#11627A"/>
+            <stop offset="1" stop-color="#063B4C"/>
+          </linearGradient>
+          <linearGradient id="hjpAnimVerde" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="#B8E600"/>
+            <stop offset="1" stop-color="#83C500"/>
+          </linearGradient>
+        </defs>
+        <g opacity="0">
+          <path d="M74 216 Q74 198 91 188 L151 153 L151 262 L420 256 L344 304 L151 347 L151 446 L91 411 Q74 401 74 382 Z" fill="url(#hjpAnimAzul)"/>
+          <animate attributeName="opacity" from="0" to="1" begin="0.05s" dur="0.5s" fill="freeze"/>
+          <animateTransform attributeName="transform" type="translate" from="-46 0" to="0 0" begin="0.05s" dur="0.5s" calcMode="spline" keyTimes="0;1" keySplines="0.16 1 0.3 1" fill="freeze"/>
+        </g>
+        <g opacity="0">
+          <path d="M333 143 L467 220 Q492 234 492 260 Q492 286 467 300 L333 378 L333 306 L420 256 L333 206 Z" fill="url(#hjpAnimAzul)"/>
+          <animate attributeName="opacity" from="0" to="1" begin="0.15s" dur="0.5s" fill="freeze"/>
+          <animateTransform attributeName="transform" type="translate" from="46 0" to="0 0" begin="0.15s" dur="0.5s" calcMode="spline" keyTimes="0;1" keySplines="0.16 1 0.3 1" fill="freeze"/>
+        </g>
+        <g opacity="0">
+          <path d="M272 201 L341 161 L341 407 Q341 420 330 427 L294 448 Q286 453 278 448 L233 422 Q222 415 222 402 L222 354 L272 383 Z" fill="url(#hjpAnimVerde)"/>
+          <animate attributeName="opacity" from="0" to="1" begin="0.28s" dur="0.45s" fill="freeze"/>
+          <animateTransform attributeName="transform" type="translate" from="0 -30" to="0 0" begin="0.28s" dur="0.45s" calcMode="spline" keyTimes="0;1" keySplines="0.16 1 0.3 1" fill="freeze"/>
+        </g>
+        <g opacity="0">
+          <path d="M247 126 L287 103 Q295 98 303 103 L333 120 Q341 125 341 134 L341 161 L247 215 Z" fill="url(#hjpAnimVerde)"/>
+          <animate attributeName="opacity" from="0" to="1" begin="0.42s" dur="0.4s" fill="freeze"/>
+          <animateTransform attributeName="transform" type="translate" from="0 -22" to="0 0" begin="0.42s" dur="0.4s" calcMode="spline" keyTimes="0;1" keySplines="0.16 1 0.3 1" fill="freeze"/>
+        </g>
+      </svg>
       <span class="g360-wordmark"><small>HJP</small><strong>Food<b>Tech</b></strong></span>
     </div>
     <div class="g360-login-copy">
@@ -1411,34 +1454,6 @@ const USUARIOS_SEED = [
 {"usuario": "juan.mendoza", "pass": "", "nombre": "Juan Sebastian Perez Mendoza", "cargo": "Aux. Cocina", "sede": "chinu", "area": "cocina", "rol": "empleado", "activo": true, "rolPuesto": "cocina", "itemsExtra": []},
 {"usuario": "valentina.dias", "pass": "", "nombre": "Valentina Alvarez Dias", "cargo": "Aux. Cocina", "sede": "chinu", "area": "cocina", "rol": "empleado", "activo": true, "rolPuesto": "cocina", "itemsExtra": []},
 {"usuario": "sandy.soto", "pass": "", "nombre": "Sandy Torres Soto", "cargo": "Líder de Servicio", "sede": "chinu", "area": "servicio_cliente", "rol": "administracion", "activo": true, "rolPuesto": "lider_servicio_reservas", "itemsExtra": []},
-{"usuario": "adrian.velez", "pass": "", "nombre": "Adrian Jose Machado Velez", "cargo": "Aux. Cocina", "sede": "monteria", "area": "cocina", "rol": "empleado", "activo": true, "rolPuesto": "cocina", "itemsExtra": []},
-{"usuario": "andy.ruiz", "pass": "", "nombre": "Andy Yesid Hernandez Ruiz", "cargo": "Servicio Cliente", "sede": "monteria", "area": "servicio_cliente", "rol": "empleado", "activo": true, "rolPuesto": "mesero", "itemsExtra": []},
-{"usuario": "angelica.oliva", "pass": "", "nombre": "Angelica Maria Rodriguez Oliva", "cargo": "Sup. Serv. Cliente", "sede": "monteria", "area": "servicio_cliente", "rol": "administracion", "activo": true, "rolPuesto": "lider_servicio_reservas", "itemsExtra": []},
-{"usuario": "dagleisis.rojas", "pass": "", "nombre": "Dagleisis Guerrero Rojas", "cargo": "Steward", "sede": "monteria", "area": "cocina", "rol": "empleado", "activo": true, "rolPuesto": "steward", "itemsExtra": []},
-{"usuario": "daniel.argumedo", "pass": "", "nombre": "Daniel Dario Negrete Argumedo", "cargo": "Aux. Cocina", "sede": "monteria", "area": "cocina", "rol": "empleado", "activo": true, "rolPuesto": "cocina", "itemsExtra": []},
-{"usuario": "david.cassab", "pass": "", "nombre": "David Camilo Durango Cassab", "cargo": "Líder Compras", "sede": "monteria", "area": "contabilidad", "rol": "administracion", "activo": true, "rolPuesto": "aux_compras", "itemsExtra": []},
-{"usuario": "eduar.suarez", "pass": "", "nombre": "Eduar Enrique Buelvas Suarez", "cargo": "Aux. Cocina (retirado)", "sede": "monteria", "area": "cocina", "rol": "empleado", "activo": false, "rolPuesto": "cocina", "itemsExtra": []},
-{"usuario": "elizabeth.correa", "pass": "", "nombre": "Elizabeth Florez Correa", "cargo": "Aux. Bar", "sede": "monteria", "area": "bar", "rol": "empleado", "activo": true, "rolPuesto": "bar", "itemsExtra": []},
-{"usuario": "harol.agresott", "pass": "", "nombre": "Harol Javier Palacios Agresott", "cargo": "Gerente", "sede": "monteria", "area": "todas", "rol": "gerencia", "activo": true, "rolPuesto": "", "itemsExtra": []},
-{"usuario": "hernando.padilla", "pass": "", "nombre": "Hernando Jose Arrieta Padilla", "cargo": "Aux. Cocina", "sede": "monteria", "area": "cocina", "rol": "empleado", "activo": true, "rolPuesto": "cocina", "itemsExtra": []},
-{"usuario": "ivan.oquendo", "pass": "", "nombre": "Ivan Alberto Oyola Oquendo", "cargo": "Aux. Cocina", "sede": "monteria", "area": "cocina", "rol": "empleado", "activo": true, "rolPuesto": "cocina", "itemsExtra": []},
-{"usuario": "ivana.hernandez", "pass": "", "nombre": "Ivana Medina Hernandez", "cargo": "Aux. Música", "sede": "monteria", "area": "servicio_cliente", "rol": "empleado", "activo": true, "rolPuesto": "otros", "itemsExtra": []},
-{"usuario": "jose.diaz", "pass": "", "nombre": "Jose Armando Gonzalez Diaz", "cargo": "Aux. Administrativo", "sede": "monteria", "area": "contabilidad", "rol": "administracion", "activo": true, "rolPuesto": "otros", "itemsExtra": []},
-{"usuario": "juan.rosa", "pass": "", "nombre": "Juan Manuel Urango De La Rosa", "cargo": "Vigilante", "sede": "monteria", "area": "inspecciones", "rol": "empleado", "activo": true, "rolPuesto": "inspector", "itemsExtra": []},
-{"usuario": "lina.montoya", "pass": "", "nombre": "Lina Marcela Alvarez Montoya", "cargo": "Aux. Contable y Admon", "sede": "monteria", "area": "contabilidad", "rol": "administracion", "activo": true, "rolPuesto": "otros", "itemsExtra": []},
-{"usuario": "lina.diaz", "pass": "", "nombre": "Lina Marcela Padilla Diaz", "cargo": "Aux. Serv. Cliente", "sede": "monteria", "area": "servicio_cliente", "rol": "empleado", "activo": true, "rolPuesto": "mesero", "itemsExtra": []},
-{"usuario": "maira.villamil", "pass": "", "nombre": "Maira Alejandra Villalobos Villamil", "cargo": "Líder Cocina", "sede": "monteria", "area": "cocina", "rol": "administracion", "activo": true, "rolPuesto": "lider_cocina", "itemsExtra": []},
-{"usuario": "mairon.pantoja", "pass": "", "nombre": "Mairon Dario Osorio Pantoja", "cargo": "Servicio Cliente", "sede": "monteria", "area": "servicio_cliente", "rol": "empleado", "activo": true, "rolPuesto": "mesero", "itemsExtra": []},
-{"usuario": "maria.galeano", "pass": "", "nombre": "Maria Carmela Soto Galeano", "cargo": "Subgerente", "sede": "monteria", "area": "todas", "rol": "gerencia", "activo": true, "rolPuesto": "", "itemsExtra": []},
-{"usuario": "marielena.martinez", "pass": "", "nombre": "Marielena Nieto Martinez", "cargo": "Servicio Cliente", "sede": "monteria", "area": "servicio_cliente", "rol": "empleado", "activo": true, "rolPuesto": "mesero", "itemsExtra": []},
-{"usuario": "michael.cordoba", "pass": "", "nombre": "Michael Castillo Cordoba", "cargo": "Líder Cocina", "sede": "monteria", "area": "cocina", "rol": "administracion", "activo": true, "rolPuesto": "lider_cocina", "itemsExtra": []},
-{"usuario": "miguel.guerrero", "pass": "", "nombre": "Miguel Alberto Suarez Guerrero", "cargo": "Aux. Cocina", "sede": "monteria", "area": "cocina", "rol": "empleado", "activo": true, "rolPuesto": "cocina", "itemsExtra": []},
-{"usuario": "pedro.cantillo", "pass": "", "nombre": "Pedro Luis Lopez Cantillo", "cargo": "Aux. Serv. Cliente", "sede": "monteria", "area": "servicio_cliente", "rol": "empleado", "activo": true, "rolPuesto": "mesero", "itemsExtra": []},
-{"usuario": "reinaldo.jimenez", "pass": "", "nombre": "Reinaldo Jose Tapia Jimenez", "cargo": "Servicio Cliente", "sede": "monteria", "area": "servicio_cliente", "rol": "empleado", "activo": true, "rolPuesto": "mesero", "itemsExtra": []},
-{"usuario": "ysidoro.romero", "pass": "", "nombre": "Ysidoro Alberto Prieto Romero", "cargo": "Aux. Cocina", "sede": "monteria", "area": "cocina", "rol": "empleado", "activo": true, "rolPuesto": "cocina", "itemsExtra": []},
-{"usuario": "yudis.galeano", "pass": "", "nombre": "Yudis Maria Soto Galeano", "cargo": "Líder Administrativo", "sede": "monteria", "area": "contabilidad", "rol": "administracion", "activo": true, "rolPuesto": "otros", "itemsExtra": []},
-{"usuario": "kiara.espitia", "pass": "", "nombre": "Kiara Marcela Arias Espitia", "cargo": "Aux. Contable", "sede": "monteria", "area": "contabilidad", "rol": "administracion", "activo": true, "rolPuesto": "otros", "itemsExtra": []},
-{"usuario": "misael.nunez", "pass": "", "nombre": "Misael Alfonso Martinez Nuñez", "cargo": "Aux. Bar", "sede": "monteria", "area": "bar", "rol": "empleado", "activo": true, "rolPuesto": "bar", "itemsExtra": []},
 {"usuario": "chinu", "pass": "", "nombre": "Sede Chinú (pruebas)", "cargo": "Cuenta de pruebas de sede", "sede": "chinu", "area": "todas", "rol": "gerencia", "activo": true, "rolPuesto": "", "itemsExtra": []}
 ];
 if(!DB.get('usuarios')){ DB.set('usuarios', USUARIOS_SEED); }
@@ -9107,29 +9122,6 @@ function guardarMantCotizacion(proveedorId){
 }
 
 const PROPINA_EMPLEADOS_SEED = [
-  { id:'pe_1', sede:'monteria', nombre:'ANDY YESID HERNANDEZ', rol:'Mesero/Repartidor', activo:true, notas:'' },
-  { id:'pe_2', sede:'monteria', nombre:'ANGELICA RODRIGUEZ', rol:'Mesero/Repartidor', activo:true, notas:'' },
-  { id:'pe_3', sede:'monteria', nombre:'CAMILO DURANGO', rol:'Mesero/Repartidor', activo:true, notas:'' },
-  { id:'pe_4', sede:'monteria', nombre:'DANIEL NEGRETE', rol:'Mesero/Repartidor', activo:true, notas:'' },
-  { id:'pe_5', sede:'monteria', nombre:'EDUAR ENRIQUE BUELVAS', rol:'Mesero/Repartidor', activo:true, notas:'' },
-  { id:'pe_6', sede:'monteria', nombre:'HERNANDO ARRIETA', rol:'Mesero/Repartidor', activo:true, notas:'' },
-  { id:'pe_7', sede:'monteria', nombre:'IVAN OYOLA', rol:'Mesero/Repartidor', activo:true, notas:'' },
-  { id:'pe_8', sede:'monteria', nombre:'IVANNA MEDINA', rol:'Mesero/Repartidor', activo:true, notas:'' },
-  { id:'pe_9', sede:'monteria', nombre:'JOSE ARMANDO GONZALEZ', rol:'Mesero/Repartidor', activo:true, notas:'' },
-  { id:'pe_10', sede:'monteria', nombre:'KIARA MARCELA ARIAS', rol:'Mesero/Repartidor', activo:true, notas:'' },
-  { id:'pe_11', sede:'monteria', nombre:'LINA ALVAREZ', rol:'Mesero/Repartidor', activo:true, notas:'' },
-  { id:'pe_12', sede:'monteria', nombre:'LINA MARCELA PADILLA', rol:'Mesero/Repartidor', activo:true, notas:'' },
-  { id:'pe_13', sede:'monteria', nombre:'MAIRA ALEJANDRA VILLALOBOS', rol:'Mesero/Repartidor', activo:true, notas:'' },
-  { id:'pe_14', sede:'monteria', nombre:'MAIRON OSORIO', rol:'Mesero/Repartidor', activo:true, notas:'' },
-  { id:'pe_15', sede:'monteria', nombre:'MARIANELA NIETO', rol:'Mesero/Repartidor', activo:true, notas:'' },
-  { id:'pe_16', sede:'monteria', nombre:'MICHAEL CASTILLO', rol:'Mesero/Repartidor', activo:true, notas:'' },
-  { id:'pe_17', sede:'monteria', nombre:'MIGUEL SUAREZ', rol:'Mesero/Repartidor', activo:true, notas:'' },
-  { id:'pe_18', sede:'monteria', nombre:'MISAEL MARTINEZ', rol:'Mesero/Repartidor', activo:true, notas:'' },
-  { id:'pe_19', sede:'monteria', nombre:'PEDRO LOPEZ', rol:'Mesero/Repartidor', activo:true, notas:'' },
-  { id:'pe_20', sede:'monteria', nombre:'REINALDO TAPIA', rol:'Mesero/Repartidor', activo:true, notas:'' },
-  { id:'pe_21', sede:'monteria', nombre:'YSIDORO PRIETO', rol:'Mesero/Repartidor', activo:true, notas:'' },
-  { id:'pe_22', sede:'monteria', nombre:'YUDIS MARIA SOTO', rol:'Mesero/Repartidor', activo:true, notas:'' },
-  { id:'pe_23', sede:'monteria', nombre:'ELIZABETH FLOREZ', rol:'Mesero/Repartidor', activo:true, notas:'' },
   { id:'pe_24', sede:'chinu', nombre:'LUISA', rol:'Mesero/Repartidor', activo:true, notas:'' },
   { id:'pe_25', sede:'chinu', nombre:'SANDY', rol:'Mesero/Repartidor', activo:true, notas:'' },
   { id:'pe_26', sede:'chinu', nombre:'YOENIS', rol:'Mesero/Repartidor', activo:true, notas:'' },
@@ -11216,7 +11208,7 @@ function planifHojasIndividualesHtml(){
    de Harol — se puede extender a las demás sedes más adelante.
    Colección: planif_roster_fijo.
    ------------------------------------------------------------------ */
-const PLANIF_ROSTER_SEDE_PILOTO = 'monteria';
+const PLANIF_ROSTER_SEDE_PILOTO = 'chinu';
 const PLANIF_ROSTER_CATEGORIAS = [
   { id:'checklist', label:'Checklist' },
   { id:'mise_en_place', label:'Mise en place' },
