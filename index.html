@@ -1695,13 +1695,39 @@ const PARAMS_RESTAURANTE_DEFAULT = {
   jornadaEstandarHorasDiarias: 8,
   jornadaEstandarHorasSemanales: 46,
   aplicaRecargoNocturno: true,
-  salarioBaseMensual: 0
+  salarioBaseMensual: 0,
+  // De qué hora a qué hora trabaja el personal (jornada de operación del
+  // negocio, en horas 0-23 para apertura y 1-24 para cierre — 24 = medianoche).
+  // Horarios usa este rango para armar su cuadrícula hora a hora, en vez de
+  // tener 8:00 a.m.-10:00 p.m. fijo en el código.
+  horaAperturaOperacion: 8,
+  horaCierreOperacion: 22
 };
 function paramsRestaurante(){
   return Object.assign({}, PARAMS_RESTAURANTE_DEFAULT, DB.get('parametros_restaurante', {}) || {});
 }
 function paramsGuardarRestaurante(cambios){
   DB.set('parametros_restaurante', Object.assign({}, paramsRestaurante(), cambios));
+}
+// Nombre a mostrar en vez de "sede X" / "todas las sedes" en cualquier
+// parte de la app: esta primera versión es un solo negocio, así que su
+// nombre (configurado en Parámetros) es lo único que debe verse.
+function appNombreNegocio(){
+  try{ return (paramsRestaurante() || {}).nombreRestaurante || 'este restaurante'; }catch(e){ return 'este restaurante'; }
+}
+// true solo si de verdad hay más de una sede dada de alta — así, si en el
+// futuro se activa una segunda sede real, los selectores de sede vuelven
+// a aparecer solos, sin tocar código.
+function appMultiSede(){
+  try{ return (typeof sedesTodas === 'function' ? sedesTodas() : []).length > 1; }catch(e){ return false; }
+}
+// Convierte una hora en formato 24h (0-24, 24=medianoche) a texto tipo
+// "8:00 a. m." — reutilizable en Horarios y en Parámetros.
+function appFmtHora12(h){
+  h = ((Number(h) % 24) + 24) % 24;
+  const displayH = h % 12 === 0 ? 12 : h % 12;
+  const ampm = h < 12 ? 'a. m.' : 'p. m.';
+  return displayH + ':00 ' + ampm;
 }
 // Valor hora sugerido = salario mensual / 30 días / horas de jornada diaria
 // (método estándar en Colombia). Si no hay salario base cargado (0),
@@ -1953,9 +1979,15 @@ if((DB.get('pagos_sede_version', 1)) < 2){
 })();
 
 if(!DB.get('sedes')){
+  // Esta primera versión es un solo negocio: solo se siembra una sede
+  // interna ('chinu', llave técnica que nunca se muestra en pantalla —
+  // en la UI aparece siempre el nombre de Parámetros). Si en el futuro
+  // se agrega una segunda sede real desde Gerencia → Configuración →
+  // Sedes, los selectores de sede de Horarios y Propinas reaparecen
+  // solos (ver appMultiSede()). Solo afecta instalaciones nuevas: no
+  // toca datos ya guardados en producción.
   DB.set('sedes', [
-    { id:'chinu', nombre:'Chinú', activa:true },
-    { id:'monteria', nombre:'Montería', activa:true }
+    { id:'chinu', nombre:'Chinú', activa:true }
   ]);
 }
 // Alcance de la "primera edición": estos grupos/ítems de Operación quedan
@@ -2922,9 +2954,10 @@ function withAreaDividers(items){
    RENDER: SIDEBAR
    ================================================================== */
 function renderSidebar(){
-  const sedes = DB.get('sedes', []);
-  const sedeNombre = SESSION.sede === 'todas' ? 'Todas las sedes' : ((sedes.find(s=>s.id===SESSION.sede)||{}).nombre || SESSION.sede);
-  document.getElementById('sedeLabelSidebar').textContent = 'Sede ' + sedeNombre;
+  // Esta primera versión es un solo negocio: en vez de "Sede Chinú" o
+  // "Sede Todas las sedes", se muestra directamente el nombre configurado
+  // en Parámetros del restaurante.
+  document.getElementById('sedeLabelSidebar').textContent = appNombreNegocio();
 
   const nav = document.getElementById('navList');
   nav.querySelectorAll('.nav-section').forEach(n=>n.remove());
@@ -3828,8 +3861,6 @@ function topbarToggleUsuario(){
   const panel = document.getElementById('userPanel');
   if(!panel || !SESSION) return;
   if(panel.classList.contains('open')){ panel.classList.remove('open'); return; }
-  const sedes = DB.get('sedes', []);
-  const sedeNombre = SESSION.sede === 'todas' ? 'Todas las sedes' : ((sedes.find(s=>s.id===SESSION.sede)||{}).nombre || SESSION.sede);
   const rolTxt = (ROL_LABEL[SESSION.rol] || SESSION.rol) + (SESSION.rolPuesto ? ' · ' + rolPuestoLabel(SESSION.rolPuesto) : '');
   panel.innerHTML = `
     <div class="user-panel-header">
@@ -3842,7 +3873,7 @@ function topbarToggleUsuario(){
     <div class="user-panel-body">
       <div class="user-panel-row"><span>Usuario</span><b>${SESSION.usuario}</b></div>
       <div class="user-panel-row"><span>Área</span><b>${SESSION.area || '—'}</b></div>
-      <div class="user-panel-row"><span>Sede</span><b>${sedeNombre}</b></div>
+      <div class="user-panel-row"><span>Negocio</span><b>${appNombreNegocio()}</b></div>
       ${SESSION.googleEmail ? '<div class="user-panel-row"><span>Correo</span><b>'+SESSION.googleEmail+'</b></div>' : ''}
     </div>
     <button type="button" class="user-panel-logout" onclick="logout()">Cerrar sesión</button>
@@ -10182,7 +10213,7 @@ function propinaCambiarSede(sede){
   renderPropinaTabs('inicio');
 }
 function propinaSelectorSedeHtml(){
-  if(SESSION.sede !== 'todas') return '';
+  if(SESSION.sede !== 'todas' || !appMultiSede()) return '';
   const sede = propinaSedeActiva();
   const sedes = DB.get('sedes', []).filter(s => s.id==='chinu' || s.id==='monteria' || s.estado==='activa');
   return `<div class="form-field" style="max-width:260px;margin-bottom:16px;">
@@ -16582,8 +16613,14 @@ function parametrosGuardarDesdeForm(){
   const jornadaSemanal = parseFloat(document.getElementById('par_jornada_semanal').value) || 0;
   const aplicaRecargo = document.getElementById('par_recargo').value === 'si';
   const salario = parseFloat(document.getElementById('par_salario').value) || 0;
+  const apertura = parseInt(document.getElementById('par_hora_apertura').value, 10);
+  const cierre = parseInt(document.getElementById('par_hora_cierre').value, 10);
   if(!nombre){
     document.getElementById('par_msg').innerHTML = '<p style="color:#C0392B;font-size:12.5px;margin-top:8px;">El nombre del restaurante no puede quedar vacío.</p>';
+    return;
+  }
+  if(!(cierre > apertura)){
+    document.getElementById('par_msg').innerHTML = '<p style="color:#C0392B;font-size:12.5px;margin-top:8px;">La hora de cierre debe ser posterior a la hora de apertura.</p>';
     return;
   }
   paramsGuardarRestaurante({
@@ -16591,13 +16628,26 @@ function parametrosGuardarDesdeForm(){
     jornadaEstandarHorasDiarias: jornadaDiaria,
     jornadaEstandarHorasSemanales: jornadaSemanal,
     aplicaRecargoNocturno: aplicaRecargo,
-    salarioBaseMensual: salario
+    salarioBaseMensual: salario,
+    horaAperturaOperacion: apertura,
+    horaCierreOperacion: cierre
   });
   renderParametrosModule(null,null,null,parametrosLastRuta);
   setTimeout(function(){
     const msg = document.getElementById('par_msg');
     if(msg) msg.innerHTML = '<p style="color:var(--verde,#2E7D32);font-size:12.5px;margin-top:8px;">Guardado.</p>';
   }, 30);
+}
+function parametrosOpcionesHora(seleccionada, esCierre){
+  // Apertura: 0 a 23. Cierre: 1 a 24 (24 = medianoche), siempre después
+  // de la apertura para que la franja horaria nunca quede vacía.
+  const opciones = [];
+  const desde = esCierre ? 1 : 0;
+  const hasta = esCierre ? 24 : 23;
+  for(let h = desde; h <= hasta; h++){
+    opciones.push(`<option value="${h}" ${h===seleccionada?'selected':''}>${appFmtHora12(h)}</option>`);
+  }
+  return opciones.join('');
 }
 function renderParametrosModule(sec, group, item, ruta){
   if(ruta) parametrosLastRuta = ruta;
@@ -16611,7 +16661,7 @@ function renderParametrosModule(sec, group, item, ruta){
         <div class="icon-circle" style="background:${hexToRgba(secOp.color,0.14)}; color:${secOp.color};">${ic('gear',21)}</div>
         <div><h2>Parámetros del restaurante</h2><div class="path">${parametrosLastRuta}</div></div>
       </div>
-      <p style="color:var(--text-light);font-size:12px;margin-bottom:16px;">Estos datos alimentan el resto de la app: el nombre aparece donde se necesite (comandas, cartas de amonestación, horarios), y la jornada/salario le permiten a Horarios sugerir solo el valor de la hora y del recargo nocturno de cada empleado nuevo — siempre podés ajustar la tarifa de una persona en particular después.</p>
+      <p style="color:var(--text-light);font-size:12px;margin-bottom:16px;">Esta es la sección exclusiva para configurar tu negocio en la app: el nombre aparece donde se necesite (comandas, cartas de amonestación, sidebar, Horarios), y la jornada/salario le permiten a Horarios sugerir solo el valor de la hora y del recargo nocturno de cada empleado nuevo — siempre podés ajustar la tarifa de una persona en particular después. Esta primera versión funciona como un solo negocio: no hay que elegir "sede", todo se configura acá con su nombre.</p>
       <div class="form-grid" style="max-width:520px;">
         <div class="form-field" style="grid-column:1/-1;"><label>Nombre del restaurante</label><input type="text" id="par_nombre" value="${(p.nombreRestaurante||'').replace(/"/g,'&quot;')}"></div>
         <div class="form-field"><label>Jornada estándar — horas diarias</label><input type="number" id="par_jornada_diaria" min="0" step="0.5" value="${p.jornadaEstandarHorasDiarias}"></div>
@@ -16623,8 +16673,15 @@ function renderParametrosModule(sec, group, item, ruta){
           </select>
         </div>
         <div class="form-field"><label>Salario base mensual (COP)</label><input type="number" id="par_salario" min="0" step="1000" value="${p.salarioBaseMensual}"></div>
+        <div class="form-field"><label>Personal trabaja desde las</label>
+          <select id="par_hora_apertura">${parametrosOpcionesHora(p.horaAperturaOperacion, false)}</select>
+        </div>
+        <div class="form-field"><label>Hasta las</label>
+          <select id="par_hora_cierre">${parametrosOpcionesHora(p.horaCierreOperacion, true)}</select>
+        </div>
       </div>
-      <p style="color:var(--text-light);font-size:12px;margin-top:10px;">Con estos valores, el valor hora sugerido en Horarios es <b>${fmtCOPModulo(valorHoraSugerido)}</b>${p.aplicaRecargoNocturno ? ` y el recargo nocturno sugerido es <b>${fmtCOPModulo(valorRecargoSugerido)}</b> por hora nocturna.` : ' (recargo nocturno desactivado).'}</p>
+      <p style="color:var(--text-light);font-size:12px;margin-top:10px;">Con estos valores, el valor hora sugerido en Horarios es <b>${fmtCOPModulo(valorHoraSugerido)}</b>${p.aplicaRecargoNocturno ? ` y el recargo nocturno sugerido es <b>${fmtCOPModulo(valorRecargoSugerido)}</b> por hora nocturna.` : ' (recargo nocturno desactivado).'} Horarios arma su cuadrícula con el rango de arriba: de <b>${appFmtHora12(p.horaAperturaOperacion)}</b> a <b>${appFmtHora12(p.horaCierreOperacion)}</b>.</p>
+      <p style="color:#8A6410;font-size:11.5px;margin-top:6px;">⚠️ Si ya tienes horarios marcados y cambias la hora <b>desde</b>, esas marcas quedan desalineadas (se corren). Cambiar la hora <b>hasta</b> es seguro en cualquier momento. Lo ideal es dejar esto bien configurado antes de cargar los turnos reales.</p>
       <button class="btn-primary" style="width:auto;padding:10px 18px;margin-top:8px;" onclick="parametrosGuardarDesdeForm()">Guardar parámetros</button>
       <div id="par_msg"></div>
     </div>`;
@@ -16648,16 +16705,17 @@ function horGuardarDatosSede(sede, areas, roles, encargadosMovimientos){
 }
 
 let horariosLastRuta = 'Operación → Administración → Horarios';
-// Cada sede tiene su propio horario (su propio registro en
-// horarios_datos) — para que Chinú, Montería, etc. nunca vean ni pisen
-// los turnos de las demás. Solo la cuenta de gerencia general (sede
-// "todas") puede elegir cuál sede consultar; el resto ve directo la suya.
+// Esta primera versión es un solo negocio, así que Horarios trabaja
+// siempre sobre un único registro interno (id 'chinu' por ahora, es solo
+// una llave técnica — nunca se muestra en pantalla). Si en el futuro se
+// activa una segunda sede real (appMultiSede() empieza a dar true), el
+// selector de abajo reaparece solo, sin tocar código.
 let horariosSedeSeleccionada = null;
 function horariosSedeActual(){
-  if(SESSION.sede !== 'todas') return SESSION.sede;
+  if(SESSION.sede && SESSION.sede !== 'todas') return SESSION.sede;
   if(horariosSedeSeleccionada) return horariosSedeSeleccionada;
   const sedes = sedesTodas();
-  return (sedes.find(s=>s.id==='monteria') ? 'monteria' : (sedes[0] ? sedes[0].id : 'monteria'));
+  return sedes[0] ? sedes[0].id : 'chinu';
 }
 function horariosCambiarSede(sedeId){
   horariosSedeSeleccionada = sedeId;
@@ -16666,7 +16724,7 @@ function horariosCambiarSede(sedeId){
 function renderHorariosModule(sec, group, item, ruta){
   if(ruta) horariosLastRuta = ruta;
   const sedeVer = horariosSedeActual();
-  const selectorHtml = SESSION.sede === 'todas' ? `
+  const selectorHtml = (SESSION.sede === 'todas' && appMultiSede()) ? `
     <div style="padding:10px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
       <span style="font-size:12.5px;font-weight:700;color:var(--text-light);">Viendo el horario de:</span>
       ${sedesTodas().map(s=>`<button class="tab-btn ${s.id===sedeVer?'active':''}" style="padding:6px 12px;" onclick="horariosCambiarSede('${s.id}')">${s.nombre}</button>`).join('')}
@@ -16686,20 +16744,43 @@ window.horariosCambiarSede = horariosCambiarSede;
 
 (function(){
 const DIAS = ['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo'];
-const HORA_INICIO = 8, HORA_FIN = 22; // 08:00 a. m. - 10:00 p. m.
-const HOURS = []; for(let h=HORA_INICIO; h<HORA_FIN; h++) HOURS.push(h); // 14 franjas de 1h
+// Antes eran valores fijos (8 a 22). Ahora se leen de Parámetros del
+// restaurante (Operación → Administración → Parámetros) y se recalculan
+// cada vez que se entra al módulo — ver horAplicarParamsOperacion() más
+// abajo — para que un cambio ahí se refleje sin tocar código.
+let HORA_INICIO = 8, HORA_FIN = 22;
+let HOURS = [];
+function horAplicarParamsOperacion(){
+  let hi = 8, hf = 22;
+  try{
+    const p = (typeof paramsRestaurante === 'function') ? paramsRestaurante() : {};
+    const hiP = Number(p.horaAperturaOperacion), hfP = Number(p.horaCierreOperacion);
+    if(Number.isFinite(hiP) && hiP >= 0 && hiP <= 23) hi = hiP;
+    if(Number.isFinite(hfP) && hfP > hi && hfP <= 24) hf = hfP;
+  }catch(e){}
+  HORA_INICIO = hi; HORA_FIN = hf;
+  HOURS.length = 0;
+  for(let h = HORA_INICIO; h < HORA_FIN; h++) HOURS.push(h);
+}
+horAplicarParamsOperacion();
 const STORE_KEY = 'cordova_horarios_v7';
 let currentDia = 'Lunes';
 let state = null;
 let sedeActivaHorarios = null;
 
+// Ninguna de estas áreas tenía en realidad una hora de inicio distinta
+// de la general (todas traían el mismo valor fijo 8, hoy configurable en
+// Parámetros) — se quita ese "horaInicioDefault" fijo para que las áreas
+// nuevas/sin configurar sigan siempre la hora de apertura de Parámetros.
+// Si en algún momento una persona quiere que un área específica arranque
+// distinto, se sigue pudiendo (queda en ar.config.horaInicio, ver abajo).
 const AREA_DEFS = [
-  {id:'cocina', nombre:'Cocina', icono:'🍳', horaInicioDefault:8},
-  {id:'servicio', nombre:'Servicio al cliente', icono:'🧑‍💼', horaInicioDefault:8},
-  {id:'bar', nombre:'Bar', icono:'🍹', horaInicioDefault:8},
-  {id:'caja', nombre:'Caja', icono:'💳', horaInicioDefault:8},
-  {id:'lider_servicio', nombre:'Líder de servicio', icono:'🧭', horaInicioDefault:8},
-  {id:'administrativos', nombre:'Administrativos', icono:'🗂️', horaInicioDefault:8},
+  {id:'cocina', nombre:'Cocina', icono:'🍳'},
+  {id:'servicio', nombre:'Servicio al cliente', icono:'🧑‍💼'},
+  {id:'bar', nombre:'Bar', icono:'🍹'},
+  {id:'caja', nombre:'Caja', icono:'💳'},
+  {id:'lider_servicio', nombre:'Líder de servicio', icono:'🧭'},
+  {id:'administrativos', nombre:'Administrativos', icono:'🗂️'},
 ];
 
 function pad2(n){ return String(n).padStart(2,'0'); }
@@ -17040,6 +17121,7 @@ function loadFromCloud(data){
 // Firebase, se lee lo que haya guardado para esa sede cada vez que se entra al
 // modulo o se cambia de sede (igual que el resto de modulos nativos de la app).
 function cargarSede(sede){
+  horAplicarParamsOperacion();
   sedeActivaHorarios = sede;
   const registro = horDatosDeSede(sede);
   const areaPrevia = (state && state.currentArea) || 'cocina';
@@ -17086,7 +17168,10 @@ function renderAreaTabs(){
   el.innerHTML = AREA_DEFS.map(a=>`<button data-area="${a.id}" class="${a.id===state.currentArea?'active':''}" onclick="horSetArea('${a.id}')">${a.icono} ${a.nombre}</button>`).join('');
   const cur = AREA_DEFS.find(a=>a.id===state.currentArea);
   const hi = AR_HORA_INICIO();
-  document.getElementById('area-desc').textContent = `Área: ${cur.nombre} · hora a hora, de ${hi}:00 a. m. a 10:00 p. m.`;
+  const fmtHora = (typeof appFmtHora12 === 'function') ? appFmtHora12 : function(h){ return h+':00'; };
+  document.getElementById('area-desc').textContent = `Área: ${cur.nombre} · hora a hora, de ${fmtHora(hi)} a ${fmtHora(HORA_FIN)}`;
+  const badge = document.getElementById('sede-badge');
+  if(badge) badge.textContent = (typeof appNombreNegocio === 'function') ? appNombreNegocio() : '';
 }
 function setArea(id){
   // Un líder de turno solo puede quedarse en su propia área.
@@ -18147,6 +18232,23 @@ window.horInyectarEstilos = function(){
    ================================================================ */
 const HOR_SKELETON_HTML = "<header>\n  <div style=\"display:flex;align-items:center;gap:14px;\">\n    <div>\n      <h1>Horarios</h1>\n      <p id=\"area-desc\">Hora a hora, de 8:00 a. m. a 10:00 p. m.</p>\n      <p id=\"sede-badge\" style=\"font-size:11.5px;font-weight:700;color:var(--accent);margin-top:2px;\"></p>\n    </div>\n  </div>\n  <div class=\"row-actions no-print\">\n    <span id=\"sync-status\" style=\"font-size:11.5px;color:var(--accent);\"></span>\n    <button class=\"btn secondary\" onclick=\"horExportJSON()\">Exportar respaldo</button>\n    <label class=\"btn secondary\" style=\"cursor:pointer;\">Importar respaldo<input type=\"file\" accept=\".json\" style=\"display:none\" onchange=\"horImportJSON(event)\"></label>\n  </div>\n</header>\n\n<nav class=\"areanav no-print\" id=\"area-tabs\"></nav>\n\n<nav class=\"topnav no-print\">\n  <button data-sec=\"sec-equipo\" onclick=\"horShowSec('sec-equipo')\" class=\"active\">1. Equipo</button>\n  <button data-sec=\"sec-cobertura\" onclick=\"horShowSec('sec-cobertura')\">2. Cobertura y turnos</button>\n  <button data-sec=\"sec-horario\" onclick=\"horShowSec('sec-horario')\">3. Horario \u2014 toda la semana</button>\n  <button data-sec=\"sec-equidad\" onclick=\"horShowSec('sec-equidad')\">4. Panel de equidad</button>\n  <button data-sec=\"sec-historial\" onclick=\"horShowSec('sec-historial')\">5. Historial de semanas</button>\n  <button data-sec=\"sec-carga\" onclick=\"horShowSec('sec-carga')\">\ud83d\udcca Carga de horas (consulta)</button>\n  <button data-sec=\"sec-movimientos\" onclick=\"horShowSec('sec-movimientos')\">\ud83d\udcb0 Movimientos de horas</button>\n</nav>\n\n<main>\n\n<section id=\"sec-equipo\" class=\"active\">\n  <div class=\"card\">\n    <h2>Equipo</h2>\n    <div class=\"sub\">Agrega, edita o retira personas de esta \u00e1rea. La tarifa por hora es opcional y solo se usa para calcular el valor del recargo nocturno en pesos.</div>\n    <div class=\"grid-wrap\">\n      <table id=\"tbl-empleados\">\n        <thead><tr><th>Nombre</th><th>Color</th><th>Horas m\u00e1x. /semana (ley: 42h)</th><th>Rol</th><th>Tarifa/hora (COP)</th><th></th></tr></thead>\n        <tbody></tbody>\n      </table>\n    </div>\n    <div class=\"row-actions\">\n      <button class=\"btn gold\" onclick=\"horAddEmpleado()\">+ Agregar persona</button>\n    </div>\n  </div>\n</section>\n\n<section id=\"sec-cobertura\">\n  <div class=\"card\">\n    <h2>Cu\u00e1ntas personas necesitas por d\u00eda</h2>\n    <div class=\"sub\">Cu\u00e1ntas personas asignar a cada tipo de turno por d\u00eda, en esta \u00e1rea. El generador arma el horario hora a hora con estos totales, variando el inicio y fin de cada turno dentro del rango que definas abajo.</div>\n    <div class=\"grid-wrap\">\n      <table id=\"tbl-cobertura\">\n        <thead><tr><th>D\u00eda</th><th>Apertura (ma\u00f1ana)</th><th>Cierre (tarde-noche)</th><th>Partido</th><th>\u00bfRequiere responsable?</th></tr></thead>\n        <tbody></tbody>\n      </table>\n    </div>\n  </div>\n  <div class=\"card\">\n    <h2>Rangos horarios de cada tipo de turno</h2>\n    <div class=\"sub\">En vez de una hora fija, define un rango. Cada vez que generes el horario, el inicio y el fin se eligen al azar dentro del rango \u2014 as\u00ed hay m\u00e1s variaci\u00f3n entre personas y semanas.</div>\n    <div class=\"grid-wrap\">\n      <table id=\"tbl-defaults\"></table>\n    </div>\n  </div>\n  <div class=\"card\">\n    <h2>Recargo nocturno</h2>\n    <div class=\"sub\">Seg\u00fan la Ley 2466 de 2025, el recargo nocturno del 35% se paga desde las 7:00 p. m. hasta las 6:00 a. m. Como el restaurante cierra a las 10:00 p. m., las horas entre esa hora y el cierre quedan marcadas en color en el horario y se calculan solas.</div>\n    <div class=\"row-actions\">\n      <label>Recargo nocturno aplica desde las\n        <select id=\"cfg-night\" onchange=\"horUpdNightStart(this.value)\"></select>\n      </label>\n      <span style=\"color:var(--muted);font-size:12px;\">(por defecto 19:00 = 7:00 p. m., puedes ajustarlo si la ley cambia)</span>\n    </div>\n  </div>\n</section>\n\n<section id=\"sec-horario\">\n  <div class=\"card\">\n    <h2 class=\"no-print\">Horario de la semana \u2014 hora a hora (todos los d\u00edas juntos)</h2>\n    <h2 class=\"print-only-titulo\" id=\"titulo-semana-impresion\">Horario Semana 1</h2>\n    <div class=\"sub no-print\">Cada columna es una hora, de 8:00 a. m. hasta las 10:00 p. m. Haz clic en una celda para marcar/quitar esa hora. Las columnas en color \u00e1mbar son horas de recargo nocturno (35%). La fila \"Cobertura\" muestra cu\u00e1nta gente hay en cada hora.</div>\n    <div class=\"row-actions no-print\">\n      <label style=\"font-size:12.5px;color:var(--muted);\">Etiqueta para imprimir:</label>\n      <select id=\"sel-semana-label\" onchange=\"horCambiarSemanaLabel(this.value)\">\n        <option value=\"1\">Semana 1</option>\n        <option value=\"2\">Semana 2</option>\n      </select>\n      <button class=\"btn gold\" onclick=\"horGenerarHorario()\">\u2699\ufe0f Generar horario equitativo</button>\n      <button class=\"btn secondary\" onclick=\"horLimpiarHorario()\">Limpiar semana</button>\n      <button class=\"btn secondary\" onclick=\"window.print()\">\ud83d\udda8\ufe0f Imprimir / PDF (toda la semana)</button>\n      <button class=\"btn secondary\" onclick=\"horVistaCompartirSemana()\">\ud83d\uddbc\ufe0f Vista para compartir (limpia)</button>\n      <button class=\"btn secondary\" onclick=\"horVistaSimplePorPersona()\">\ud83d\udccb Vista simple por persona</button>\n      <button class=\"btn\" onclick=\"horArchivarSemana()\">\u2705 Cerrar semana y guardar en historial</button>\n    </div>\n    <div class=\"dia-tabs no-print\" id=\"dia-tabs\"></div>\n    <div class=\"legend no-print\"><span><span class=\"sw\" style=\"background:var(--night)\"></span>Horas de recargo nocturno (35%, desde las 7:00 p. m.)</span></div>\n    <div id=\"dias-container\"></div>\n  </div>\n</section>\n\n<section id=\"sec-equidad\">\n  <div class=\"card\">\n    <h2>Panel de equidad \u2014 semana actual</h2>\n    <div class=\"sub\">Compara horas totales, tipos de turno y recargo nocturno entre personas de esta \u00e1rea.</div>\n    <div id=\"equidad-flags\"></div>\n    <div class=\"grid-wrap\">\n      <table id=\"tbl-equidad\">\n        <thead><tr><th>Persona</th><th>Horas esta semana</th><th>Objetivo</th><th>Aperturas</th><th>Cierres</th><th>Partidos</th><th>Otros</th><th>Libres</th><th>Responsable</th><th>Horas nocturnas</th><th>Recargo 35% (COP)</th><th></th></tr></thead>\n        <tbody></tbody>\n      </table>\n    </div>\n  </div>\n</section>\n\n<section id=\"sec-historial\">\n  <div class=\"card\">\n    <h2>Historial de semanas cerradas</h2>\n    <div class=\"sub\">El generador usa este historial acumulado (de esta \u00e1rea) para decidir a qui\u00e9n le toca el pr\u00f3ximo turno pesado \u2014 as\u00ed nunca es siempre la misma persona.</div>\n    <div class=\"grid-wrap\">\n      <table id=\"tbl-historial\">\n        <thead><tr><th>Persona</th><th>Horas acumuladas</th><th>Aperturas</th><th>Cierres</th><th>Partidos</th><th>Otros</th><th>Veces responsable</th><th>Fines de semana trabajados</th><th>Horas nocturnas</th><th>Recargo 35% acumulado (COP)</th></tr></thead>\n        <tbody></tbody>\n      </table>\n    </div>\n    <div class=\"row-actions no-print\">\n      <button class=\"btn danger\" onclick=\"horResetHistorial()\">Borrar historial acumulado</button>\n    </div>\n  </div>\n  <div class=\"card\">\n    <h2>Semanas completas archivadas</h2>\n    <div class=\"sub\">Cada vez que cierras la semana, se guarda una copia completa (hora a hora, los 7 d\u00edas) de esta \u00e1rea. \u00dasala para consultarla o imprimirla/enviarla m\u00e1s adelante.</div>\n    <div id=\"semanas-archivadas\"></div>\n  </div>\n</section>\n\n<section id=\"sec-carga\">\n  <div class=\"card\">\n    <h2>Carga de horas \u2014 consulta r\u00e1pida</h2>\n    <div class=\"sub\">Vista de solo lectura para el l\u00edder de servicio: muestra a todo el personal (meseros y cocina) ordenado de mayor a menor seg\u00fan las horas trabajadas esta semana. No modifica el horario \u2014 solo ayuda a decidir a qui\u00e9n enviar antes de su hora de salida en d\u00edas de poco movimiento, cuando ya tiene exceso de horas frente a su objetivo.</div>\n    <div class=\"grid-wrap\">\n      <table id=\"tbl-carga\">\n        <thead><tr><th>Persona</th><th>\u00c1rea</th><th>Horas esta semana</th><th>Objetivo</th><th>Diferencia</th><th>Hoy</th></tr></thead>\n        <tbody></tbody>\n      </table>\n    </div>\n  </div>\n</section>\n\n<section id=\"sec-movimientos\">\n  <div class=\"card\">\n    <h2>Movimientos de horas (banco de horas)</h2>\n    <div class=\"sub\">Aqu\u00ed se pueden restar u sumar horas al conteo semanal de una persona sin tocar el horario que se ve en pantalla \u2014 por ejemplo, si se manda a alguien a casa antes de su hora de salida en un d\u00eda de poco movimiento. El saldo acumulado (banco) es permanente: no se borra al cerrar la semana, se sigue arrastrando.</div>\n    <div class=\"row-actions\">\n      <select id=\"mov-emp\"></select>\n      <select id=\"mov-dia\"></select>\n      <input id=\"mov-horas\" type=\"number\" step=\"0.5\" placeholder=\"Horas (ej. -1 o 2)\" style=\"width:130px;\">\n      <input id=\"mov-nota\" type=\"text\" placeholder=\"Nota (ej. se fue temprano, poco movimiento)\" style=\"flex:1;min-width:220px;\">\n      <button class=\"btn gold\" onclick=\"horAgregarMovimiento()\">Agregar movimiento</button>\n    </div>\n    <div class=\"grid-wrap\">\n      <table id=\"tbl-movimientos\">\n        <thead><tr><th>Persona</th><th>Saldo acumulado (banco)</th><th>Movimientos de esta semana</th><th>Total ajustado esta semana</th></tr></thead>\n        <tbody></tbody>\n      </table>\n    </div>\n  </div>\n  <div class=\"card\" id=\"card-admin-accesos\">\n    <h2>Roles y accesos</h2>\n    <div class=\"sub\">Cada persona entra con un usuario simple (ej. \"cocina\") y una clave \u2014 cr\u00e9alos primero en Firebase Authentication usando \"usuario@cordovapro.local\" como correo (por ejemplo \"cocina@cordovapro.local\"), igual que se hizo con tu cuenta. Aqu\u00ed abajo escribe solo el usuario (o el correo completo si prefieres). Seg\u00fan el rol que le des, ver\u00e1 solo lo que le corresponde: un l\u00edder de turno solo ve y controla \"Carga de horas\" y \"Movimientos\" de su propia \u00e1rea.</div>\n    <div class=\"row-actions\">\n      <input id=\"nuevo-rol-email\" type=\"text\" placeholder=\"usuario (ej. cocina) o correo completo\" style=\"flex:1;min-width:220px;\">\n      <select id=\"nuevo-rol-tipo\">\n        <option value=\"admin\">Administrador principal (ve y edita todo)</option>\n        <option value=\"lider_cocina\">L\u00edder de turno \u2014 Cocina</option>\n        <option value=\"lider_servicio\">L\u00edder de turno \u2014 Servicio al cliente</option>\n      </select>\n      <button class=\"btn secondary\" onclick=\"horAgregarRol()\">Guardar</button>\n    </div>\n    <div id=\"lista-roles\"></div>\n  </div>\n</section>\n\n</main>\n<footer>Hecho por Restaurante C\u00f3rdova.</footer>\n";
 
+// El esqueleto trae algunos textos de ejemplo escritos con los valores
+// por defecto (8:00 a. m. a 10:00 p. m., "Restaurante Córdova"). Esta
+// función los reemplaza en tiempo real por los valores reales de
+// Parámetros — nombre del negocio y horario de operación — cada vez que
+// se construye el markup, sin tener que tocar el esqueleto en sí.
+function horTextoPersonalizado(html){
+  horAplicarParamsOperacion();
+  const nombre = (typeof appNombreNegocio === 'function') ? appNombreNegocio() : 'tu restaurante';
+  const fmtHora = (typeof appFmtHora12 === 'function') ? appFmtHora12 : function(h){ return h+':00'; };
+  const apertura = fmtHora(HORA_INICIO), cierre = fmtHora(HORA_FIN);
+  return html
+    .split('Hora a hora, de 8:00 a. m. a 10:00 p. m.').join('Hora a hora, de ' + apertura + ' a ' + cierre + '.')
+    .split('Cada columna es una hora, de 8:00 a. m. hasta las 10:00 p. m.').join('Cada columna es una hora, de ' + apertura + ' hasta las ' + cierre + '.')
+    .split('Como el restaurante cierra a las 10:00 p. m.,').join('Como el restaurante cierra a las ' + cierre + ',')
+    .split('Hecho por Restaurante Córdova.').join('Hecho por ' + nombre + '.');
+}
+
 // Construye el contenido inicial de #horNativeRoot: el esqueleto de
 // siempre, más (solo si esta sede todavía no tiene datos nativos
 // guardados) el aviso con el botón de importación única desde el
@@ -18160,7 +18262,7 @@ window.horMarkupInicial = function(sede){
       '<span id="hor-migracion-status" style="font-size:11.5px;"></span>' +
     '</div>'
   ) : '';
-  return bannerMigracion + HOR_SKELETON_HTML;
+  return bannerMigracion + horTextoPersonalizado(HOR_SKELETON_HTML);
 };
 
 // Punto de entrada llamado por renderHorariosModule (fuera de este
