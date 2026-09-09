@@ -2533,7 +2533,8 @@ const AREA_META = {
   steward:           { label:'Steward / lavado de platos', color:'#2F7A78' },
   bar:               { label:'Bar',                   color:'#2F7A78' },
   centro_produccion: { label:'Centro de producción',  color:'#2F7A78' },
-  inspecciones:      { label:'Inspecciones',           color:'#2F7A78' }
+  inspecciones:      { label:'Inspecciones',           color:'#2F7A78' },
+  calidad:           { label:'Calidad',                color:'#2F7A78' }
 };
 const AREA_ORDER = ['contabilidad','servicio_cliente','cocina','bar','centro_produccion','inspecciones'];
 // Orden de la columna única de Checklists: por tipo de checklist (todos los
@@ -2607,6 +2608,24 @@ const NAV = [
         { id:'chk_aseo_banos_internos', label:'Aseo de baños internos', icon:'checklist', categoria:'aseo', roles:['empleado','administracion','gerencia'], customRender:'renderAseoAreaModule' },
         { id:'chk_aseo_banos_publicos', label:'Aseo de baños públicos', icon:'checklist', categoria:'aseo', roles:['empleado','administracion','gerencia'], customRender:'renderAseoAreaModule' },
         { id:'chk_aseo_traperos', label:'Aseo de zona de traperos', icon:'checklist', categoria:'aseo', roles:['empleado','administracion','gerencia'], customRender:'renderAseoAreaModule' }
+      ]}
+    ]},
+  { id:'calidad', label:'Calidad', icon:'shield', color:'#2F7A78',
+    desc:'Inocuidad alimentaria: limpieza y desinfección, manipuladores, plagas, residuos, agua potable, capacitación y certificados — con la información del programa de calidad de Innovafood.',
+    groups:[
+      { id:'cal_diarios', label:'Checklists diarios', icon:'checklist', matchArea:null, items:[
+        { id:'cal_lyd', label:'Limpieza y desinfección diaria (RC-F01)', icon:'checklist', categoria:'aseo', roles:['empleado','administracion','gerencia'], customRender:'renderAseoAreaModule' },
+        { id:'cal_manip', label:'Inspección de manipuladores (RC-F02)', icon:'user', roles:['administracion','gerencia'], customRender:'renderManipuladoresModule' },
+        { id:'cal_residuos', label:'Control de residuos sólidos (RC-F04)', icon:'box', categoria:'aseo', roles:['empleado','administracion','gerencia'], customRender:'renderAseoAreaModule' },
+        { id:'cal_trampas', label:'Limpieza de trampas de grasa', icon:'wrench', roles:['empleado','administracion','gerencia'], customRender:'renderTrampasGrasaModule' }
+      ]},
+      { id:'cal_psb', label:'Plagas y agua potable', icon:'search', matchArea:null, items:[
+        { id:'cal_plagas', label:'Control de plagas y vectores', icon:'search', roles:['administracion','gerencia'], customRender:'renderCalidadPlagasModule' },
+        { id:'cal_agua', label:'Puntos de control de agua potable', icon:'pin', roles:['administracion','gerencia'], customRender:'renderCalidadAguaModule' }
+      ]},
+      { id:'cal_personal', label:'Capacitación y personal', icon:'book', matchArea:null, items:[
+        { id:'cal_capacitacion', label:'Programa de capacitación continua', icon:'book', roles:['administracion','gerencia'], customRender:'renderCalidadCapacitacionModule' },
+        { id:'cal_certificados', label:'Certificados de manipulación de alimentos', icon:'users', roles:['administracion','gerencia'], customRender:'renderCalidadCertificadosModule' }
       ]}
     ]},
   { id:'operacion', label:'Operación', icon:'tray', color:'#2F7A78',
@@ -3063,7 +3082,7 @@ function toggleSection(secId){
    ================================================================== */
 // Estas 3 secciones siguen apareciendo como columnas desplegables en
 // Inicio, igual que siempre (Checklists, Operación, Gerencia).
-const HOME_COLUMNAS_IDS = ['checklists','operacion','gerencia'];
+const HOME_COLUMNAS_IDS = ['checklists','calidad','operacion','gerencia'];
 // Qué columnas están desplegadas ahora mismo (se conserva entre
 // repintados de Inicio para que no se cierren solas).
 let homeColsAbiertas = new Set();
@@ -5893,6 +5912,50 @@ const ASEO_AREA_ITEMS = {
     ["¿El área está libre de insectos, roedores o señales de plagas?", "Diaria"],
   ]),
   chk_prueba_prep: PRUEBA_DIARIA_ITEMS,
+  // ---- Área de Calidad: RC-F01 (Limpieza y desinfección diaria) y RC-F04
+  // (Control de residuos sólidos), tal como los define el programa de
+  // calidad de Innovafood — reutilizan este mismo motor de checklist
+  // Sí / No / N-A + reporte de incidentes.
+  cal_lyd: _aseoItems('lyd', [
+    ["Kiosco y salón — Puerta de ingreso", "Diaria"],
+    ["Kiosco y salón — Terraza", "Diaria"],
+    ["Kiosco y salón — Ventiladores", "Diaria"],
+    ["Kiosco y salón — Paredes", "Diaria"],
+    ["Kiosco y salón — Sillas", "Diaria"],
+    ["Kiosco y salón — Mesas", "Diaria"],
+    ["Cocina — Pisos", "Diaria"],
+    ["Cocina — Techo y paredes", "Diaria"],
+    ["Área de parrilla — Asadores", "Diaria"],
+    ["Área de parrilla — Extractores", "Diaria"],
+    ["Área de patacón — Estufa industrial", "Diaria"],
+    ["Área de patacón — Mesa de acero inoxidable", "Diaria"],
+    ["Área de armado — Gramera", "Diaria"],
+    ["Área de armado — Mesa de acero inoxidable", "Diaria"],
+    ["Área de salsas y sopas — Estufa industrial", "Diaria"],
+    ["Área de salsas y sopas — Mesa de acero inoxidable", "Diaria"],
+    ["Área de salsas y sopas — Congelador", "Diaria"],
+    ["Área de salsas y sopas — Refrigerador", "Diaria"],
+    ["Área de steward — Recipientes", "Diaria"],
+    ["Área de steward — Mesa de acero inoxidable", "Diaria"],
+    ["Área de steward — Lavaplatos", "Diaria"],
+    ["Área de steward — Estante de acero inoxidable", "Diaria"],
+    ["Área de congeladores — Congelador", "Diaria"],
+    ["Área de congeladores — Mesa de acero inoxidable", "Diaria"],
+    ["Área de congeladores — Recipientes", "Diaria"],
+    ["Almacenamiento de materia prima — Refrigerador", "Diaria"],
+    ["Almacenamiento de materia prima — Congelador", "Diaria"],
+    ["Almacenamiento de platos sucios — Estante de acero inoxidable", "Diaria"],
+    ["Almacenamiento de platos sucios — Recipientes", "Diaria"],
+    ["Bodega de compras — Estante de acero inoxidable / recipientes", "Diaria"],
+  ]),
+  cal_residuos: _aseoItems('res', [
+    ["Las canecas se encuentran con su respectiva bolsa", "Diaria"],
+    ["Los residuos sólidos se disponen de acuerdo a su clasificación", "Diaria"],
+    ["Las canecas se encuentran diferenciadas con el color correspondiente", "Diaria"],
+    ["La basura se retira al terminar las actividades de procesamiento", "Diaria"],
+    ["Se realiza la separación en la fuente de los residuos sólidos", "Diaria"],
+    ["Se encuentran las canecas en el lugar correspondiente", "Diaria"],
+  ]),
 };
 
 /* ==================================================================
@@ -6206,18 +6269,20 @@ function aseoAreaSetTab(tabId){
 }
 
 function aseoAreaItemDef(itemId){
-  const sec = NAV.find(s=>s.id==='checklists');
+  // Busca el ítem en TODAS las secciones del NAV (no solo Checklists) para
+  // que este mismo motor de checklist Sí/No/N-A + incidentes lo puedan
+  // reutilizar otras áreas, como Calidad (ej. RC-F01, RC-F04), sin
+  // necesidad de vivir dentro de la sección Checklists.
   let found = null;
-  sec.groups.forEach(g => { const it = g.items.find(i=>i.id===itemId); if(it) found = it; });
+  NAV.forEach(sec => { (sec.groups||[]).forEach(g => { const it = (g.items||[]).find(i=>i.id===itemId); if(it) found = it; }); });
   return found;
 }
 
 function renderAseoAreaTabs(activeId){
   aseoAreaActiveTab = activeId;
-  const sec = NAV.find(s=>s.id==='checklists');
   const itemDef = aseoAreaItemDef(aseoAreaLastItemId);
   const areaKey = (itemDef && itemDef.area) || aseoAreaLastItemId;
-  const meta = AREA_META[areaKey] || { label: itemDef ? itemDef.label : 'Aseo', color: sec.color };
+  const meta = AREA_META[areaKey] || { label: itemDef ? itemDef.label : 'Aseo', color: '#2F7A78' };
 
   const tabs = [
     { id:'checklist',  label:'Checklist',  icon:'checklist' },
@@ -6387,6 +6452,582 @@ function guardarAseoArea(itemId){
   aseoAreaReady = null;
   showMsg('as_msg','Checklist guardado correctamente.','verde');
   aseoAreaSetTab('checklist');
+}
+
+/* ==================================================================
+   ÁREA DE CALIDAD — construida a partir de los formatos de inocuidad
+   alimentaria que comparte Innovafood (ingeniería de alimentos a cargo
+   de la calidad del restaurante): RC-F02 (inspección de manipuladores),
+   trampas de grasa, plagas y vectores, puntos de control de agua
+   potable, programa de capacitación continua y certificados de
+   manipulación de alimentos por empleado. RC-F01 y RC-F04 viven arriba,
+   en ASEO_AREA_ITEMS (cal_lyd / cal_residuos), porque encajan tal cual
+   en el motor de checklist Sí/No/N-A ya existente.
+   ================================================================== */
+
+/* ---- RC-F02: Inspección diaria de manipuladores de alimentos ---- */
+const MANIP_ASPECTOS = [
+  { grupo:'Indumentaria', items:[
+    { id:'ind_uniforme', label:'Uniforme' },
+    { id:'ind_mallas', label:'Mallas o gorros' },
+    { id:'ind_tapabocas', label:'Tapabocas' },
+    { id:'ind_calzado', label:'Calzado cerrado' },
+    { id:'ind_delantal', label:'Delantal' },
+    { id:'ind_barba', label:'Barba' }
+  ]},
+  { grupo:'Aseo personal', items:[
+    { id:'aseo_lesiones', label:'No presenta lesiones en la piel o heridas' },
+    { id:'aseo_unas', label:'Uñas' },
+    { id:'aseo_maquillaje', label:'Maquillaje' }
+  ]},
+  { grupo:'Otros', items:[
+    { id:'otros_epp', label:'EPP' },
+    { id:'otros_accesorios', label:'Accesorios' }
+  ]}
+];
+function manipAspectosFlat(){
+  const out = [];
+  MANIP_ASPECTOS.forEach(g => g.items.forEach(it => out.push(Object.assign({grupo:g.grupo}, it))));
+  return out;
+}
+let manipLastRuta = '';
+let manipActiveTab = 'checklist';
+let manipPersonas = [];
+function manipNuevaPersona(nombre){ return { nombre: nombre || '', valores:{}, observacion:'' }; }
+function renderManipuladoresModule(sec, group, item, ruta){
+  if(ruta) manipLastRuta = ruta;
+  if(!manipPersonas.length) manipPersonas = [manipNuevaPersona()];
+  renderManipuladoresTabs(manipActiveTab);
+}
+function manipSetTab(tabId){ renderManipuladoresTabs(tabId); }
+function renderManipuladoresTabs(activeId){
+  manipActiveTab = activeId;
+  const tabs = [
+    { id:'checklist', label:'Inspección de hoy', icon:'checklist' },
+    { id:'historial', label:'Historial', icon:'calendar' }
+  ];
+  const tabsHtml = tabs.map(t => `<button class="tab-btn ${t.id===activeId?'active':''}" onclick="manipSetTab('${t.id}')">${ic(t.icon,14)}${t.label}</button>`).join('');
+  const bodyHtml = activeId==='checklist' ? manipChecklistHtml() : manipHistorialHtml();
+  const html = `
+    <div class="panel">
+      <div class="panel-header">
+        <div class="icon-circle" style="background:${hexToRgba('#2F7A78',0.14)}; color:#2F7A78;">${ic('user',21)}</div>
+        <div><h2>Inspección de manipuladores (RC-F02)</h2><div class="path">${manipLastRuta}</div></div>
+      </div>
+      <div class="tab-bar">${tabsHtml}</div>
+      <div>${bodyHtml}</div>
+    </div>`;
+  document.getElementById('content').innerHTML = html;
+  if(window.innerWidth <= 820) document.getElementById('sidebar').classList.remove('open');
+}
+function manipNombreInput(idx, val){ manipPersonas[idx].nombre = val; }
+function manipObsInput(idx, val){ manipPersonas[idx].observacion = val; }
+function manipSetValor(idx, aspectoId, val, btnEl){
+  manipPersonas[idx].valores[aspectoId] = val;
+  const wrap = document.getElementById('manip_'+idx+'_'+aspectoId);
+  if(wrap){ wrap.querySelectorAll('.yn-btn').forEach(b=>b.classList.remove('active')); if(btnEl) btnEl.classList.add('active'); }
+}
+function manipAgregarPersona(){ manipPersonas.push(manipNuevaPersona()); renderManipuladoresTabs('checklist'); }
+function manipQuitarPersona(idx){
+  if(manipPersonas.length <= 1) return;
+  manipPersonas.splice(idx,1);
+  renderManipuladoresTabs('checklist');
+}
+function manipPersonaHtml(p, idx){
+  const gruposHtml = MANIP_ASPECTOS.map(g => `
+    <div style="margin-top:8px;">
+      <div style="font-size:11.5px;font-weight:700;color:var(--text-light);text-transform:uppercase;letter-spacing:.03em;margin-bottom:4px;">${g.grupo}</div>
+      ${g.items.map(it => `
+        <div class="check-row3">
+          <span>${it.label}</span>
+          <div class="toggle-yn" id="manip_${idx}_${it.id}">
+            <button type="button" class="yn-btn yes" onclick="manipSetValor(${idx},'${it.id}','Cumple',this)">Sí</button>
+            <button type="button" class="yn-btn no" onclick="manipSetValor(${idx},'${it.id}','No cumple',this)">No</button>
+            <button type="button" class="yn-btn na" onclick="manipSetValor(${idx},'${it.id}','N/A',this)">N/A</button>
+          </div>
+        </div>`).join('')}
+    </div>`).join('');
+  return `
+    <div class="panel" style="padding:14px 16px;margin-bottom:14px;">
+      <div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;">
+        <div class="form-field" style="flex:1;min-width:200px;"><label>Manipulador ${idx+1} <span class="req-star">*</span></label><input value="${p.nombre}" placeholder="Nombre del manipulador" oninput="manipNombreInput(${idx}, this.value)"></div>
+        ${manipPersonas.length > 1 ? `<button class="btn-secondary" style="padding:9px 12px;font-size:12px;" onclick="manipQuitarPersona(${idx})">Quitar</button>` : ''}
+      </div>
+      ${gruposHtml}
+      <div class="form-field" style="margin-top:8px;"><label>Observación</label><textarea rows="2" maxlength="300" oninput="manipObsInput(${idx}, this.value)">${p.observacion}</textarea></div>
+    </div>`;
+}
+function manipChecklistHtml(){
+  const personasHtml = manipPersonas.map((p, idx) => manipPersonaHtml(p, idx)).join('');
+  return `
+    <div style="padding:14px 16px 0;">
+    <div class="compact-form">
+    <div class="form-field"><label>Responsable de la inspección <span class="req-star">*</span></label><input id="manip_responsable" value="${SESSION.nombre}"></div>
+    </div>
+    <h3 style="margin:16px 0 4px;font-size:15px;">Manipuladores inspeccionados hoy</h3>
+    ${personasHtml}
+    <button class="btn-secondary" style="padding:9px 14px;font-size:12.5px;" onclick="manipAgregarPersona()">+ Agregar otro manipulador</button>
+    <div style="margin-top:16px;">
+      <button class="btn-primary" style="width:auto;padding:11px 22px;" onclick="guardarManipuladores()">Guardar inspección de hoy</button>
+      <div id="manip_msg"></div>
+    </div>
+    </div>
+  `;
+}
+function guardarManipuladores(){
+  const responsable = document.getElementById('manip_responsable').value.trim();
+  if(!responsable){ showMsg('manip_msg','Escribe el responsable de la inspección.','rojo'); return; }
+  const nombresVacios = manipPersonas.some(p => !p.nombre.trim());
+  if(nombresVacios){ showMsg('manip_msg','Escribe el nombre de cada manipulador.','rojo'); return; }
+  const aspectos = manipAspectosFlat();
+  const personasGuardadas = manipPersonas.map(p => {
+    const valores = aspectos.map(a => ({ id:a.id, grupo:a.grupo, label:a.label, val: p.valores[a.id] || 'N/A' }));
+    return { nombre: p.nombre.trim(), valores, observacion: p.observacion.trim(), itemsOk: valores.filter(v=>v.val==='Cumple').length, itemsTotal: valores.length };
+  });
+  DB.push('calidad_manipuladores', {
+    sede: sedeParaGuardar(), usuario: SESSION.usuario, nombre: SESSION.nombre,
+    fecha: hoyStr(), hora: horaStr(), responsable,
+    personas: personasGuardadas
+  });
+  manipPersonas = [manipNuevaPersona()];
+  showMsg('manip_msg','Inspección guardada correctamente.','verde');
+  renderManipuladoresTabs('checklist');
+}
+function manipHistorialHtml(){
+  const historial = filtrarPorSede(DB.get('calidad_manipuladores', [])).slice(-15).reverse();
+  if(!historial.length) return `<p style="color:var(--text-light);font-size:13px;padding:16px;">Todavía no hay inspecciones registradas.</p>`;
+  return `
+    <div style="padding:14px 16px;">
+    <table class="mini-table">
+      <thead><tr><th>Fecha</th><th>Responsable</th><th>Manipuladores</th><th>Con hallazgos</th></tr></thead>
+      <tbody>${historial.map(h => {
+        const conHallazgos = h.personas.filter(p => p.valores.some(v=>v.val==='No cumple')).length;
+        return `<tr>
+          <td>${h.fecha} ${h.hora}</td><td>${h.responsable}</td><td>${h.personas.length}</td>
+          <td>${conHallazgos>0 ? `<span class="badge badge-rojo">${conHallazgos}</span>` : `<span class="badge badge-verde">0</span>`}</td>
+        </tr>`;
+      }).join('')}</tbody>
+    </table>
+    </div>`;
+}
+
+/* ---- Limpieza de trampas de grasa ---- */
+let trampasLastRuta = '';
+function renderTrampasGrasaModule(sec, group, item, ruta){
+  if(ruta) trampasLastRuta = ruta;
+  trampasRender();
+}
+function trampasRender(){
+  const historial = filtrarPorSede(DB.get('calidad_trampas_grasa', [])).slice(-10).reverse();
+  const historialHtml = historial.length ? `
+    <table class="mini-table">
+      <thead><tr><th>Fecha</th><th>Hora</th><th>Ubicación</th><th>Tipo</th><th>Responsable</th></tr></thead>
+      <tbody>${historial.map(h => `<tr>
+        <td>${h.fecha}</td><td>${h.hora}</td><td>${h.ubicacion}</td>
+        <td>${h.tipo==='externa' ? '<span class="badge badge-azul">Externa</span>' : '<span class="badge badge-dorado">Interna</span>'}</td>
+        <td>${h.responsable}</td>
+      </tr>`).join('')}</tbody>
+    </table>` : `<p style="color:var(--text-light);font-size:13px;">Todavía no hay registros de limpieza de trampas de grasa.</p>`;
+  const html = `
+    <div class="panel">
+      <div class="panel-header">
+        <div class="icon-circle" style="background:${hexToRgba('#2F7A78',0.14)}; color:#2F7A78;">${ic('wrench',21)}</div>
+        <div><h2>Limpieza de trampas de grasa</h2><div class="path">${trampasLastRuta}</div></div>
+      </div>
+      <div style="padding:14px 16px 0;">
+        <p style="font-size:12.5px;color:var(--text-light);margin:0 0 12px;background:var(--marfil);padding:10px 12px;border-radius:8px;">Según el programa de calidad: las trampas internas se limpian <b>cada 2 días</b>, y la trampa externa se limpia <b>cada 6 meses (semestral)</b>.</p>
+        <div class="compact-form">
+          <div class="form-grid">
+            <div class="form-field"><label>Ubicación de la trampa <span class="req-star">*</span></label><input id="tg_ubicacion" placeholder="Ej: Trampa de steward, trampa externa..."></div>
+            <div class="form-field"><label>Tipo</label>
+              <select id="tg_tipo"><option value="interna">Interna (cada 2 días)</option><option value="externa">Externa (semestral)</option></select>
+            </div>
+            <div class="form-field"><label>Responsable <span class="req-star">*</span></label><input id="tg_responsable" value="${SESSION.nombre}"></div>
+          </div>
+          <div class="form-field" style="margin-top:8px;"><label>Observaciones</label><textarea id="tg_observaciones" rows="2" maxlength="300" placeholder="Opcional"></textarea></div>
+        </div>
+        <button class="btn-primary" style="width:auto;padding:11px 22px;margin-top:14px;" onclick="guardarTrampaGrasa()">Registrar limpieza</button>
+        <div id="tg_msg"></div>
+        <h3 style="margin:24px 0 10px;font-size:15px;">Historial</h3>
+        ${historialHtml}
+      </div>
+    </div>`;
+  document.getElementById('content').innerHTML = html;
+  if(window.innerWidth <= 820) document.getElementById('sidebar').classList.remove('open');
+}
+function guardarTrampaGrasa(){
+  const ubicacion = document.getElementById('tg_ubicacion').value.trim();
+  const responsable = document.getElementById('tg_responsable').value.trim();
+  const observaciones = document.getElementById('tg_observaciones').value.trim();
+  if(!ubicacion){ showMsg('tg_msg','Escribe la ubicación de la trampa.','rojo'); return; }
+  if(!responsable){ showMsg('tg_msg','Escribe el responsable.','rojo'); return; }
+  DB.push('calidad_trampas_grasa', {
+    sede: sedeParaGuardar(), usuario: SESSION.usuario, nombre: SESSION.nombre,
+    fecha: hoyStr(), hora: horaStr(),
+    ubicacion, tipo: document.getElementById('tg_tipo').value, responsable, observaciones
+  });
+  showMsg('tg_msg','Limpieza registrada correctamente.','verde');
+  trampasRender();
+}
+
+/* ---- Control de plagas y vectores (mensual, FR-PMCPV-01) ---- */
+const PLAGAS_ZONAS = [
+  "Entrada principal","Zona de servicio al cliente","Área de recepción","Zona de coctelería",
+  "Bodega de bebidas","Zona de auditorio cerrado","Bodega de productos","Bodega de insumos químicos de limpieza",
+  "Cuarto de electricidad","Bodega de materia prima","Zona de lockers","Bodega de archivos documentales",
+  "Zona de procesamiento de alimentos","Área de menaje","Área de chimeneas","Área de lavado de platos",
+  "Área de lavado de calderos","Área de platos sucios","Bodega de carbón","Bodega de utensilios nuevos",
+  "Área de recepción de materia prima","Alrededores"
+].map((label,i)=>({ id:'zona_'+(i+1), label }));
+let plagasValores = {};
+let plagasLastRuta = '';
+function renderCalidadPlagasModule(sec, group, item, ruta){
+  if(ruta) plagasLastRuta = ruta;
+  plagasValores = {};
+  plagasRender('registro');
+}
+function plagasSetTab(tabId){ plagasRender(tabId); }
+function plagasRender(activeId){
+  const tabs = [ { id:'registro', label:'Monitoreo de hoy', icon:'search' }, { id:'historial', label:'Historial', icon:'calendar' } ];
+  const tabsHtml = tabs.map(t => `<button class="tab-btn ${t.id===activeId?'active':''}" onclick="plagasSetTab('${t.id}')">${ic(t.icon,14)}${t.label}</button>`).join('');
+  const bodyHtml = activeId==='registro' ? plagasRegistroHtml() : plagasHistorialHtml();
+  const html = `
+    <div class="panel">
+      <div class="panel-header">
+        <div class="icon-circle" style="background:${hexToRgba('#2F7A78',0.14)}; color:#2F7A78;">${ic('search',21)}</div>
+        <div><h2>Control de plagas y vectores</h2><div class="path">${plagasLastRuta}</div></div>
+      </div>
+      <div class="tab-bar">${tabsHtml}</div>
+      <div>${bodyHtml}</div>
+    </div>`;
+  document.getElementById('content').innerHTML = html;
+  if(window.innerWidth <= 820) document.getElementById('sidebar').classList.remove('open');
+}
+function plagasSetPresencia(zonaId, val, btnEl){
+  if(!plagasValores[zonaId]) plagasValores[zonaId] = {};
+  plagasValores[zonaId].presencia = val;
+  const wrap = document.getElementById('plaga_pres_'+zonaId);
+  if(wrap){ wrap.querySelectorAll('.yn-btn').forEach(b=>b.classList.remove('active')); if(btnEl) btnEl.classList.add('active'); }
+  const extra = document.getElementById('plaga_extra_'+zonaId);
+  if(extra) extra.classList.toggle('hidden', val !== 'Sí');
+}
+function plagasSetGrado(zonaId, val, btnEl){
+  if(!plagasValores[zonaId]) plagasValores[zonaId] = {};
+  plagasValores[zonaId].grado = val;
+  const wrap = document.getElementById('plaga_grado_'+zonaId);
+  if(wrap){ wrap.querySelectorAll('.yn-btn').forEach(b=>b.classList.remove('active')); if(btnEl) btnEl.classList.add('active'); }
+}
+function plagasCampoInput(zonaId, campo, val){
+  if(!plagasValores[zonaId]) plagasValores[zonaId] = {};
+  plagasValores[zonaId][campo] = val;
+}
+function plagasZonaHtml(z){
+  const v = plagasValores[z.id] || {};
+  return `
+    <div class="check-row3" style="align-items:flex-start;">
+      <span>${z.label}</span>
+      <div class="toggle-yn" id="plaga_pres_${z.id}">
+        <button type="button" class="yn-btn yes" onclick="plagasSetPresencia('${z.id}','No',this)">Sin plaga</button>
+        <button type="button" class="yn-btn no" onclick="plagasSetPresencia('${z.id}','Sí',this)">Con plaga</button>
+      </div>
+    </div>
+    <div class="aseo-extra hidden" id="plaga_extra_${z.id}" style="margin:-4px 0 12px;padding:10px 12px;background:var(--marfil);border-radius:8px;">
+      <div class="form-grid">
+        <div class="form-field"><label>Tipo de plaga</label><input value="${v.tipo||''}" oninput="plagasCampoInput('${z.id}','tipo',this.value)" placeholder="Ej: roedores, moscas, cucarachas..."></div>
+        <div class="form-field"><label>Grado de infestación</label>
+          <div class="toggle-yn" id="plaga_grado_${z.id}">
+            <button type="button" class="yn-btn na" onclick="plagasSetGrado('${z.id}','Bajo',this)">Bajo</button>
+            <button type="button" class="yn-btn no" onclick="plagasSetGrado('${z.id}','Medio',this)">Medio</button>
+            <button type="button" class="yn-btn no" style="background:#C0392B;" onclick="plagasSetGrado('${z.id}','Alto',this)">Alto</button>
+          </div>
+        </div>
+      </div>
+      <div class="form-field" style="margin-top:6px;"><label>Acción correctiva</label><textarea rows="2" maxlength="300" oninput="plagasCampoInput('${z.id}','accionCorrectiva',this.value)">${v.accionCorrectiva||''}</textarea></div>
+    </div>`;
+}
+function plagasRegistroHtml(){
+  const zonasHtml = PLAGAS_ZONAS.map(plagasZonaHtml).join('');
+  return `
+    <div style="padding:14px 16px 0;">
+    <div class="compact-form">
+    <div class="form-field"><label>Responsable del monitoreo <span class="req-star">*</span></label><input id="plagas_responsable" value="${SESSION.nombre}"></div>
+    <div class="toggle-list" style="margin-top:12px;">${zonasHtml}</div>
+    <div class="form-field" style="margin-top:8px;"><label>Observaciones generales</label><textarea id="plagas_observaciones" rows="2" maxlength="500" placeholder="Opcional"></textarea></div>
+    </div>
+    <button class="btn-primary" style="width:auto;padding:11px 22px;margin-top:14px;" onclick="guardarPlagas()">Guardar monitoreo del mes</button>
+    <div id="plagas_msg"></div>
+    </div>
+  `;
+}
+function guardarPlagas(){
+  const responsable = document.getElementById('plagas_responsable').value.trim();
+  if(!responsable){ showMsg('plagas_msg','Escribe el responsable del monitoreo.','rojo'); return; }
+  const observaciones = document.getElementById('plagas_observaciones').value.trim();
+  const zonas = PLAGAS_ZONAS.map(z => {
+    const v = plagasValores[z.id] || {};
+    return { id:z.id, label:z.label, presencia: v.presencia || 'No', tipo: v.presencia==='Sí' ? (v.tipo||'') : '', grado: v.presencia==='Sí' ? (v.grado||'') : '', accionCorrectiva: v.presencia==='Sí' ? (v.accionCorrectiva||'') : '' };
+  });
+  const conPlaga = zonas.filter(z=>z.presencia==='Sí').length;
+  DB.push('calidad_plagas', {
+    sede: sedeParaGuardar(), usuario: SESSION.usuario, nombre: SESSION.nombre,
+    fecha: hoyStr(), hora: horaStr(), responsable, zonas, conPlaga, observaciones
+  });
+  plagasValores = {};
+  showMsg('plagas_msg','Monitoreo guardado correctamente.','verde');
+  plagasRender('registro');
+}
+function plagasHistorialHtml(){
+  const historial = filtrarPorSede(DB.get('calidad_plagas', [])).slice(-15).reverse();
+  if(!historial.length) return `<p style="color:var(--text-light);font-size:13px;padding:16px;">Todavía no hay monitoreos registrados.</p>`;
+  return `
+    <div style="padding:14px 16px;">
+    <table class="mini-table">
+      <thead><tr><th>Fecha</th><th>Responsable</th><th>Zonas con plaga</th></tr></thead>
+      <tbody>${historial.map(h => `<tr>
+        <td>${h.fecha}</td><td>${h.responsable}</td>
+        <td>${h.conPlaga>0 ? `<span class="badge badge-rojo">${h.conPlaga} de ${h.zonas.length}</span>` : `<span class="badge badge-verde">0</span>`}</td>
+      </tr>`).join('')}</tbody>
+    </table>
+    </div>`;
+}
+
+/* ---- Puntos de control de agua potable ---- */
+const AGUA_PUNTOS = [
+  { id:'agua_1', label:'Área de recepción', detalle:'1 grifo de salida de agua' },
+  { id:'agua_2', label:'Área de lavado de platos', detalle:'1 brazo extensor de salida de agua' },
+  { id:'agua_3', label:'Área de lavado de calderos', detalle:'1 grifo de salida de agua' },
+  { id:'agua_4', label:'Área de coctelería', detalle:'2 grifos de salida de agua' }
+];
+let aguaValores = {};
+let aguaLastRuta = '';
+function renderCalidadAguaModule(sec, group, item, ruta){
+  if(ruta) aguaLastRuta = ruta;
+  aguaValores = {};
+  aguaRender('registro');
+}
+function aguaSetTab(tabId){ aguaRender(tabId); }
+function aguaRender(activeId){
+  const tabs = [ { id:'registro', label:'Muestreo de hoy', icon:'pin' }, { id:'historial', label:'Historial', icon:'calendar' } ];
+  const tabsHtml = tabs.map(t => `<button class="tab-btn ${t.id===activeId?'active':''}" onclick="aguaSetTab('${t.id}')">${ic(t.icon,14)}${t.label}</button>`).join('');
+  const bodyHtml = activeId==='registro' ? aguaRegistroHtml() : aguaHistorialHtml();
+  const html = `
+    <div class="panel">
+      <div class="panel-header">
+        <div class="icon-circle" style="background:${hexToRgba('#2F7A78',0.14)}; color:#2F7A78;">${ic('pin',21)}</div>
+        <div><h2>Puntos de control de agua potable</h2><div class="path">${aguaLastRuta}</div></div>
+      </div>
+      <div class="tab-bar">${tabsHtml}</div>
+      <div>${bodyHtml}</div>
+    </div>`;
+  document.getElementById('content').innerHTML = html;
+  if(window.innerWidth <= 820) document.getElementById('sidebar').classList.remove('open');
+}
+function aguaSetCumple(puntoId, val, btnEl){
+  if(!aguaValores[puntoId]) aguaValores[puntoId] = {};
+  aguaValores[puntoId].cumple = val;
+  const wrap = document.getElementById('agua_cumple_'+puntoId);
+  if(wrap){ wrap.querySelectorAll('.yn-btn').forEach(b=>b.classList.remove('active')); if(btnEl) btnEl.classList.add('active'); }
+}
+function aguaCampoInput(puntoId, campo, val){
+  if(!aguaValores[puntoId]) aguaValores[puntoId] = {};
+  aguaValores[puntoId][campo] = val;
+}
+function aguaPuntoHtml(p){
+  const v = aguaValores[p.id] || {};
+  return `
+    <div class="panel" style="padding:12px 14px;margin-bottom:10px;">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px;">
+        <div><b style="font-size:13.5px;">${p.label}</b><div style="font-size:11.5px;color:var(--text-light);">${p.detalle}</div></div>
+        <div class="toggle-yn" id="agua_cumple_${p.id}">
+          <button type="button" class="yn-btn yes" onclick="aguaSetCumple('${p.id}','Cumple',this)">Cumple</button>
+          <button type="button" class="yn-btn no" onclick="aguaSetCumple('${p.id}','No cumple',this)">No cumple</button>
+        </div>
+      </div>
+      <div class="form-grid" style="margin-top:8px;">
+        <div class="form-field"><label>Cloro residual (ppm)</label><input type="number" step="0.1" value="${v.cloro||''}" oninput="aguaCampoInput('${p.id}','cloro',this.value)" placeholder="Opcional"></div>
+        <div class="form-field"><label>pH</label><input type="number" step="0.1" value="${v.ph||''}" oninput="aguaCampoInput('${p.id}','ph',this.value)" placeholder="Opcional"></div>
+      </div>
+      <div class="form-field" style="margin-top:6px;"><label>Observación</label><input value="${v.observacion||''}" oninput="aguaCampoInput('${p.id}','observacion',this.value)" placeholder="Opcional"></div>
+    </div>`;
+}
+function aguaRegistroHtml(){
+  const puntosHtml = AGUA_PUNTOS.map(aguaPuntoHtml).join('');
+  return `
+    <p style="font-size:12.5px;color:var(--text-light);margin:14px 16px 0;background:var(--marfil);padding:10px 12px;border-radius:8px;">Los parámetros de cloro residual y pH son opcionales — Innovafood todavía no ha entregado un formato oficial de parámetros de agua potable; ajusta estos campos cuando lo definan.</p>
+    <div style="padding:0 16px;">
+    <div class="compact-form">
+    <div class="form-field"><label>Responsable del muestreo <span class="req-star">*</span></label><input id="agua_responsable" value="${SESSION.nombre}"></div>
+    </div>
+    <h3 style="margin:14px 0 8px;font-size:15px;">Puntos de muestreo</h3>
+    ${puntosHtml}
+    <button class="btn-primary" style="width:auto;padding:11px 22px;margin-top:6px;" onclick="guardarAgua()">Guardar muestreo de hoy</button>
+    <div id="agua_msg"></div>
+    </div>
+  `;
+}
+function guardarAgua(){
+  const responsable = document.getElementById('agua_responsable').value.trim();
+  if(!responsable){ showMsg('agua_msg','Escribe el responsable del muestreo.','rojo'); return; }
+  const puntos = AGUA_PUNTOS.map(p => {
+    const v = aguaValores[p.id] || {};
+    return { id:p.id, label:p.label, cumple: v.cumple || 'N/A', cloro: v.cloro||'', ph: v.ph||'', observacion: v.observacion||'' };
+  });
+  DB.push('calidad_agua_potable', {
+    sede: sedeParaGuardar(), usuario: SESSION.usuario, nombre: SESSION.nombre,
+    fecha: hoyStr(), hora: horaStr(), responsable, puntos
+  });
+  aguaValores = {};
+  showMsg('agua_msg','Muestreo guardado correctamente.','verde');
+  aguaRender('registro');
+}
+function aguaHistorialHtml(){
+  const historial = filtrarPorSede(DB.get('calidad_agua_potable', [])).slice(-15).reverse();
+  if(!historial.length) return `<p style="color:var(--text-light);font-size:13px;padding:16px;">Todavía no hay muestreos registrados.</p>`;
+  return `
+    <div style="padding:14px 16px;">
+    <table class="mini-table">
+      <thead><tr><th>Fecha</th><th>Responsable</th><th>Puntos No cumple</th></tr></thead>
+      <tbody>${historial.map(h => {
+        const noCumple = h.puntos.filter(p=>p.cumple==='No cumple').length;
+        return `<tr><td>${h.fecha}</td><td>${h.responsable}</td><td>${noCumple>0 ? `<span class="badge badge-rojo">${noCumple}</span>` : `<span class="badge badge-verde">0</span>`}</td></tr>`;
+      }).join('')}</tbody>
+    </table>
+    </div>`;
+}
+
+/* ---- Programa de capacitación continua (Innovafood, 2026) ---- */
+const CAPACITACION_TEMAS = [
+  { id:'cap_1', tema:'Buenas prácticas de manufactura', duracion:'2 horas', objetivo:'Conocer los principios básicos y las prácticas generales de higiene en la manipulación, elaboración, envasado, almacenamiento, transporte y distribución de alimentos.', participantes:24, responsable:'Coordinador de calidad' },
+  { id:'cap_2', tema:'PSB — Limpieza y desinfección / lavado de manos', duracion:'2 horas', objetivo:'Garantizar que las áreas, superficies, equipos, utensilios y materias primas se encuentren en condiciones óptimas de limpieza y desinfección.', participantes:17, responsable:'Coordinador de calidad / Ingeniera de alimentos' },
+  { id:'cap_3', tema:'PSB — Manejo integral de plagas y roedores', duracion:'1 hora', objetivo:'Prevenir, controlar y eliminar la presencia de plagas para garantizar la inocuidad de los alimentos.', participantes:null, responsable:'Empresa Fumimar' },
+  { id:'cap_4', tema:'Plan de Saneamiento Básico y programa de agua potable', duracion:'1 hora', objetivo:'Conocer los programas del plan de saneamiento básico y fortalecer los conocimientos del programa de agua potable.', participantes:null, responsable:'Coordinador de calidad' },
+  { id:'cap_5', tema:'PSB — Manejo integral de residuos sólidos y códigos de colores', duracion:'2 horas', objetivo:'Conocer la forma adecuada de segregar residuos y simplificar el proceso de reciclaje según colores.', participantes:null, responsable:'Asesor ARL Sura' },
+  { id:'cap_6', tema:'Criterios de aceptación y rechazo de materia prima e insumos', duracion:'2 horas', objetivo:'Conocer los criterios para la recepción de materias primas e insumos (olor, color, sabor, textura, temperatura, vencimiento).', participantes:null, responsable:'Ingeniera de alimentos Innovafood' },
+  { id:'cap_7', tema:'Contaminación cruzada y enfermedades transmitidas por alimentos', duracion:'2 horas', objetivo:'Conocer los tipos de contaminación cruzada y las enfermedades transmitidas por alimentos, y cómo mitigarlas.', participantes:null, responsable:'Coordinador de calidad' },
+  { id:'cap_8', tema:'Uso y actualización del horno Rational Self Cooking Center', duracion:'5 horas', objetivo:'Conocer las funciones y el adecuado uso de los hornos.', participantes:null, responsable:'Empresa Rational' },
+  { id:'cap_9', tema:'Control de temperatura y aprovechamiento de materia prima', duracion:'2 horas', objetivo:'Conocer los rangos seguros de temperatura y las prácticas para el uso eficiente de materia prima.', participantes:null, responsable:'Coordinador de calidad / Profesional en cocina externo' },
+  { id:'cap_10', tema:'Control de calidad a través de formatos', duracion:'1 hora', objetivo:'Conocer la manera adecuada de diligenciar los formatos de calidad y su trazabilidad operacional.', participantes:null, responsable:'Coordinador de calidad' },
+  { id:'cap_11', tema:'Preparación y verificación de soluciones desinfectantes y detergentes', duracion:'1 hora', objetivo:'Conocer el adecuado manejo de sustancias desinfectantes y detergentes en cocina industrial.', participantes:null, responsable:'Proveedor de sustancias' },
+  { id:'cap_12', tema:'Muestreo microbiológico en alimentos', duracion:'2 horas', objetivo:'Conocer por qué se separa la muestra de un lote de alimentos, qué se analiza y cómo evitar alteraciones en los resultados.', participantes:null, responsable:'Ingeniera de alimentos Innovafood' }
+];
+function capacitacionEstado(){ return DB.get('calidad_capacitaciones_estado', {}); }
+let capLastRuta = '';
+function renderCalidadCapacitacionModule(sec, group, item, ruta){
+  if(ruta) capLastRuta = ruta;
+  capacitacionRender();
+}
+function capacitacionMarcarDictado(temaId){
+  const estado = capacitacionEstado();
+  estado[temaId] = { dictado:true, fecha: hoyStr(), registradoPor: SESSION.nombre };
+  DB.set('calidad_capacitaciones_estado', estado);
+  DB.push('calidad_capacitaciones_historial', { temaId, fecha: hoyStr(), registradoPor: SESSION.nombre, sede: sedeParaGuardar() });
+  capacitacionRender();
+}
+function capacitacionDesmarcar(temaId){
+  const estado = capacitacionEstado();
+  delete estado[temaId];
+  DB.set('calidad_capacitaciones_estado', estado);
+  capacitacionRender();
+}
+function capacitacionRender(){
+  const estado = capacitacionEstado();
+  const dictadas = CAPACITACION_TEMAS.filter(t=>estado[t.id]).length;
+  const pct = Math.round(dictadas/CAPACITACION_TEMAS.length*100);
+  const filasHtml = CAPACITACION_TEMAS.map(t => {
+    const e = estado[t.id];
+    return `
+    <div class="panel" style="padding:12px 14px;margin-bottom:10px;">
+      <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:flex-start;">
+        <div style="flex:1;min-width:220px;">
+          <b style="font-size:13.5px;">${t.tema}</b>
+          <div style="font-size:11.5px;color:var(--text-light);margin-top:2px;">${t.duracion} · Responsable sugerido: ${t.responsable}${t.participantes?' · '+t.participantes+' participantes':''}</div>
+          <p style="font-size:12px;margin:6px 0 0;color:var(--text-dark);">${t.objetivo}</p>
+          ${e ? `<div style="font-size:11.5px;color:var(--verde);margin-top:6px;">Dictada el ${e.fecha} · registrado por ${e.registradoPor}</div>` : ''}
+        </div>
+        <div>
+          ${e
+            ? `<button class="btn-secondary" style="padding:8px 12px;font-size:12px;" onclick="capacitacionDesmarcar('${t.id}')">Deshacer</button>`
+            : `<button class="btn-primary" style="padding:8px 12px;font-size:12px;width:auto;" onclick="capacitacionMarcarDictado('${t.id}')">Marcar como dictada</button>`}
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+  const html = `
+    <div class="panel">
+      <div class="panel-header">
+        <div class="icon-circle" style="background:${hexToRgba('#2F7A78',0.14)}; color:#2F7A78;">${ic('book',21)}</div>
+        <div><h2>Programa de capacitación continua</h2><div class="path">${capLastRuta}</div></div>
+      </div>
+      <div style="padding:14px 16px;">
+        <div class="progress-box2">
+          <div class="progress-circle" style="background:conic-gradient(var(--bronce) ${pct}%, var(--border) ${pct}%);"><span>${dictadas}/${CAPACITACION_TEMAS.length}</span></div>
+          <div class="progress-legend">Temas del calendario anual de BPM/inocuidad dictados<br>Marca cada tema cuando ya se haya dictado en el año.</div>
+        </div>
+        <h3 style="margin:18px 0 10px;font-size:15px;">Calendario de 12 temas (Innovafood 2026)</h3>
+        ${filasHtml}
+      </div>
+    </div>`;
+  document.getElementById('content').innerHTML = html;
+  if(window.innerWidth <= 820) document.getElementById('sidebar').classList.remove('open');
+}
+
+/* ---- Certificados de manipulación de alimentos por empleado ---- */
+function certVigenciaMeses(){ return Number(DB.get('calidad_cert_vigencia_meses', 12)) || 12; }
+function certSumarMeses(fechaISO, meses){
+  const [y,m,d] = fechaISO.split('-').map(Number);
+  const base = new Date(y, (m||1)-1 + Number(meses||0), d||1);
+  return base.getFullYear()+'-'+String(base.getMonth()+1).padStart(2,'0')+'-'+String(base.getDate()).padStart(2,'0');
+}
+function certEstado(fechaExamen){
+  if(!fechaExamen) return { estado:'sin_dato', label:'Sin fecha registrada', color:'#8a8a86' };
+  const vence = certSumarMeses(fechaExamen, certVigenciaMeses());
+  const dias = mantDiasRestantes(vence);
+  if(dias < 0) return { estado:'vencido', label:'Vencido hace '+Math.abs(dias)+' día'+(Math.abs(dias)===1?'':'s'), color:'#C0392B', vence };
+  if(dias <= 30) return { estado:'proximo', label:'Vence en '+dias+' día'+(dias===1?'':'s'), color:'#1E5A70', vence };
+  return { estado:'vigente', label:'Vigente hasta '+vence, color:'#2E7D32', vence };
+}
+let certLastRuta = '';
+function renderCalidadCertificadosModule(sec, group, item, ruta){
+  if(ruta) certLastRuta = ruta;
+  certRender();
+}
+function certGuardarVigencia(val){
+  DB.set('calidad_cert_vigencia_meses', Number(val)||12);
+  certRender();
+}
+function certGuardarFecha(usuarioId, fecha){
+  const usuarios = DB.get('usuarios', []);
+  const u = usuarios.find(x=>x.usuario===usuarioId);
+  if(u){ u.certManipFecha = fecha; DB.set('usuarios', usuarios); }
+  certRender();
+}
+function certRender(){
+  const usuarios = DB.get('usuarios', []).filter(u=>u.activo !== false).slice().sort((a,b)=>a.nombre.localeCompare(b.nombre));
+  const filasHtml = usuarios.map(u => {
+    const est = certEstado(u.certManipFecha);
+    return `<tr>
+      <td>${u.nombre}</td><td>${u.cargo||'-'}</td>
+      <td><input type="date" value="${u.certManipFecha||''}" onchange="certGuardarFecha('${u.usuario}', this.value)"></td>
+      <td><span class="badge" style="background:${hexToRgba(est.color,0.14)};color:${est.color};">${est.label}</span></td>
+    </tr>`;
+  }).join('');
+  const html = `
+    <div class="panel">
+      <div class="panel-header">
+        <div class="icon-circle" style="background:${hexToRgba('#2F7A78',0.14)}; color:#2F7A78;">${ic('users',21)}</div>
+        <div><h2>Certificados de manipulación de alimentos</h2><div class="path">${certLastRuta}</div></div>
+      </div>
+      <div style="padding:14px 16px;">
+        <p style="font-size:12.5px;color:var(--text-light);margin:0 0 12px;background:var(--marfil);padding:10px 12px;border-radius:8px;">Innovafood todavía no ha definido una vigencia oficial para el certificado de manipulación de alimentos; por eso este valor es ajustable — se usa solo para calcular la alerta de vencimiento.</p>
+        <div class="form-field" style="max-width:260px;"><label>Vigencia del certificado (meses)</label><input type="number" min="1" value="${certVigenciaMeses()}" onchange="certGuardarVigencia(this.value)"></div>
+        <table class="mini-table" style="margin-top:14px;">
+          <thead><tr><th>Empleado</th><th>Cargo</th><th>Fecha del examen</th><th>Estado</th></tr></thead>
+          <tbody>${filasHtml}</tbody>
+        </table>
+      </div>
+    </div>`;
+  document.getElementById('content').innerHTML = html;
+  if(window.innerWidth <= 820) document.getElementById('sidebar').classList.remove('open');
 }
 
 /* ==================================================================
@@ -9315,6 +9956,60 @@ const MANT_HISTORIAL_SEED = [
 
 if(!DB.get('mant_equipos')){ DB.set('mant_equipos', MANT_EQUIPOS_SEED); }
 if(!DB.get('mant_equipo_historial')){ DB.set('mant_equipo_historial', MANT_HISTORIAL_SEED); }
+
+// Migración de Calidad (versión 1): fusiona el cronograma de mantenimiento
+// de equipos de cocina que comparte Innovafood (ingeniería de alimentos a
+// cargo de calidad) dentro de este mismo módulo de Mantenimiento, en vez
+// de crear un módulo aparte — así el equipo de Córdova sigue viendo TODOS
+// sus equipos en un solo lugar (pedido de Harol). Se ejecuta una sola vez
+// y funciona tanto en instalaciones nuevas como en la base de datos ya en
+// producción (mismo patrón que inv_v2_version). De los 28 equipos del
+// cronograma de Innovafood, 6 ya existían en MANT_EQUIPOS_SEED con otro
+// nombre (Horno Rational, Base chef, Tajadora, Batidora, Circulador/sous
+// vide y Lavavajillas): a esos se les agrega marca/serial en su hoja de
+// vida en vez de duplicarlos; los otros 22 se agregan como equipos nuevos.
+if((DB.get('mant_equipos_calidad_version', 0)) < 1){
+  const equiposCal = DB.get('mant_equipos', []);
+  function calAgregarNotaHojaVida(id, nota){
+    const eq = equiposCal.find(e=>e.id===id);
+    if(eq) eq.hojaVida = (eq.hojaVida ? eq.hojaVida + ' ' : '') + nota;
+  }
+  calAgregarNotaHojaVida('seed_eq_rational', 'Serial (cronograma Innovafood): G11SJ25023204848. Técnico asignado: Refriwilliam.');
+  calAgregarNotaHojaVida('seed_eq_runner', 'El cronograma de mantenimiento de Innovafood lo registra con marca Pallomaro — confirmar con cocina si es el mismo equipo.');
+  calAgregarNotaHojaVida('seed_eq_basechef4', 'Coincide con el ítem "Base chef refrigerada" del cronograma de mantenimiento de Innovafood (marca Wonder).');
+  calAgregarNotaHojaVida('seed_eq_meatslicer', 'Marca (cronograma Innovafood): Pallomaro. Serial: 00-27712.');
+  calAgregarNotaHojaVida('seed_eq_batidora', 'Serial (cronograma Innovafood): 00-22032.');
+  calAgregarNotaHojaVida('seed_eq_lavavajillas', 'Marca (cronograma Innovafood): Winterhalter, modelo P50. Serial: 42028056.');
+
+  const CAL_EQUIPOS_NUEVOS = [
+    { id:'cal_eq_2', nombre:'Horno de carbón', area:'cocina', marca:'Tornado', modelo:'', ubicacion:'Cocina', fechaCompra:'', valor:null, hojaVida:'Importado del cronograma de mantenimiento de equipos de Innovafood (2026).', factura:null, foto:null, frecuenciaDias:null, tareasPreventivas:'', proximoMantenimiento:null, activo:true, sede:'chinu', creadoPor:'Importado — cronograma de mantenimiento de equipos (Innovafood)', fecha: hoyStr() },
+    { id:'cal_eq_5', nombre:'Refrigerador industrial horizontal', area:'cocina', marca:'Tornado', modelo:'', ubicacion:'Cocina', fechaCompra:'', valor:null, hojaVida:'Serial (cronograma Innovafood): 25028371.', factura:null, foto:null, frecuenciaDias:null, tareasPreventivas:'', proximoMantenimiento:null, activo:true, sede:'chinu', creadoPor:'Importado — cronograma de mantenimiento de equipos (Innovafood)', fecha: hoyStr() },
+    { id:'cal_eq_6', nombre:'Estufa industrial principal', area:'cocina', marca:'', modelo:'', ubicacion:'Cocina', fechaCompra:'', valor:null, hojaVida:'Importado del cronograma de mantenimiento de equipos de Innovafood (2026).', factura:null, foto:null, frecuenciaDias:null, tareasPreventivas:'', proximoMantenimiento:null, activo:true, sede:'chinu', creadoPor:'Importado — cronograma de mantenimiento de equipos (Innovafood)', fecha: hoyStr() },
+    { id:'cal_eq_7', nombre:'Freidora en acero inoxidable', area:'cocina', marca:'', modelo:'', ubicacion:'Cocina', fechaCompra:'', valor:null, hojaVida:'Importado del cronograma de mantenimiento de equipos de Innovafood (2026).', factura:null, foto:null, frecuenciaDias:null, tareasPreventivas:'', proximoMantenimiento:null, activo:true, sede:'chinu', creadoPor:'Importado — cronograma de mantenimiento de equipos (Innovafood)', fecha: hoyStr() },
+    { id:'cal_eq_8', nombre:'Refrigerador industrial vertical (mariscos)', area:'cocina', marca:'Wonder', modelo:'WCV-310', ubicacion:'Cocina', fechaCompra:'', valor:null, hojaVida:'Importado del cronograma de mantenimiento de equipos de Innovafood (2026).', factura:null, foto:null, frecuenciaDias:null, tareasPreventivas:'', proximoMantenimiento:null, activo:true, sede:'chinu', creadoPor:'Importado — cronograma de mantenimiento de equipos (Innovafood)', fecha: hoyStr() },
+    { id:'cal_eq_9', nombre:'Refrigerador industrial vertical (mostrador)', area:'cocina', marca:'Kelley', modelo:'K-SC309L', ubicacion:'Cocina', fechaCompra:'', valor:null, hojaVida:'Importado del cronograma de mantenimiento de equipos de Innovafood (2026).', factura:null, foto:null, frecuenciaDias:null, tareasPreventivas:'', proximoMantenimiento:null, activo:true, sede:'chinu', creadoPor:'Importado — cronograma de mantenimiento de equipos (Innovafood)', fecha: hoyStr() },
+    { id:'cal_eq_10', nombre:'Congelador (filetes / punta de anca)', area:'cocina', marca:'Challenger', modelo:'', ubicacion:'Cocina', fechaCompra:'', valor:null, hojaVida:'Importado del cronograma de mantenimiento de equipos de Innovafood (2026).', factura:null, foto:null, frecuenciaDias:null, tareasPreventivas:'', proximoMantenimiento:null, activo:true, sede:'chinu', creadoPor:'Importado — cronograma de mantenimiento de equipos (Innovafood)', fecha: hoyStr() },
+    { id:'cal_eq_11', nombre:'Refrigerador vertical (Corona)', area:'cocina', marca:'Imbera', modelo:'', ubicacion:'Cocina', fechaCompra:'', valor:null, hojaVida:'Importado del cronograma de mantenimiento de equipos de Innovafood (2026).', factura:null, foto:null, frecuenciaDias:null, tareasPreventivas:'', proximoMantenimiento:null, activo:true, sede:'chinu', creadoPor:'Importado — cronograma de mantenimiento de equipos (Innovafood)', fecha: hoyStr() },
+    { id:'cal_eq_12', nombre:'Congelador (papa francesa / comida del personal)', area:'cocina', marca:'Challenger', modelo:'', ubicacion:'Cocina', fechaCompra:'', valor:null, hojaVida:'Serial (cronograma Innovafood): 220913-02076.', factura:null, foto:null, frecuenciaDias:null, tareasPreventivas:'', proximoMantenimiento:null, activo:true, sede:'chinu', creadoPor:'Importado — cronograma de mantenimiento de equipos (Innovafood)', fecha: hoyStr() },
+    { id:'cal_eq_13', nombre:'Congelador horizontal de apoyo (nuevo 1)', area:'cocina', marca:'Electrolux', modelo:'', ubicacion:'Cocina', fechaCompra:'2026-04-15', valor:null, hojaVida:'Serial (cronograma Innovafood): 54802142.', factura:null, foto:null, frecuenciaDias:null, tareasPreventivas:'', proximoMantenimiento:null, activo:true, sede:'chinu', creadoPor:'Importado — cronograma de mantenimiento de equipos (Innovafood)', fecha: hoyStr() },
+    { id:'cal_eq_14', nombre:'Congelador horizontal de apoyo (nuevo 2)', area:'cocina', marca:'Electrolux', modelo:'', ubicacion:'Cocina', fechaCompra:'2026-04-15', valor:null, hojaVida:'Serial (cronograma Innovafood): 60308042.', factura:null, foto:null, frecuenciaDias:null, tareasPreventivas:'', proximoMantenimiento:null, activo:true, sede:'chinu', creadoPor:'Importado — cronograma de mantenimiento de equipos (Innovafood)', fecha: hoyStr() },
+    { id:'cal_eq_16', nombre:'Cutter de vegetales', area:'cocina', marca:'Pallomaro', modelo:'', ubicacion:'Cocina', fechaCompra:'', valor:null, hojaVida:'Serial (cronograma Innovafood): 00-27723.', factura:null, foto:null, frecuenciaDias:null, tareasPreventivas:'', proximoMantenimiento:null, activo:true, sede:'chinu', creadoPor:'Importado — cronograma de mantenimiento de equipos (Innovafood)', fecha: hoyStr() },
+    { id:'cal_eq_17', nombre:'Congelador horizontal de bodega (lado Corona)', area:'cocina', marca:'', modelo:'', ubicacion:'Bodega', fechaCompra:'', valor:null, hojaVida:'Importado del cronograma de mantenimiento de equipos de Innovafood (2026).', factura:null, foto:null, frecuenciaDias:null, tareasPreventivas:'', proximoMantenimiento:null, activo:true, sede:'chinu', creadoPor:'Importado — cronograma de mantenimiento de equipos (Innovafood)', fecha: hoyStr() },
+    { id:'cal_eq_18', nombre:'Empacadora al vacío', area:'cocina', marca:'Pallomaro', modelo:'', ubicacion:'Cocina', fechaCompra:'', valor:null, hojaVida:'Serial (cronograma Innovafood): C1612507001.', factura:null, foto:null, frecuenciaDias:null, tareasPreventivas:'', proximoMantenimiento:null, activo:true, sede:'chinu', creadoPor:'Importado — cronograma de mantenimiento de equipos (Innovafood)', fecha: hoyStr() },
+    { id:'cal_eq_20', nombre:'Licuadora industrial', area:'cocina', marca:'Acies', modelo:'', ubicacion:'Cocina', fechaCompra:'', valor:null, hojaVida:'Importado del cronograma de mantenimiento de equipos de Innovafood (2026).', factura:null, foto:null, frecuenciaDias:null, tareasPreventivas:'', proximoMantenimiento:null, activo:true, sede:'chinu', creadoPor:'Importado — cronograma de mantenimiento de equipos (Innovafood)', fecha: hoyStr() },
+    { id:'cal_eq_22', nombre:'Congelador de apoyo 608 LT horizontal', area:'cocina', marca:'Electrolux', modelo:'', ubicacion:'Cocina', fechaCompra:'', valor:null, hojaVida:'Serial (cronograma Innovafood): 51802797.', factura:null, foto:null, frecuenciaDias:null, tareasPreventivas:'', proximoMantenimiento:null, activo:true, sede:'chinu', creadoPor:'Importado — cronograma de mantenimiento de equipos (Innovafood)', fecha: hoyStr() },
+    { id:'cal_eq_23', nombre:'Estufa industrial pequeña', area:'cocina', marca:'', modelo:'', ubicacion:'Cocina', fechaCompra:'', valor:null, hojaVida:'Importado del cronograma de mantenimiento de equipos de Innovafood (2026).', factura:null, foto:null, frecuenciaDias:null, tareasPreventivas:'', proximoMantenimiento:null, activo:true, sede:'chinu', creadoPor:'Importado — cronograma de mantenimiento de equipos (Innovafood)', fecha: hoyStr() },
+    { id:'cal_eq_24', nombre:'Refrigerador mostrador de guisos (doble puerta)', area:'cocina', marca:'Wonder', modelo:'', ubicacion:'Cocina', fechaCompra:'', valor:null, hojaVida:'Importado del cronograma de mantenimiento de equipos de Innovafood (2026).', factura:null, foto:null, frecuenciaDias:null, tareasPreventivas:'', proximoMantenimiento:null, activo:true, sede:'chinu', creadoPor:'Importado — cronograma de mantenimiento de equipos (Innovafood)', fecha: hoyStr() },
+    { id:'cal_eq_25', nombre:'Congelador horizontal de coctelería', area:'bar', marca:'Wonder Cool', modelo:'WC-360CV', ubicacion:'Coctelería', fechaCompra:'', valor:null, hojaVida:'Importado del cronograma de mantenimiento de equipos de Innovafood (2026).', factura:null, foto:null, frecuenciaDias:null, tareasPreventivas:'', proximoMantenimiento:null, activo:true, sede:'chinu', creadoPor:'Importado — cronograma de mantenimiento de equipos (Innovafood)', fecha: hoyStr() },
+    { id:'cal_eq_26', nombre:'Granizadora de 1 puesto industrial', area:'bar', marca:'', modelo:'', ubicacion:'Bar', fechaCompra:'', valor:null, hojaVida:'Importado del cronograma de mantenimiento de equipos de Innovafood (2026).', factura:null, foto:null, frecuenciaDias:null, tareasPreventivas:'', proximoMantenimiento:null, activo:true, sede:'chinu', creadoPor:'Importado — cronograma de mantenimiento de equipos (Innovafood)', fecha: hoyStr() },
+    { id:'cal_eq_27', nombre:'Licuadora granizadora', area:'bar', marca:'Pallomaro', modelo:'', ubicacion:'Bar', fechaCompra:'', valor:null, hojaVida:'Importado del cronograma de mantenimiento de equipos de Innovafood (2026).', factura:null, foto:null, frecuenciaDias:null, tareasPreventivas:'', proximoMantenimiento:null, activo:true, sede:'chinu', creadoPor:'Importado — cronograma de mantenimiento de equipos (Innovafood)', fecha: hoyStr() },
+    { id:'cal_eq_28', nombre:'Congelador horizontal mediano (zona bar)', area:'bar', marca:'', modelo:'', ubicacion:'Bar', fechaCompra:'', valor:null, hojaVida:'Importado del cronograma de mantenimiento de equipos de Innovafood (2026).', factura:null, foto:null, frecuenciaDias:null, tareasPreventivas:'', proximoMantenimiento:null, activo:true, sede:'chinu', creadoPor:'Importado — cronograma de mantenimiento de equipos (Innovafood)', fecha: hoyStr() }
+  ];
+  const idsExistentesCal = new Set(equiposCal.map(e=>e.id));
+  CAL_EQUIPOS_NUEVOS.forEach(function(eq){ if(!idsExistentesCal.has(eq.id)) equiposCal.push(eq); });
+  DB.set('mant_equipos', equiposCal);
+  DB.set('mant_equipos_calidad_version', 1);
+}
 
 let mantLastRuta = '';
 let mantActiveTab = 'equipos';
