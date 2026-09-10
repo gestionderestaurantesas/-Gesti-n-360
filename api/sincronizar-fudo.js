@@ -319,7 +319,7 @@ module.exports = async (req, res) => {
         ventasCerradas: resumen.ventasCantidad,
       };
     } catch (error) {
-      resultados[sede.id] = { error: error.message };
+      resultados[sede.id] = { error: error.message, detalle: error.stack };
     }
   }
 
