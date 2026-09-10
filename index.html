@@ -1804,7 +1804,7 @@ function renderEncuestaPublicaChinu(){
   // consistente. La calificación general se ve más grande porque es la
   // pregunta principal.
   const botonesCalif = [1,2,3,4,5].map(n =>
-    `<button type="button" class="epc-calif-btn" data-n="${n}" onclick="encuestaPublicaSetCalif(${n})" style="background:none;border:none;font-size:42px;cursor:pointer;padding:2px 4px;line-height:1;color:#d8cdb3;">★</button>`
+    `<button type="button" class="epc-calif-btn" data-n="${n}" onclick="encuestaPublicaSetCalif(${n})" style="background:none;border:none;cursor:pointer;padding:2px 4px;display:flex;flex-direction:column;align-items:center;gap:2px;flex:1;"><span class="epc-calif-star" style="font-size:38px;line-height:1;color:#d8cdb3;">★</span><span style="font-size:12px;font-weight:700;color:var(--espresso);">${n}</span></button>`
   ).join('');
   const meserosOpts = ENCUESTA_PUBLICA_MESEROS_CHINU.map(m => `<option value="${m}">${m}</option>`).join('');
   const aspectosHtml = ENCUESTA_PUBLICA_ASPECTOS.map(a => `
@@ -1825,7 +1825,7 @@ function renderEncuestaPublicaChinu(){
         <div id="epcErrorBox"></div>
 
         <label style="display:block;font-weight:700;color:var(--espresso);margin-bottom:10px;font-size:14.5px;">¿Qué calificación le das a tu experiencia de hoy? *</label>
-        <div id="epcCalifRow" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:6px;">${botonesCalif}</div>
+        <div id="epcCalifRow" style="display:flex;width:100%;gap:4px;margin-bottom:6px;">${botonesCalif}</div>
         <div style="display:flex;justify-content:space-between;font-size:11px;color:#8a7960;margin-bottom:16px;"><span>1 = muy mala</span><span>5 = excelente</span></div>
 
         <div style="border-top:1px solid #efe6d3;padding-top:14px;margin-bottom:2px;">
@@ -1871,10 +1871,13 @@ function renderEncuestaPublicaChinu(){
 function encuestaPublicaSetCalif(n){
   encuestaPublicaCalif = n;
   // Relleno acumulativo de estrellas (1 a n quedan doradas), igual
-  // criterio visual que los aspectos específicos de más abajo.
+  // criterio visual que los aspectos específicos de más abajo. El color
+  // se pinta en el <span> de la estrella, no en el botón (el número va
+  // en un <span> aparte, siempre en el color de texto normal).
   document.querySelectorAll('.epc-calif-btn').forEach(btn=>{
     const activo = Number(btn.getAttribute('data-n')) <= n;
-    btn.style.color = activo ? 'var(--bronce)' : '#d8cdb3';
+    const star = btn.querySelector('.epc-calif-star');
+    if(star) star.style.color = activo ? 'var(--bronce)' : '#d8cdb3';
   });
   const wrap = document.getElementById('epcComentarioWrap');
   if(wrap) wrap.style.display = (n < 5) ? 'block' : 'none';
