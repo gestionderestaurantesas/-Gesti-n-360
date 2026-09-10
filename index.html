@@ -21037,7 +21037,24 @@ const ENCUESTA_MESEROS_CHINU = ['Sandy','Luisa','Astrid','Joenis','Roger','Jesú
 // Devuelve el roster correcto según la sede activa: Montería sigue con su
 // lista de siempre, Chinú usa la suya, y gerencia ("todas") ve ambas para
 // que las estadísticas por mesero no dejen a nadie afuera.
+let encuestaSedeVista = 'todas'; // 'todas' | 'chinu' | 'monteria' — selector visible solo para gerencia
+function encuestaSetSedeVista(sec, val){
+  encuestaSedeVista = val;
+  renderEncuestaModule(sec, null, null, encuestaLastRuta);
+}
+// Filtra las respuestas ya limitadas por sede de sesión (filtrarPorSede,
+// que solo restringe si SESSION.sede no es "todas") y les aplica ADEMÁS
+// el selector de pestaña Chinú/Montería que gerencia puede elegir para
+// ver las dos sedes por separado en vez de mezcladas.
+function encuestaArrSedeVista(){
+  const arr = filtrarPorSede(DB.get('encuesta_satisfaccion', []));
+  if(encuestaSedeVista === 'chinu') return arr.filter(r => (r.sede||'').toLowerCase() === 'chinu');
+  if(encuestaSedeVista === 'monteria') return arr.filter(r => (r.sede||'').toLowerCase() !== 'chinu');
+  return arr;
+}
 function ENCUESTA_MESEROS_POR_SEDE(){
+  if(encuestaSedeVista === 'chinu') return ENCUESTA_MESEROS_CHINU;
+  if(encuestaSedeVista === 'monteria') return ENCUESTA_MESEROS_MONTERIA;
   const s = SESSION && SESSION.sede;
   if(s === 'chinu') return ENCUESTA_MESEROS_CHINU;
   if(s === 'todas') return ENCUESTA_MESEROS_MONTERIA.concat(ENCUESTA_MESEROS_CHINU);
@@ -21164,7 +21181,7 @@ function encuestaKpiPorMesero(fechaRef){
   const dMes = new Date(hoy+'T00:00:00');
   const mesAnteriorDesde = pvFmtYMD(new Date(dMes.getFullYear(), dMes.getMonth()-1, 1));
   const mesAnteriorHasta = pvFmtYMD(new Date(dMes.getFullYear(), dMes.getMonth(), 0));
-  const arr = filtrarPorSede(DB.get('encuesta_satisfaccion', [])).filter(r=>encuestaMeseroCanonico(r.mesero));
+  const arr = encuestaArrSedeVista().filter(r=>encuestaMeseroCanonico(r.mesero));
   const contar = pred => {
     const m = new Map();
     arr.forEach(r=>{ if(pred(r)){ const k=encuestaMeseroCanonico(r.mesero); m.set(k,(m.get(k)||0)+1); } });
@@ -21290,7 +21307,7 @@ function encuestaAspectosChinuHtml(todas){
     </div>`;
 }
 function encuestaResumenHtml(sec){
-  const todas = filtrarPorSede(DB.get('encuesta_satisfaccion', []));
+  const todas = encuestaArrSedeVista();
   const total = todas.length;
   const promedioGeneral = total ? Math.round((todas.reduce((a,r)=>a+(Number(r.calificacion)||0),0)/total)*10)/10 : 0;
   const cinco = todas.filter(r=>Number(r.calificacion)===5).length;
@@ -21310,7 +21327,7 @@ function encuestaResumenHtml(sec){
     <div class="form-section-title" style="margin-top:0;">Sincronización</div>
     ${encuestaSyncBannerHtml()}
 
-    ${encuestaQrChinuHtml()}
+    ${encuestaSedeVista === 'monteria' ? '' : encuestaQrChinuHtml()}
 
     <div class="module-grid" style="margin:18px 0;">
       <div class="module-card" style="cursor:default;"><div class="icon-circle" style="background:${hexToRgba(sec.color,0.14)};color:${sec.color};">${ic('star',22)}</div><h3>${total}</h3><p>Respuestas totales</p></div>
@@ -21348,7 +21365,7 @@ function encuestaResumenHtml(sec){
   `;
 }
 function encuestaTodasHtml(){
-  const todas = filtrarPorSede(DB.get('encuesta_satisfaccion', [])).slice().sort((a,b)=>String(b.fecha).localeCompare(String(a.fecha)));
+  const todas = encuestaArrSedeVista().slice().sort((a,b)=>String(b.fecha).localeCompare(String(a.fecha)));
   const filtradas = encuestaFiltrarBusqueda(todas, encuestaBusqueda);
   return `
     <div class="form-section-title" style="margin-top:0;">Todas las reseñas (${filtradas.length} de ${todas.length})</div>
@@ -21368,13 +21385,24 @@ function renderEncuestaModule(sec, group, item, ruta){
   const tabsHtml = TABS.map(t=>`<button class="tab-btn ${t.id===encuestaActiveTab?'active':''}" onclick="encuestaSetTab(NAV.find(s=>s.id==='operacion'), '${t.id}')">${ic(t.icon,14)}${t.label}</button>`).join('');
   const bodyHtml = encuestaActiveTab==='todas' ? encuestaTodasHtml() : encuestaResumenHtml(sec);
 
+  // Selector Chinú / Montería / Ambas — solo tiene sentido para gerencia
+  // (SESSION.sede === 'todas'); una cuenta ya limitada a una sola sede no
+  // necesita elegir, porque filtrarPorSede ya la deja ver solo la suya.
+  const sedeVistaHtml = (SESSION && SESSION.sede === 'todas') ? `
+    <div class="tab-bar" style="margin-bottom:14px;">
+      <button class="tab-btn ${encuestaSedeVista==='todas'?'active':''}" onclick="encuestaSetSedeVista(NAV.find(s=>s.id==='operacion'), 'todas')">Ambas sedes</button>
+      <button class="tab-btn ${encuestaSedeVista==='chinu'?'active':''}" onclick="encuestaSetSedeVista(NAV.find(s=>s.id==='operacion'), 'chinu')">Chinú</button>
+      <button class="tab-btn ${encuestaSedeVista==='monteria'?'active':''}" onclick="encuestaSetSedeVista(NAV.find(s=>s.id==='operacion'), 'monteria')">Montería</button>
+    </div>` : '';
+
   const html = `
     <div class="panel">
       <div class="panel-header">
         <div class="icon-circle" style="background:${hexToRgba(sec.color,0.14)}; color:${sec.color};">${ic('star',21)}</div>
         <div><h2>Encuesta de satisfacción</h2><div class="path">${ruta || encuestaLastRuta}</div></div>
       </div>
-      <div class="tabs" style="margin-bottom:18px;">${tabsHtml}</div>
+      <div class="tabs" style="margin-bottom:14px;">${tabsHtml}</div>
+      ${sedeVistaHtml}
       ${bodyHtml}
     </div>`;
   document.getElementById('content').innerHTML = html;
