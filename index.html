@@ -3182,7 +3182,13 @@ function homeDatosDelDia(){
   }catch(e){ resultados = []; }
   const total = resultados.length;
   const cumplidos = resultados.filter(r => r.cumplido).length;
+  // "pendientes" aquí ya se muestra en Inicio con esa palabra (no como
+  // "incumplimientos"), así que semánticamente estaba bien — pero F06
+  // agrega el desglose real entre lo que apenas está por cumplirse
+  // (plazo futuro) y lo que ya venció, para que otras pantallas puedan
+  // usar el dato correcto sin recalcularlo.
   const pendientes = total - cumplidos;
+  const vencidos = resultados.filter(r => r.estado === 'vencido').length;
   const pct = total ? Math.round((cumplidos / total) * 100) : 0;
   const mapa = {};
   resultados.forEach(r => {
@@ -3197,7 +3203,7 @@ function homeDatosDelDia(){
   let incidentes = 0, mantenimiento = 0;
   try{ incidentes = filtrarPorSede(DB.get('incidentes', [])).filter(r => r.estado !== 'cerrado').length; }catch(e){}
   try{ mantenimiento = filtrarPorSede(DB.get('mant_solicitudes', [])).filter(s => s.estado !== 'cerrada').length; }catch(e){}
-  return { hoy:hoy, total:total, cumplidos:cumplidos, pendientes:pendientes, pct:pct, areas:areas, incidentes:incidentes, mantenimiento:mantenimiento };
+  return { hoy:hoy, total:total, cumplidos:cumplidos, pendientes:pendientes, vencidos:vencidos, pct:pct, areas:areas, incidentes:incidentes, mantenimiento:mantenimiento };
 }
 
 /* Navegación desde el tablero: siempre resolviendo contra el índice de
@@ -3845,7 +3851,10 @@ function topbarNotificacionesDatos(){
   const notifs = [];
   try{
     if(typeof incumplimientosDetectarDia === 'function'){
-      const n = incumplimientosDetectarDia(hoyStr()).filter(r => !r.cumplido).length;
+      // F06: solo cuenta como incumplimiento lo que ya está VENCIDO (plazo
+      // pasado y sin entregar) — lo "pendiente" (plazo futuro) no debe
+      // generar una notificación de incumplimiento.
+      const n = incumplimientosDetectarDia(hoyStr()).filter(r => r.estado === 'vencido').length;
       if(n > 0) notifs.push({
         titulo: n + ' incumplimiento' + (n===1?'':'s') + ' de checklist hoy', detalle:'Reporte general 360 → Incumplimientos',
         accion: function(){ openModuleById('gerencia','general','ger_reporte_general360'); setTimeout(function(){ if(typeof reporteGeneral360SetTab==='function') reporteGeneral360SetTab('incumplimientos'); }, 60); }
@@ -4505,6 +4514,19 @@ function hoyStr(){
   return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
 }
 function horaStr(){ return new Date().toLocaleTimeString('es-CO', {hour:'2-digit', minute:'2-digit'}); }
+// Minutos desde medianoche, en hora LOCAL del dispositivo (mismo criterio
+// que hoyStr: se arma con componentes locales, no con UTC). F06 del
+// informe de auditoría pide interpretar la hora operativa en
+// America/Bogota "incluso si el dispositivo tiene otra zona horaria" —
+// en la práctica todos los equipos del restaurante están físicamente en
+// Chinú (Colombia) y ya usan hora local de Colombia, así que no se
+// construyó aquí un cálculo con Intl.DateTimeFormat({timeZone:'America/Bogota'})
+// solo para este caso; si algún día se opera con un dispositivo fuera de
+// Colombia, este es el punto único a corregir para forzar la zona horaria.
+function horaMinutosAhora(){
+  const d = new Date();
+  return d.getHours()*60 + d.getMinutes();
+}
 function sedeActivaFiltro(){ return SESSION.sede === 'todas' ? null : SESSION.sede; }
 function filtrarPorSede(arr){
   const s = sedeActivaFiltro();
@@ -7475,6 +7497,14 @@ function calInformesGenerar(){
    generales, Tecnología, Insumos, Equipo y utensilios, Limpieza e
    inocuidad y Cierre (con evidencia fotográfica). Colección: mise_cocina.
    ================================================================== */
+// F08 (informe de auditoría): este arreglo fijo de nombres vivía separado
+// del catálogo real de usuarios (colección "usuarios", la misma que usa
+// personalDeSede()/planifUsuariosDisponibles()) — un empleado desactivado
+// en Usuarios seguía apareciendo aquí como opción de responsable, y un
+// empleado nuevo no aparecía hasta editar el HTML. Se conserva solo como
+// semilla de respaldo por si el catálogo real está vacío; el selector de
+// abajo (miseCocinaDatosGeneralesHtml) ahora arma sus opciones desde
+// personalDeSede(), igual que los demás selectores de responsable.
 const MISE_COCINA_PERSONAL = ['Michael','Maira','Iván','Isidoro','Hernando','Miguel','Adrián','Juan','David'];
 const MISE_COCINA_TURNOS = ['Mañana','Tarde','Noche'];
 const MISE_COCINA_TECNOLOGIA_COMUN = ['Conexión a internet estable y funcional en pantalla','Productos configurados en pantalla de la estación'];
@@ -7626,7 +7656,13 @@ function miseCocinaSeccionHtml(titulo, items, prefijo, si, no){
   return `<div class="form-section-title">${titulo}</div>${filas}`;
 }
 function miseCocinaDatosGeneralesHtml(){
-  const personalOptions = MISE_COCINA_PERSONAL.map(p=>`<option value="${p}" ${miseCocinaResponsable===p?'selected':''}>${p}</option>`).join('');
+  // F08: usar el catálogo real de usuarios activos de la sede (mismo que
+  // el resto de la app) en vez del arreglo fijo MISE_COCINA_PERSONAL, para
+  // que un empleado desactivado deje de aparecer aquí también.
+  let nombresPersonal = [];
+  try{ nombresPersonal = personalDeSede().map(u => u.nombre).filter(Boolean); }catch(e){}
+  if(!nombresPersonal.length) nombresPersonal = MISE_COCINA_PERSONAL; // respaldo si el catálogo real está vacío
+  const personalOptions = nombresPersonal.map(p=>`<option value="${p}" ${miseCocinaResponsable===p?'selected':''}>${p}</option>`).join('');
   const turnoOptions = MISE_COCINA_TURNOS.map(t=>`<option value="${t}" ${miseCocinaTurno===t?'selected':''}>${t}</option>`).join('');
   return `
     <div class="form-section-title" style="margin-top:0;">📋 Datos generales</div>
@@ -7735,6 +7771,14 @@ function guardarMiseCocina(){
   const limpieza = armarItems(cfg.limpieza, 'lim');
   const todosItems = [...tecnologia, ...insumos, ...equipo, ...limpieza];
   const itemsOk = todosItems.filter(i => i.val === 'Sí' || i.val === 'Cumple').length;
+  const sinResponder = todosItems.filter(i => i.val === null).length;
+  // No permitir marcar "lista para operar" (listo:'Sí') si quedaron
+  // puntos del checklist sin contestar — antes esto se guardaba como
+  // un checklist "cumplido" con 0 de N puntos respondidos.
+  if(sinResponder > 0){
+    showMsg('mc_msg', `Faltan ${sinResponder} punto(s) del checklist por responder antes de guardar.`, 'rojo');
+    return;
+  }
 
   const ahora = new Date();
   const registro = {
@@ -8637,28 +8681,73 @@ function incumplimientosUltimoRegistro(coleccion, fecha, filtro){
   return arr[arr.length - 1];
 }
 
+// F06 (informe de auditoría): "pendiente" no es sinónimo de "vencido".
+// Antes, todo lo que no estuviera marcado como cumplido se presentaba
+// como incumplimiento, sin mirar si el plazo ya había pasado — un
+// checklist previsto para la tarde aparecía como incumplido desde la
+// mañana. estadoIncumplimiento() centraliza esa clasificación para que
+// Inicio, Reportes y la campana de notificaciones usen el mismo criterio.
+//
+// Solo las definiciones tipo 'mise_cocina' traen un plazo real
+// (checkpointMin, ya usado por la alarma en vivo del módulo de mise en
+// place). Las de tipo 'area_listo' y 'existencia' (aperturas, cierres,
+// alistamientos, briefings, aseo, prueba de preparaciones) NO tienen hoy
+// una hora de corte definida en INCUMPLIMIENTOS_DEFINICIONES. En vez de
+// inventar una hora por ítem sin confirmarla con Harol, se usa un plazo
+// por defecto al cierre del día (23:59): así nunca se marcan como
+// "vencidos" antes de tiempo (cumple el criterio de aceptación de no
+// marcar como vencidos los cierres nocturnos al inicio del día) y quedan
+// como "pendiente" durante toda la jornada hasta que se completan o
+// termina el día. Esto es una simplificación deliberada — lo ideal sería
+// que cada checklist (sobre todo los de apertura y alistamiento, que
+// operativamente deberían vencer a medio día) tenga su propia hora de
+// corte, pero eso requiere que Harol confirme tolerancias por checklist;
+// queda pendiente de decidir con él.
+const INCUMPLIMIENTOS_CHECKPOINT_DEFAULT_MIN = 23*60 + 59;
+function estadoIncumplimiento(def, cumplido, ahoraMin){
+  if(cumplido) return 'cumplido';
+  const plazoMin = (def && def.tipo === 'mise_cocina' && def.checkpointMin != null)
+    ? def.checkpointMin
+    : INCUMPLIMIENTOS_CHECKPOINT_DEFAULT_MIN;
+  const ahora = (ahoraMin == null) ? horaMinutosAhora() : ahoraMin;
+  return ahora > plazoMin ? 'vencido' : 'pendiente';
+}
+
 // Evalúa las INCUMPLIMIENTOS_DEFINICIONES para una fecha puntual y
 // regresa un arreglo con el resultado de cada una: si se cumplió, quién
-// aparece como responsable (cuando el registro lo trae) y el motivo del
-// incumplimiento cuando aplica.
+// aparece como responsable (cuando el registro lo trae), el motivo del
+// incumplimiento cuando aplica y el estado (cumplido/pendiente/vencido).
+// NOTA: el campo "estado" solo tiene sentido cuando "fecha" es HOY — para
+// fechas pasadas, incumplimientosSinDatosAntesDeAhora ya no aplica y todo
+// lo no cumplido debería tratarse como vencido (el día ya cerró).
 function incumplimientosDetectarDia(fecha){
+  const esHoy = fecha === hoyStr();
+  const ahoraMin = esHoy ? horaMinutosAhora() : (24*60 + 1); // fecha pasada: todo el día ya venció
   return INCUMPLIMIENTOS_DEFINICIONES.map(def => {
     if(def.tipo === 'mise_cocina'){
       const sedeReporte = sedeParaGuardar();
       const registros = DB.get('mise_cocina', []).filter(r => r && r.estacion === def.estacion && r.fecha === fecha && (!sedeReporte || !r.sede || r.sede === sedeReporte));
       const desdeMin = Math.max(0, def.checkpointMin - 240);
       const reg = registros.find(r => r.horaMinutos == null || (r.horaMinutos >= desdeMin && r.horaMinutos <= def.checkpointMin));
+      // Un registro que existe pero quedó con listo:false (o sin
+      // contestar los puntos, en checklists guardados antes de esta
+      // corrección) no cuenta como cumplido — antes bastaba con que
+      // existiera CUALQUIER registro, aunque estuviera incompleto.
+      const cumplidoMise = !!(reg && reg.listo === true);
       return {
-        defId: def.id, label: def.label, cumplido: !!reg,
+        defId: def.id, label: def.label, cumplido: cumplidoMise,
+        estado: estadoIncumplimiento(def, cumplidoMise, ahoraMin),
         responsable: reg ? (reg.responsable || reg.nombre || '') : '',
         hora: reg ? reg.hora : '',
-        motivo: reg ? '' : def.motivoFaltante
+        motivo: !reg ? def.motivoFaltante : (cumplidoMise ? '' : 'Se registró, pero quedó incompleto o sin marcar como listo.')
       };
     }
     if(def.tipo === 'existencia'){
       const reg = incumplimientosUltimoRegistro(def.coleccion, fecha, null);
+      const cumplidoExist = !!reg;
       return {
-        defId: def.id, label: def.label, cumplido: !!reg,
+        defId: def.id, label: def.label, cumplido: cumplidoExist,
+        estado: estadoIncumplimiento(def, cumplidoExist, ahoraMin),
         responsable: reg ? (reg.creadoPor || '') : '',
         hora: reg && reg.creadoEn ? new Date(reg.creadoEn).toLocaleTimeString('es-CO', {hour:'2-digit', minute:'2-digit'}) : '',
         motivo: reg ? '' : def.motivoFaltante
@@ -8669,6 +8758,7 @@ function incumplimientosDetectarDia(fecha){
     const cumplido = !!(reg && (reg.listo === true || reg.listo === 'Sí' || reg.listo === 'Cumple'));
     return {
       defId: def.id, label: def.label, cumplido,
+      estado: estadoIncumplimiento(def, cumplido, ahoraMin),
       responsable: reg ? (reg.responsable || reg.nombre || reg.usuario || '') : '',
       hora: reg ? reg.hora : '',
       motivo: !reg ? def.motivoFaltante : (cumplido ? '' : 'Se registró, pero quedó sin marcar como completado ("listo").')
@@ -13714,15 +13804,20 @@ function renderIncumplimientosModule(sec, group, item, ruta){
   renderIncumplimientosBody();
 }
 
+// F06: distingue visualmente "Vencido" (plazo ya pasado, sin entregar) de
+// "Pendiente" (plazo aún no llega) — antes ambos casos se mostraban igual
+// como "Incumplido", así que un checklist previsto para la tarde aparecía
+// como incumplimiento desde la mañana.
 function incumplimientosBadgeHtml(r){
-  return r.cumplido
-    ? `<span style="display:inline-block;padding:3px 10px;border-radius:999px;background:#DFF3E3;color:#1E7B3C;font-size:11px;font-weight:600;">Cumplido</span>`
-    : `<span style="display:inline-block;padding:3px 10px;border-radius:999px;background:#FBE3E1;color:#B7423A;font-size:11px;font-weight:600;">Incumplido</span>`;
+  if(r.cumplido) return `<span style="display:inline-block;padding:3px 10px;border-radius:999px;background:#DFF3E3;color:#1E7B3C;font-size:11px;font-weight:600;">Cumplido</span>`;
+  if(r.estado === 'vencido') return `<span style="display:inline-block;padding:3px 10px;border-radius:999px;background:#FBE3E1;color:#B7423A;font-size:11px;font-weight:600;">Vencido</span>`;
+  return `<span style="display:inline-block;padding:3px 10px;border-radius:999px;background:#FFF3D6;color:#8A6100;font-size:11px;font-weight:600;">Pendiente</span>`;
 }
 
 function incumplimientosListaHtml(){
   const resultados = incumplimientosDetectarDia(incumplimientosFecha);
-  const faltantes = resultados.filter(r => !r.cumplido);
+  const vencidos = resultados.filter(r => r.estado === 'vencido');
+  const pendientes = resultados.filter(r => r.estado === 'pendiente');
   const filas = resultados.map(r => `
     <tr>
       <td>${r.label}</td>
@@ -13740,7 +13835,8 @@ function incumplimientosListaHtml(){
         <input type="date" value="${incumplimientosFecha}" onchange="incumplimientosSetFecha(this.value)">
       </div>
       <div style="font-size:12.5px;color:var(--text-light);">
-        ${faltantes.length ? `${faltantes.length} checklist(s) sin completar ese día.` : 'Todos los checklists de este día quedaron completos. ✓'}
+        ${vencidos.length ? `${vencidos.length} checklist(s) vencidos (plazo pasado, sin completar).` : 'Sin checklists vencidos ese día.'}
+        ${pendientes.length ? ` · ${pendientes.length} pendiente(s), plazo aún no llega.` : ''}
       </div>
     </div>
     <table class="mini-table" style="width:100%;">
@@ -13748,7 +13844,7 @@ function incumplimientosListaHtml(){
       <tbody>${filas}</tbody>
     </table>
     <p style="font-size:11.5px;color:var(--text-light);margin-top:14px;">
-      Este panel compara la fecha elegida contra los registros ya guardados de apertura de caja, cierres de área, alistamientos, briefings y mise en place de cocina. No genera ni envía nada automáticamente — cada escrito se genera solo cuando gerencia lo decide y lo revisa.
+      Este panel compara la fecha elegida contra los registros ya guardados de apertura de caja, cierres de área, alistamientos, briefings y mise en place de cocina. "Vencido" indica que el plazo del checklist ya pasó sin registro completo; "Pendiente" indica que el plazo del día aún no llega. No genera ni envía nada automáticamente — cada escrito se genera solo cuando gerencia lo decide y lo revisa.
     </p>
   `;
 }
@@ -14360,7 +14456,10 @@ function reporteGeneral360DashboardHtml(){
   const resultadosHoy = incumplimientosDetectarDia(hoy);
   const cumplidosHoy = resultadosHoy.filter(r=>r.cumplido).length;
   const pctChecklistHoy = resultadosHoy.length ? Math.round((cumplidosHoy/resultadosHoy.length)*100) : 0;
-  const incumplimientosHoy = resultadosHoy.length - cumplidosHoy;
+  // F06: "Incumplimientos de hoy" cuenta solo VENCIDOS reales (plazo ya
+  // pasado y sin entregar), no todo lo que aún está pendiente por hacer
+  // en el día — antes esta tarjeta mezclaba ambos casos.
+  const incumplimientosHoy = resultadosHoy.filter(r => r.estado === 'vencido').length;
 
   const bajasHoy = filtrarPorSede(DB.get('bajas', [])).filter(b=>b.fecha===hoy);
   const bajasValorHoy = bajasHoy.reduce((a,b)=>a+(b.valorEstimado||0),0);
@@ -15493,10 +15592,15 @@ const V360_UMBRAL_DESCUENTO_PCT = 8;
 
 function v360ComputeAlertas(day, detalle){
   const alerts = [];
+  if(!day) return alerts;
   if(day.cuentasEliminadas && day.cuentasEliminadas.huecosDetectados>0){
     alerts.push({ severity:'critical', icon:'🗑️', title:`${day.cuentasEliminadas.huecosDetectados} comprobante(s) posiblemente eliminado(s)`, detail:`Hay huecos en la numeración entre ${day.cuentasEliminadas.idMin} y ${day.cuentasEliminadas.idMax}. Vale la pena confirmar con caja qué pasó con esos comprobantes.` });
   }
-  const abiertas = detalle.ordenes.filter(o=>o.estado!=='Cerrada');
+  // El detalle (órdenes, propinas por venta) puede no estar disponible aún
+  // aunque el resumen del día sí exista — no tratar eso como "cero
+  // órdenes abiertas", sino simplemente omitir esa alerta puntual.
+  const ordenesDisponibles = detalle && Array.isArray(detalle.ordenes);
+  const abiertas = ordenesDisponibles ? detalle.ordenes.filter(o=>o.estado!=='Cerrada') : [];
   if(abiertas.length){
     alerts.push({ severity:'critical', icon:'🔓', title:`${abiertas.length} cuenta(s) quedaron abiertas al cierre`, detail: abiertas.map(o=>`Mesa ${o.mesa??'—'} (${o.sala??'—'}) · ${o.camarero??'—'} · ${fmtMoney(o.total)}`).join(' · ') });
   }
@@ -15507,7 +15611,7 @@ function v360ComputeAlertas(day, detalle){
   if(day.sinPagar > V360_UMBRAL_SIN_COBRAR){
     alerts.push({ severity:'critical', icon:'💸', title:`${fmtMoney(day.sinPagar)} sin cobrar al cierre`, detail:'Cuentas que quedaron "en curso" sin pago registrado — hacer seguimiento antes de que se pierda el rastro del cliente.' });
   }
-  const propFuera = (detalle.propinas?.detalle || []).filter(p=>p.pct > V360_UMBRAL_PROPINA_MAX_PCT);
+  const propFuera = (detalle?.propinas?.detalle || []).filter(p=>p.pct > V360_UMBRAL_PROPINA_MAX_PCT);
   if(propFuera.length){
     alerts.push({ severity:'warning', icon:'🔎', title:`${propFuera.length} propina(s) por encima del ${V360_UMBRAL_PROPINA_MAX_PCT}% — revisar si fue un error`, detail: propFuera.slice(0,6).map(p=>`#${p.idVenta} ${p.camarero??'—'} · ${p.pct.toFixed(1)}%`).join(' · ') });
   }
@@ -16166,7 +16270,22 @@ function v360Render(sec){
   const hist = v360Historico();
   const detalles = v360Detalles();
   const day = hist.find(d=>d.fecha===v360ActiveFecha) || null;
-  const detalle = day ? detalles[day.fecha] : null;
+  const detalleReal = day ? detalles[day.fecha] : null;
+  // El resumen del día (totales, KPIs) puede estar disponible aunque el
+  // detalle pormenorizado (órdenes, productos, propinas por venta) aún
+  // no llegue — antes esto hacía que la pestaña quedara en blanco por un
+  // error de JS. En vez de eso, usamos un detalle "vacío pero válido" y
+  // avisamos claramente que falta información, sin inventar ceros ni
+  // tumbar la pestaña.
+  const detalleFaltante = !!day && (!detalleReal || typeof detalleReal !== 'object' || !Array.isArray(detalleReal.ordenes));
+  const detalle = detalleReal && typeof detalleReal === 'object' ? detalleReal : {
+    ordenes:[], productos:[], meseros:[],
+    propinas:{ count:0, total:0, detalle:[], destacadas:[] },
+    cancelaciones:{ detalle:[], motivos:{} },
+    descuentos:{ total:0, detalle:[] },
+    arqueo:[], cuentasEliminadas:null, duracionMesa:null
+  };
+  const avisoDetalleFaltante = detalleFaltante ? `<div class="v360-alert warning" style="margin-bottom:14px;"><span class="ic">⚠️</span><div><b>El detalle pormenorizado de este día todavía no está disponible</b><span>Los totales generales sí se muestran, pero las órdenes, productos y propinas por venta no han llegado (puede ser una sincronización a medias o un cierre que aún no se cargó completo). Esta pestaña no muestra ceros inventados — simplemente esa parte está pendiente.</span></div></div>` : '';
 
   const TABS = [
     {id:'resumen', label:'Resumen del día', icon:'chart'},
@@ -16208,7 +16327,7 @@ function v360Render(sec){
       </div>
       <div class="v360-hint"><b>Cómo usarlo:</b> revisa <b>Resumen del día</b> (ahí saltan las alertas) → lee <b>Briefing de mañana</b> en la reunión del equipo → si necesitas profundizar, entra a Cancelaciones, Detalle, Caja o Tendencias. Cada noche, sube el cierre en <b>Cargar cierre</b>.</div>
       <div class="tab-bar">${tabsHtml}</div>
-      <div id="v360Body">${bodyHtml}</div>
+      <div id="v360Body">${avisoDetalleFaltante}${bodyHtml}</div>
     </div>`;
   document.getElementById('content').innerHTML = html;
 
