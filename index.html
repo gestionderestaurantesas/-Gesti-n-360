@@ -3200,10 +3200,18 @@ function homeDatosDelDia(){
   });
   const areas = Object.keys(mapa).map(k => mapa[k])
     .sort((a,b) => (b.cumplidos + b.pendientes) - (a.cumplidos + a.pendientes));
-  let incidentes = 0, mantenimiento = 0;
+  let incidentes = 0, mantSolicitudesAbiertas = 0, mantPreventivosVencidos = 0;
   try{ incidentes = filtrarPorSede(DB.get('incidentes', [])).filter(r => r.estado !== 'cerrado').length; }catch(e){}
-  try{ mantenimiento = filtrarPorSede(DB.get('mant_solicitudes', [])).filter(s => s.estado !== 'cerrada').length; }catch(e){}
-  return { hoy:hoy, total:total, cumplidos:cumplidos, pendientes:pendientes, vencidos:vencidos, pct:pct, areas:areas, incidentes:incidentes, mantenimiento:mantenimiento };
+  try{ mantSolicitudesAbiertas = filtrarPorSede(DB.get('mant_solicitudes', [])).filter(s => s.estado !== 'cerrada').length; }catch(e){}
+  // F07: "Mantenimiento" en Inicio antes solo miraba solicitudes abiertas,
+  // sin ver los preventivos vencidos que sí se calculan (con la misma
+  // función mantEstadoPreventivo) en Mantenimiento → Equipos. Eso hacía
+  // que Inicio dijera "Al día" mientras Equipos mostraba vencidos reales.
+  // Ahora se suman las dos señales y se muestran desglosadas.
+  try{ mantPreventivosVencidos = (typeof mantVencidosCount === 'function') ? mantVencidosCount() : 0; }catch(e){}
+  const mantenimiento = mantSolicitudesAbiertas + mantPreventivosVencidos;
+  return { hoy:hoy, total:total, cumplidos:cumplidos, pendientes:pendientes, vencidos:vencidos, pct:pct, areas:areas, incidentes:incidentes,
+    mantenimiento:mantenimiento, mantSolicitudesAbiertas:mantSolicitudesAbiertas, mantPreventivosVencidos:mantPreventivosVencidos };
 }
 
 /* Navegación desde el tablero: siempre resolviendo contra el índice de
@@ -3330,10 +3338,16 @@ function homeMetricasHtml(d){
     accion: verSucesos
   });
 
+  // F07: el texto ahora dice explícitamente qué incluye el número (antes
+  // solo miraba solicitudes abiertas y podía decir "Al día" con
+  // preventivos vencidos reales en Equipos).
+  const mantPartes = [];
+  if(d.mantSolicitudesAbiertas > 0) mantPartes.push(`${d.mantSolicitudesAbiertas} solicitud(es) sin cerrar`);
+  if(d.mantPreventivosVencidos > 0) mantPartes.push(`${d.mantPreventivosVencidos} preventivo(s) vencido(s)`);
   html += homeContadorHtml({
     titulo:'Mantenimiento', icono:'wrench', valor:d.mantenimiento,
     tono: d.mantenimiento > 0 ? 'warn' : 'good',
-    texto: d.mantenimiento > 0 ? 'Solicitudes de daño o mantenimiento sin cerrar.' : 'Sin solicitudes de mantenimiento pendientes.',
+    texto: mantPartes.length ? mantPartes.join(' · ') + '.' : 'Sin solicitudes ni preventivos vencidos.',
     pill: d.mantenimiento > 0 ? 'En cola' : 'Al día',
     accion: verMant
   });
@@ -7166,7 +7180,7 @@ let calTempValores = {};
 let calTempLastRuta = '';
 function renderCalidadTemperaturaModule(sec, group, item, ruta){
   if(ruta) calTempLastRuta = ruta;
-  calTempValores = {};
+  calTempValores = {}; calTempFueraServicio = {}; window._ctPendienteParcial = false;
   calTempRender('registro');
 }
 function calTempSetTab(tabId){ calTempRender(tabId); }
@@ -7186,45 +7200,94 @@ function calTempRender(activeId){
   document.getElementById('content').innerHTML = html;
   if(window.innerWidth <= 820) document.getElementById('sidebar').classList.remove('open');
 }
-function calTempInput(equipoId, val){ calTempValores[equipoId] = val; }
+// Rango plausible de temperatura para congeladores/refrigeradores — fuera
+// de este rango probablemente es un error de digitación, no un dato real.
+// Los límites concretos por equipo deben acordarse con calidad; esto es
+// solo una validación de sentido común mientras tanto.
+const CAL_TEMP_RANGO_PLAUSIBLE = { min:-30, max:15 };
+let calTempFueraServicio = {}; // { equipoId: motivo }
+function calTempInput(equipoId, val){ calTempValores[equipoId] = val; window._ctPendienteParcial = false; }
+function calTempToggleFuera(equipoId, marcado){
+  if(marcado){ calTempFueraServicio[equipoId] = calTempFueraServicio[equipoId] || ''; delete calTempValores[equipoId]; }
+  else { delete calTempFueraServicio[equipoId]; }
+  window._ctPendienteParcial = false;
+  calTempRender('registro');
+}
+function calTempMotivoFuera(equipoId, val){ calTempFueraServicio[equipoId] = val; }
 function calTempRegistroHtml(){
   const equipos = calEquiposFrio();
   if(!equipos.length){
     return `<p style="color:var(--text-light);font-size:13px;padding:16px;">Todavía no hay congeladores ni neveras registrados en Mantenimiento → Equipos. Agrégalos ahí (con "congelador", "refrigerador" o "nevera" en el nombre) para que aparezcan acá.</p>`;
   }
-  const filasHtml = equipos.map(eq => `
-    <div class="check-row3" style="align-items:center;">
+  const filasHtml = equipos.map(eq => {
+    const fuera = calTempFueraServicio.hasOwnProperty(eq.id);
+    const val = calTempValores[eq.id];
+    const fueraDeRango = val !== undefined && val !== '' && (Number(val) < CAL_TEMP_RANGO_PLAUSIBLE.min || Number(val) > CAL_TEMP_RANGO_PLAUSIBLE.max);
+    return `
+    <div class="check-row3" style="align-items:center;flex-wrap:wrap;">
       <span>${eq.nombre}${eq.ubicacion ? ' <span style="color:var(--text-light);font-size:11px;">('+eq.ubicacion+')</span>' : ''}</span>
       <div style="display:flex;align-items:center;gap:6px;">
-        <input type="number" step="0.1" style="width:90px;" placeholder="°C" oninput="calTempInput('${eq.id}', this.value)">
-        <span style="font-size:12px;color:var(--text-light);">°C</span>
+        ${fuera ? `<input type="text" style="width:180px;" placeholder="Motivo (ej: equipo dañado)" value="${calTempFueraServicio[eq.id]||''}" oninput="calTempMotivoFuera('${eq.id}', this.value)">`
+          : `<input type="number" step="0.1" style="width:90px;" placeholder="°C" value="${val!==undefined?val:''}" oninput="calTempInput('${eq.id}', this.value)">
+             <span style="font-size:12px;color:var(--text-light);">°C</span>`}
+        <label style="font-size:11px;color:var(--text-light);display:flex;align-items:center;gap:4px;white-space:nowrap;">
+          <input type="checkbox" ${fuera?'checked':''} onchange="calTempToggleFuera('${eq.id}', this.checked)"> Fuera de servicio
+        </label>
       </div>
-    </div>`).join('');
+      ${fueraDeRango ? `<div style="grid-column:1/-1;font-size:11px;color:var(--rojo);">⚠️ Fuera del rango plausible (${CAL_TEMP_RANGO_PLAUSIBLE.min}°C a ${CAL_TEMP_RANGO_PLAUSIBLE.max}°C) — revisa que no sea un error de digitación antes de guardar.</div>` : ''}
+    </div>`;
+  }).join('');
+
+  const registrados = equipos.filter(eq => (calTempValores[eq.id] !== undefined && calTempValores[eq.id] !== '') || calTempFueraServicio.hasOwnProperty(eq.id)).length;
+
   return `
     <div style="padding:14px 16px 0;">
     <div class="compact-form">
     <div class="form-field"><label>Responsable de la ronda <span class="req-star">*</span></label><input id="ct_responsable" value="${SESSION.nombre}"></div>
+    <div style="font-size:12.5px;color:var(--text-light);margin-top:8px;">${registrados} de ${equipos.length} equipo(s) verificados en esta ronda.</div>
     <div class="toggle-list" style="margin-top:12px;">${filasHtml}</div>
     </div>
-    <button class="btn-primary" style="width:auto;padding:11px 22px;margin-top:14px;" onclick="guardarCalTemperatura()">Guardar ronda de temperaturas</button>
+    <button class="btn-primary" style="width:auto;padding:11px 22px;margin-top:14px;" onclick="guardarCalTemperatura(window._ctPendienteParcial)">Guardar ronda de temperaturas</button>
     <div id="ct_msg"></div>
     </div>
   `;
 }
-function guardarCalTemperatura(){
+function guardarCalTemperatura(forzarParcial){
   const responsable = document.getElementById('ct_responsable').value.trim();
   if(!responsable){ showMsg('ct_msg','Escribe el responsable de la ronda.','rojo'); return; }
   const equipos = calEquiposFrio();
+
   const lecturas = equipos
-    .filter(eq => calTempValores[eq.id] !== undefined && calTempValores[eq.id] !== '')
-    .map(eq => ({ equipoId: eq.id, nombre: eq.nombre, temperatura: Number(calTempValores[eq.id]) }));
-  if(!lecturas.length){ showMsg('ct_msg','Escribe al menos una lectura de temperatura.','rojo'); return; }
+    .filter(eq => calTempValores[eq.id] !== undefined && calTempValores[eq.id] !== '' && !calTempFueraServicio.hasOwnProperty(eq.id))
+    .map(eq => ({ equipoId: eq.id, nombre: eq.nombre, temperatura: Number(calTempValores[eq.id]),
+      fueraDeRango: Number(calTempValores[eq.id]) < CAL_TEMP_RANGO_PLAUSIBLE.min || Number(calTempValores[eq.id]) > CAL_TEMP_RANGO_PLAUSIBLE.max }));
+  const fueraServicio = equipos
+    .filter(eq => calTempFueraServicio.hasOwnProperty(eq.id))
+    .map(eq => ({ equipoId: eq.id, nombre: eq.nombre, motivo: calTempFueraServicio[eq.id] || '' }));
+  const idsVerificados = new Set([...lecturas.map(l=>l.equipoId), ...fueraServicio.map(f=>f.equipoId)]);
+  const faltantes = equipos.filter(eq => !idsVerificados.has(eq.id)).map(eq => ({ equipoId: eq.id, nombre: eq.nombre }));
+
+  if(!lecturas.length && !fueraServicio.length){ showMsg('ct_msg','Escribe al menos una lectura de temperatura, o marca el equipo como fuera de servicio.','rojo'); return; }
+
+  const completa = faltantes.length === 0;
+  // Si la ronda quedó parcial, se pide confirmar explícitamente en vez de
+  // guardarla en silencio como si fuera un día completo — así el registro
+  // nunca aparenta más completitud de la real (F09).
+  if(!completa && !forzarParcial){
+    showMsg('ct_msg', `Ronda parcial: ${faltantes.length} equipo(s) sin verificar (${faltantes.map(f=>f.nombre).join(', ')}). Presiona de nuevo el botón para guardarla así, o complétala primero.`, 'rojo');
+    window._ctPendienteParcial = true;
+    return;
+  }
+
   DB.push('calidad_temperaturas', {
     sede: sedeParaGuardar(), usuario: SESSION.usuario, nombre: SESSION.nombre,
-    fecha: hoyStr(), hora: horaStr(), responsable, lecturas
+    fecha: hoyStr(), hora: horaStr(), responsable,
+    lecturas, fueraServicio, faltantes,
+    equiposProgramados: equipos.length, equiposVerificados: idsVerificados.size,
+    completa
   });
-  calTempValores = {};
-  showMsg('ct_msg','Ronda de temperaturas guardada correctamente.','verde');
+  calTempValores = {}; calTempFueraServicio = {}; window._ctPendienteParcial = false;
+  showMsg('ct_msg', completa ? 'Ronda de temperaturas guardada correctamente (completa).' : 'Ronda parcial guardada — quedó marcada como incompleta.', 'verde');
   calTempRender('registro');
 }
 function calTempHistorialHtml(){
