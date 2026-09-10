@@ -50,6 +50,27 @@ function rangoDiaColombiaEnUTC(fechaLocalYYYYMMDD) {
   return { gte: fmt(inicioUTC), lte: fmt(finUTC) };
 }
 
+// Devuelve los rangos UTC de los DOS turnos del día en Colombia:
+// turno "tarde" = 00:00 a 16:00 hora Colombia
+// turno "noche" = 16:00 a 24:00 hora Colombia (hasta el corte real del restaurante, variable)
+function rangosTurnosColombiaEnUTC(fechaLocalYYYYMMDD) {
+  const [anio, mes, dia] = fechaLocalYYYYMMDD.split('-').map(Number);
+  const fmt = (d) => d.toISOString().replace(/\.\d{3}Z$/, 'Z');
+
+  // Tarde: 00:00 Colombia (05:00 UTC) -> 16:00 Colombia (21:00 UTC)
+  const tardeInicioUTC = new Date(Date.UTC(anio, mes - 1, dia, 5, 0, 0));
+  const tardeFinUTC = new Date(Date.UTC(anio, mes - 1, dia, 21, 0, 0) - 1000);
+
+  // Noche: 16:00 Colombia (21:00 UTC) -> 24:00 Colombia (05:00 UTC día siguiente)
+  const nocheInicioUTC = new Date(Date.UTC(anio, mes - 1, dia, 21, 0, 0));
+  const nocheFinUTC = new Date(nocheInicioUTC.getTime() + 8 * 60 * 60 * 1000 - 1000);
+
+  return {
+    tarde: { gte: fmt(tardeInicioUTC), lte: fmt(tardeFinUTC) },
+    noche: { gte: fmt(nocheInicioUTC), lte: fmt(nocheFinUTC) },
+  };
+}
+
 function fechaDeAyerColombia() {
   const ahoraUTC = new Date();
   // Restamos 5 horas para "ver" la hora actual de Colombia
@@ -263,6 +284,43 @@ function agregarDatosDelDia(ventas, incluidos, gastos, gastosIncluidos) {
   return { resumen, detalleVentas, gastosDetalle };
 }
 
+// ---------- Suma dos objetos "resumen" (mismo shape que agregarDatosDelDia) ----------
+function sumarResumenes(a, b) {
+  const sumaObjNumerico = (o1, o2) => {
+    const out = { ...o1 };
+    for (const clave in o2) out[clave] = (out[clave] || 0) + o2[clave];
+    return out;
+  };
+
+  const porMesero = {};
+  for (const id in a.porMesero) {
+    porMesero[id] = { ...a.porMesero[id] };
+  }
+  for (const id in b.porMesero) {
+    if (!porMesero[id]) {
+      porMesero[id] = { ...b.porMesero[id] };
+    } else {
+      porMesero[id] = {
+        nombre: porMesero[id].nombre || b.porMesero[id].nombre,
+        ventas: porMesero[id].ventas + b.porMesero[id].ventas,
+        totalDinero: porMesero[id].totalDinero + b.porMesero[id].totalDinero,
+      };
+    }
+  }
+
+  return {
+    ventasCantidad: (a.ventasCantidad || 0) + (b.ventasCantidad || 0),
+    ventasTotalDinero: (a.ventasTotalDinero || 0) + (b.ventasTotalDinero || 0),
+    personasTotal: (a.personasTotal || 0) + (b.personasTotal || 0),
+    porMedioPago: sumaObjNumerico(a.porMedioPago || {}, b.porMedioPago || {}),
+    propinasTotal: (a.propinasTotal || 0) + (b.propinasTotal || 0),
+    propinasPorMedioPago: sumaObjNumerico(a.propinasPorMedioPago || {}, b.propinasPorMedioPago || {}),
+    productosCanceladosCantidad: (a.productosCanceladosCantidad || 0) + (b.productosCanceladosCantidad || 0),
+    porMesero,
+    gastosCajaTotal: (a.gastosCajaTotal || 0) + (b.gastosCajaTotal || 0),
+  };
+}
+
 // ---------- Handler principal (lo que Vercel ejecuta) ----------
 module.exports = async (req, res) => {
   // Seguridad simple: solo Vercel Cron (o alguien con el secreto) puede disparar esto
@@ -274,7 +332,11 @@ module.exports = async (req, res) => {
   }
 
   const fechaObjetivo = req.query.fecha || fechaDeAyerColombia();
-  const { gte, lte } = rangoDiaColombiaEnUTC(fechaObjetivo);
+  const { tarde: rangoTarde, noche: rangoNoche } = rangosTurnosColombiaEnUTC(fechaObjetivo);
+  const TURNOS = [
+    { id: 'tarde', rango: rangoTarde },
+    { id: 'noche', rango: rangoNoche },
+  ];
 
   const resultados = {};
 
@@ -285,36 +347,50 @@ module.exports = async (req, res) => {
     }
     try {
       const token = await obtenerTokenFudo(sede.apiKey, sede.apiSecret);
-      const { ventas, incluidos } = await traerVentasDelDia(token, gte, lte);
-      const { gastos, incluidos: gastosIncluidos } = await traerGastosDelDia(token, gte, lte);
-      const { resumen, detalleVentas, gastosDetalle } = agregarDatosDelDia(
-        ventas,
-        incluidos,
-        gastos,
-        gastosIncluidos
-      );
+
+      const resumenPorTurno = {};
+      const detallePorTurno = {};
+      let ventasEncontradasTotal = 0;
+
+      for (const turno of TURNOS) {
+        const { gte, lte } = turno.rango;
+        const { ventas, incluidos } = await traerVentasDelDia(token, gte, lte);
+        const { gastos, incluidos: gastosIncluidos } = await traerGastosDelDia(token, gte, lte);
+        const { resumen, detalleVentas, gastosDetalle } = agregarDatosDelDia(
+          ventas,
+          incluidos,
+          gastos,
+          gastosIncluidos
+        );
+
+        resumenPorTurno[turno.id] = resumen;
+        detallePorTurno[turno.id] = { ventas: detalleVentas, gastos: gastosDetalle };
+        ventasEncontradasTotal += ventas.length;
+      }
+
+      const totalDia = sumarResumenes(resumenPorTurno.tarde, resumenPorTurno.noche);
 
       const docId = `${sede.id}_${fechaObjetivo}`;
 
       await db.collection('fudo_ventas_dia').doc(docId).set({
         sede: sede.id,
         fecha: fechaObjetivo,
-        ...resumen,
+        turnos: resumenPorTurno,
+        totalDia,
         actualizadoEn: admin.firestore.FieldValue.serverTimestamp(),
       });
 
       await db.collection('fudo_ventas_detalle').doc(docId).set({
         sede: sede.id,
         fecha: fechaObjetivo,
-        ventas: detalleVentas,
-        gastos: gastosDetalle,
+        turnos: detallePorTurno,
         actualizadoEn: admin.firestore.FieldValue.serverTimestamp(),
       });
 
       resultados[sede.id] = {
         ok: true,
-        ventasEncontradas: ventas.length,
-        ventasCerradas: resumen.ventasCantidad,
+        ventasEncontradas: ventasEncontradasTotal,
+        ventasCerradas: totalDia.ventasCantidad,
       };
     } catch (error) {
       resultados[sede.id] = { error: error.message, detalle: error.stack };
