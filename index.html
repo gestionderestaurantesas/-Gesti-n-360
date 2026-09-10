@@ -1799,8 +1799,12 @@ function epcStarsHtml(campo){
 }
 function renderEncuestaPublicaChinu(){
   encuestaPublicaSubCalifs = {};
-  const botonesCalif = Array.from({length:11}, (_,i)=>i).map(n =>
-    `<button type="button" class="epc-calif-btn" data-n="${n}" onclick="encuestaPublicaSetCalif(${n})" style="width:44px;height:44px;border-radius:10px;border:2px solid var(--bronce);background:#fff;color:var(--espresso);font-size:16px;font-weight:700;cursor:pointer;">${n}</button>`
+  // Escala de 1 a 5 estrellas — igual formato que los aspectos
+  // específicos de abajo, para que todo el formulario se sienta
+  // consistente. La calificación general se ve más grande porque es la
+  // pregunta principal.
+  const botonesCalif = [1,2,3,4,5].map(n =>
+    `<button type="button" class="epc-calif-btn" data-n="${n}" onclick="encuestaPublicaSetCalif(${n})" style="background:none;border:none;font-size:42px;cursor:pointer;padding:2px 4px;line-height:1;color:#d8cdb3;">★</button>`
   ).join('');
   const meserosOpts = ENCUESTA_PUBLICA_MESEROS_CHINU.map(m => `<option value="${m}">${m}</option>`).join('');
   const aspectosHtml = ENCUESTA_PUBLICA_ASPECTOS.map(a => `
@@ -1822,7 +1826,7 @@ function renderEncuestaPublicaChinu(){
 
         <label style="display:block;font-weight:700;color:var(--espresso);margin-bottom:10px;font-size:14.5px;">¿Qué calificación le das a tu experiencia de hoy? *</label>
         <div id="epcCalifRow" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:6px;">${botonesCalif}</div>
-        <div style="display:flex;justify-content:space-between;font-size:11px;color:#8a7960;margin-bottom:16px;"><span>0 = muy mala</span><span>10 = excelente</span></div>
+        <div style="display:flex;justify-content:space-between;font-size:11px;color:#8a7960;margin-bottom:16px;"><span>1 = muy mala</span><span>5 = excelente</span></div>
 
         <div style="border-top:1px solid #efe6d3;padding-top:14px;margin-bottom:2px;">
           <label style="display:block;font-weight:700;color:var(--espresso);margin-bottom:10px;font-size:13.5px;">Y en detalle, ¿cómo te fue con esto? <span style="font-weight:400;color:#8a7960;">(opcional, nos ayuda mucho)</span></label>
@@ -1830,7 +1834,7 @@ function renderEncuestaPublicaChinu(){
         </div>
 
         <div id="epcComentarioWrap" style="display:none;margin-bottom:16px;">
-          <label style="display:block;font-weight:600;color:var(--espresso);margin-bottom:6px;font-size:13.5px;">Cuéntanos qué podemos mejorar para ganarnos ese 10</label>
+          <label style="display:block;font-weight:600;color:var(--espresso);margin-bottom:6px;font-size:13.5px;">Cuéntanos qué podemos mejorar para ganarnos esa 5ta estrella</label>
           <textarea id="epcComentario" rows="3" placeholder="Tu comentario (opcional)" style="width:100%;box-sizing:border-box;padding:10px;border:1px solid #d8cdb3;border-radius:10px;font-size:14px;font-family:inherit;resize:vertical;"></textarea>
         </div>
 
@@ -1866,13 +1870,14 @@ function renderEncuestaPublicaChinu(){
 
 function encuestaPublicaSetCalif(n){
   encuestaPublicaCalif = n;
+  // Relleno acumulativo de estrellas (1 a n quedan doradas), igual
+  // criterio visual que los aspectos específicos de más abajo.
   document.querySelectorAll('.epc-calif-btn').forEach(btn=>{
-    const activo = Number(btn.getAttribute('data-n')) === n;
-    btn.style.background = activo ? 'var(--bronce)' : '#fff';
-    btn.style.color = activo ? '#fff' : 'var(--espresso)';
+    const activo = Number(btn.getAttribute('data-n')) <= n;
+    btn.style.color = activo ? 'var(--bronce)' : '#d8cdb3';
   });
   const wrap = document.getElementById('epcComentarioWrap');
-  if(wrap) wrap.style.display = (n < 10) ? 'block' : 'none';
+  if(wrap) wrap.style.display = (n < 5) ? 'block' : 'none';
 }
 function encuestaPublicaSetSubCalif(campo, n){
   encuestaPublicaSubCalifs[campo] = n;
@@ -1891,7 +1896,7 @@ async function encuestaPublicaEnviar(e){
   if(errBox) errBox.innerHTML = '';
 
   if(encuestaPublicaCalif === null || encuestaPublicaCalif === undefined){
-    if(errBox) errBox.innerHTML = '<div style="background:#fde8e8;color:#a12727;padding:10px 12px;border-radius:8px;font-size:13px;margin-bottom:14px;">Por favor elige una calificación de 0 a 10.</div>';
+    if(errBox) errBox.innerHTML = '<div style="background:#fde8e8;color:#a12727;padding:10px 12px;border-radius:8px;font-size:13px;margin-bottom:14px;">Por favor elige una calificación de 1 a 5.</div>';
     return;
   }
   const nombre = (document.getElementById('epcNombre').value || '').trim();
@@ -1907,7 +1912,7 @@ async function encuestaPublicaEnviar(e){
     correo: (document.getElementById('epcCorreo').value || '').trim(),
     calificacion: encuestaPublicaCalif,
     mesero: document.getElementById('epcMesero').value || '',
-    comentario: encuestaPublicaCalif < 10 ? (document.getElementById('epcComentario').value || '').trim() : ''
+    comentario: encuestaPublicaCalif < 5 ? (document.getElementById('epcComentario').value || '').trim() : ''
   };
   // Aspectos por estrellas — opcionales, solo se guarda el campo si el
   // cliente sí calificó ese aspecto (para no meter ceros falsos en los
