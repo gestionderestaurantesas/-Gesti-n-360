@@ -1467,6 +1467,19 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       }
     },
 
+    // Igual que leerResumenFudo, pero lee la colección "fudo_ventas_detalle"
+    // (detalle venta por venta y gasto por gasto, separado por turno).
+    async leerDetalleFudo(sedeId, fechaYYYYMMDD){
+      try{
+        const ref = doc(fbDb, 'fudo_ventas_detalle', sedeId + '_' + fechaYYYYMMDD);
+        const snap = await getDoc(ref);
+        return snap.exists() ? snap.data() : null;
+      }catch(e){
+        console.warn('FS.leerDetalleFudo: no se pudo leer', e);
+        return null;
+      }
+    },
+
     // Crea un documento nuevo. legacyId (opcional) es el id que ya trae
     // el registro viejo de DB.push — si se pasa, el id del documento
     // queda "tipo__legacyId" (trazable y sin choques entre tipos).
@@ -4850,6 +4863,12 @@ function cierreFormHtml(){
           <div class="form-field"><label>Nombre del responsable <span class="req-star">*</span></label><input id="ci_responsable" list="ci_personalList" value="${SESSION.nombre}"></div>
           <div class="form-field"><label>Fecha de cierre <span class="req-star">*</span></label><input id="ci_fecha" type="date" value="${hoy}"></div>
         </div>
+        <div class="form-field" style="max-width:220px;"><label>Turno del cierre</label>
+          <select id="ci_turnoFudo">
+            <option value="tarde">Turno tarde (hasta 4:00pm)</option>
+            <option value="noche">Turno noche (4:00pm en adelante)</option>
+          </select>
+        </div>
         <button type="button" class="btn-secondary" style="width:auto;padding:8px 16px;margin:4px 0 10px;" onclick="traerDatosFudo()">Traer datos de Fudo</button>
         <div id="ci_fudoMsg" style="font-size:12px;margin-bottom:8px;"></div>
 
@@ -4940,9 +4959,20 @@ async function traerDatosFudo(){
   }
   if(msgBox){ msgBox.style.color = 'var(--text-light)'; msgBox.textContent = 'Buscando datos de Fudo para ' + fecha + '...'; }
 
-  const resumen = await window.FS.leerResumenFudo(sede, fecha);
-  if(!resumen){
+  const docFudo = await window.FS.leerResumenFudo(sede, fecha);
+  if(!docFudo){
     if(msgBox){ msgBox.style.color = 'var(--rojo)'; msgBox.textContent = 'Todavía no hay datos de Fudo para esta sede/fecha. Puede que el proceso automático aún no corra para ese día, o que falten las credenciales de Fudo de esta sede.'; }
+    return;
+  }
+
+  // Chinú hace dos arqueos al día (turno tarde hasta 4:00pm, turno noche de
+  // 4:00pm en adelante). El documento de Fudo trae "turnos.tarde"/"turnos.noche"
+  // por separado; si por alguna razón es un documento viejo sin turnos, se
+  // usa "totalDia" (o el documento completo) como respaldo.
+  const turnoSel = (document.getElementById('ci_turnoFudo') || {}).value || 'tarde';
+  const resumen = docFudo.turnos ? (docFudo.turnos[turnoSel] || docFudo.totalDia || docFudo) : (docFudo.totalDia || docFudo);
+  if(!resumen){
+    if(msgBox){ msgBox.style.color = 'var(--rojo)'; msgBox.textContent = 'No se encontraron datos de Fudo para el turno seleccionado.'; }
     return;
   }
 
@@ -4968,7 +4998,7 @@ async function traerDatosFudo(){
 
   if(typeof renderLiveDiff === 'function') renderLiveDiff();
 
-  let nota = 'Datos de Fudo cargados: ' + (resumen.ventasCantidad || 0) + ' ventas cerradas.';
+  let nota = 'Datos de Fudo cargados (turno ' + turnoSel + '): ' + (resumen.ventasCantidad || 0) + ' ventas cerradas.';
   if(otros > 0) nota += ' Nota: $' + otros.toFixed(0) + ' quedó en "otros medios de pago" (revísalo manualmente, por ejemplo anticipos o bonos).';
   if(!resumen.gastosCajaTotal){ nota += ' Los gastos de caja de Fudo aún no están disponibles automáticamente — verifícalos a mano por ahora.'; }
   if(msgBox){ msgBox.style.color = 'var(--verde,#2e7d32)'; msgBox.textContent = nota; }
@@ -15326,6 +15356,134 @@ function v360BuildDayFromWorkbook(wb){
   return { fecha, resumen, detalle };
 }
 
+// ---------------- Construcción automática del "day" desde Fudo (sin Excel) ----------------
+// Arma el mismo shape que v360BuildDayFromWorkbook, pero a partir de lo que
+// ya trae la sincronización automática de Fudo (fudo_ventas_dia / fudo_ventas_detalle),
+// sumando turno tarde + turno noche para tener el día completo.
+//
+// Campos que el Excel de Fudo sí traía y que el agregado de la sincronización
+// automática NO calcula (quedan en 0/vacío, no se inventan datos):
+//   - ventasPorHora, ventasPorSala, topCategorias, productos, categorias
+//   - descuentos, canceladosMonto (solo tenemos el CONTEO de cancelados, no el monto)
+//   - eventoDestacado, duracionMesa, cuentasEliminadas (huecos de numeración)
+//   - costos (ingreso/costo por producto), rankingMeserosPago (mesero x medio de pago)
+//   - propinasCount, propinasDestacadas (Fudo no da propina por venta individual)
+// Si más adelante se necesitan, habría que ampliar sincronizar-fudo.js para
+// traer ese detalle adicional de la API de Fudo.
+async function v360BuildDayFromFudo(sede, fecha){
+  if(!window.FS || !window.FS.leerResumenFudo){
+    throw new Error('La conexión con Firestore no está lista todavía. Intenta de nuevo en un momento.');
+  }
+  const docFudo = await window.FS.leerResumenFudo(sede, fecha);
+  if(!docFudo){
+    throw new Error('Todavía no hay datos de Fudo sincronizados para ' + fecha + ' en esta sede.');
+  }
+  const totalDia = docFudo.totalDia || docFudo; // respaldo por si es un documento viejo sin turnos
+  const docDetalle = (window.FS.leerDetalleFudo ? await window.FS.leerDetalleFudo(sede, fecha) : null) || {};
+  const turnosDetalle = docDetalle.turnos || {};
+  const ventasDetalleTarde = (turnosDetalle.tarde && turnosDetalle.tarde.ventas) || [];
+  const ventasDetalleNoche = (turnosDetalle.noche && turnosDetalle.noche.ventas) || [];
+  const ventasDetalleTodas = ventasDetalleTarde.concat(ventasDetalleNoche);
+
+  const personas = totalDia.personasTotal || 0;
+  const totalVentas = totalDia.ventasTotalDinero || 0;
+  const numOrdenes = totalDia.ventasCantidad || 0;
+  const ticket = personas ? v360Round2(totalVentas/personas) : 0;
+
+  const medioPago = Object.entries(totalDia.porMedioPago || {}).map(([medio,monto])=>({ medio, monto }));
+  const montoTotalPagos = medioPago.reduce((a,m)=>a+m.monto,0);
+  const arqueo = medioPago.map(m=>({
+    medio: m.medio, monto: m.monto, transacciones: 0,
+    pctMonto: montoTotalPagos ? v360Round2(m.monto/montoTotalPagos*100) : 0,
+    pctTransacciones: 0,
+  })).sort((a,b)=>b.monto-a.monto);
+
+  const meseros = Object.values(totalDia.porMesero || {}).map(m=>({
+    nombre: m.nombre, monto: m.totalDinero, ordenes: m.ventas, personas: 0,
+  })).sort((a,b)=>b.monto-a.monto);
+
+  const costos = {
+    ingresoBruto: 0, costoRegistrado: 0, ingresoConCosto: 0, coberturaPct: 0, margenPct: null,
+    porCategoria: [], guarniciones: [],
+    nota: 'No disponible con la sincronización automática de Fudo (requiere el detalle de costo por producto, que hoy no se trae de la API).',
+  };
+  const cuentasEliminadas = {
+    idMin: null, idMax: null, huecosDetectados: 0, idsFaltantes: [],
+    nota: 'No disponible con la sincronización automática de Fudo (requiere numeración consecutiva de comprobantes, que hoy no se trae de la API).',
+  };
+
+  const diaSemana = v360DiaSemanaFromISO(fecha);
+
+  const resumen = {
+    fecha, diaSemana, totalVentas, totalCerradas: totalVentas, sinPagar: 0, personas, numOrdenes,
+    ticketPromedioOficial: ticket, ticketPromedioAjustado: ticket,
+    descuentos: 0, propinas: totalDia.propinasTotal || 0, propinasCount: 0,
+    canceladosMonto: 0, canceladosCount: totalDia.productosCanceladosCantidad || 0,
+    ventasPorHora: {}, ventasPorSala: [], medioPago, topCategorias: [], eventoDestacado: null, meseros,
+    arqueo, cuentasEliminadas, duracionMesa: null, propinasDestacadasCount: 0, costos, rankingMeserosPago: [],
+    origen: 'fudo_auto',
+  };
+
+  const ordenesDetalle = ventasDetalleTodas.map(v=>{
+    let hora = '—';
+    if(v.creadaEn){
+      const d = new Date(v.creadaEn);
+      if(!isNaN(d.getTime())) hora = String(d.getUTCHours()).padStart(2,'0') + ':' + String(d.getUTCMinutes()).padStart(2,'0');
+    }
+    return {
+      id: v.id, hora, mesa: v.mesaId, sala: null, camarero: v.meseroNombre, medioPago: null,
+      total: v.total, personas: v.personas, estado: 'Cerrada', comentario: null,
+    };
+  });
+
+  const detalle = {
+    ordenes: ordenesDetalle, productos: [], categorias: [], meseros, medioPago, arqueo, cuentasEliminadas,
+    duracionMesa: null, costos, rankingMeserosPago: [],
+    cancelaciones: { monto: 0, count: totalDia.productosCanceladosCantidad || 0, motivos: {}, productosAfectados: {}, detalle: [] },
+    descuentos: { total: 0, detalle: [] },
+    propinas: { total: totalDia.propinasTotal || 0, count: 0, detalle: [], destacadas: [] },
+  };
+
+  return { fecha, resumen, detalle };
+}
+
+// Llamada desde el botón "Traer datos automáticos de Fudo" del Reporte de Venta 360.
+// Guarda el resultado en DB.get('v360_dias', []) igual que hace la subida manual
+// del Excel (v360FileSeleccionado), reemplazando el día si ya existía.
+async function v360TraerDeFudo(){
+  const statusEl = document.getElementById('v360_fudoAutoStatus');
+  const fechaInput = document.getElementById('v360_fudoAutoFecha');
+  const fecha = (fechaInput && fechaInput.value) || hoyStr();
+  if(statusEl) statusEl.innerHTML = '⏳ Buscando datos de Fudo para ' + fecha + '…';
+  try{
+    const miSede = sedeParaGuardar();
+    const { resumen, detalle } = await v360BuildDayFromFudo(miSede, fecha);
+    resumen.sede = miSede;
+
+    const historicoArr = DB.get('v360_dias', []);
+    const detallesTodo = DB.get('v360_detalle', {});
+    if(!detallesTodo[miSede]) detallesTodo[miSede] = {};
+    const yaExistia = historicoArr.some(d=>d.fecha===fecha && d.sede===miSede);
+    if(yaExistia && !confirm(`Ya hay datos cargados para ${fecha}. ¿Reemplazarlos con los datos automáticos de Fudo?`)){
+      if(statusEl) statusEl.innerHTML = 'Carga cancelada — se mantuvo el día existente.';
+      return;
+    }
+    const idx = historicoArr.findIndex(d=>d.fecha===fecha && d.sede===miSede);
+    if(idx>=0) historicoArr[idx] = resumen; else historicoArr.push(resumen);
+    historicoArr.sort((a,b)=>a.fecha.localeCompare(b.fecha));
+    DB.set('v360_dias', historicoArr);
+    detallesTodo[miSede][fecha] = detalle;
+    DB.set('v360_detalle', detallesTodo);
+
+    v360ActiveFecha = fecha;
+    if(statusEl) statusEl.innerHTML = `✅ <b>${fecha} (${resumen.diaSemana})</b> ${yaExistia?'actualizado':'agregado'} automáticamente desde Fudo — ${fmtMoney(resumen.totalVentas)}, ${resumen.personas} personas, ${resumen.numOrdenes} cuentas.`;
+    setTimeout(()=>{ v360ActiveTab='resumen'; v360Render(NAV.find(s=>s.id==='gerencia')); }, 900);
+  } catch(err){
+    console.error(err);
+    if(statusEl) statusEl.innerHTML = '❌ ' + (err.message || 'No se pudo traer los datos automáticos de Fudo.');
+  }
+}
+
 /* ---------------- Alertas ---------------- */
 const V360_UMBRAL_CANCEL_COUNT = 5;
 const V360_UMBRAL_CANCEL_PCT = 2;
@@ -15927,6 +16085,15 @@ function v360CargarHtml(hist){
       <div class="sub">Sube el mismo .zip que exporta la caja cada noche (con las hojas Ventas, Pagos, Productos, Descuentos, Propinas y Adiciones) — la app lo procesa aquí mismo y queda guardado en este navegador.</div>
       <input type="file" id="v360_fileInput" accept=".zip" onchange="v360FileSeleccionado(this)">
       <div id="v360_uploadStatus" style="margin-top:12px;font-size:13px;"></div>
+    </div>
+    <div class="v360-card">
+      <h4>Traer datos automáticos de Fudo</h4>
+      <div class="sub">En vez de subir el .zip a mano, trae ventas, propinas, ticket promedio, meseros y medios de pago que ya sincronizó Fudo automáticamente (turno tarde + turno noche combinados).</div>
+      <div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;">
+        <div class="form-field" style="margin:0;"><label>Fecha</label><input type="date" id="v360_fudoAutoFecha" value="${hoyStr()}"></div>
+        <button type="button" class="btn-secondary" style="width:auto;padding:8px 16px;" onclick="v360TraerDeFudo()">Traer datos automáticos de Fudo</button>
+      </div>
+      <div id="v360_fudoAutoStatus" style="margin-top:12px;font-size:13px;"></div>
     </div>
     <div class="v360-card">
       <h4>Días cargados</h4><div class="sub">Histórico actualmente guardado en este navegador</div>
