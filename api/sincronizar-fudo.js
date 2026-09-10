@@ -186,7 +186,7 @@ function agregarDatosDelDia(ventas, incluidos, gastos, gastosIncluidos) {
     if (waiterRef) {
       meseroId = waiterRef.id;
       const usuario = indice[`User:${waiterRef.id}`];
-      if (usuario) meseroNombre = usuario.attributes.name || meseroNombre;
+      if (usuario && usuario.attributes) meseroNombre = usuario.attributes.name || meseroNombre;
     }
     if (meseroId) {
       if (!resumen.porMesero[meseroId]) {
@@ -204,7 +204,7 @@ function agregarDatosDelDia(ventas, incluidos, gastos, gastosIncluidos) {
       const monto = Number(pago.attributes.amount || 0);
       const pmRef = pago.relationships && pago.relationships.paymentMethod && pago.relationships.paymentMethod.data;
       const pm = pmRef ? indice[`PaymentMethod:${pmRef.id}`] : null;
-      const nombreMedio = pm ? pm.attributes.name : 'Desconocido';
+      const nombreMedio = (pm && pm.attributes && pm.attributes.name) || 'Desconocido';
       resumen.porMedioPago[nombreMedio] = (resumen.porMedioPago[nombreMedio] || 0) + monto;
     }
 
@@ -217,7 +217,7 @@ function agregarDatosDelDia(ventas, incluidos, gastos, gastosIncluidos) {
       resumen.propinasTotal += monto;
       const pmRef = tip.relationships && tip.relationships.paymentMethod && tip.relationships.paymentMethod.data;
       const pm = pmRef ? indice[`PaymentMethod:${pmRef.id}`] : null;
-      const nombreMedio = pm ? pm.attributes.name : 'Desconocido';
+      const nombreMedio = (pm && pm.attributes && pm.attributes.name) || 'Desconocido';
       resumen.propinasPorMedioPago[nombreMedio] = (resumen.propinasPorMedioPago[nombreMedio] || 0) + monto;
     }
 
@@ -256,7 +256,7 @@ function agregarDatosDelDia(ventas, incluidos, gastos, gastosIncluidos) {
     gastosDetalle.push({
       id: gasto.id,
       monto,
-      categoria: categoria ? categoria.attributes.name : 'Sin categoría',
+      categoria: (categoria && categoria.attributes && categoria.attributes.name) || 'Sin categoría',
       descripcion: attrs.description || '',
     });
   }
