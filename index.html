@@ -17226,11 +17226,20 @@ function controlSedesCuerpoHtml(){
    ================================================================== */
 let infoPosLastRuta = 'Gerencia → Información POS';
 let infoPosSedeVista = 'chinu'; // 'chinu' | 'monteria' — selector visible solo para gerencia (SESSION.sede==='todas')
-let infoPosTabActiva = 'products';
+let infoPosTabActiva = 'ventas';
 let infoPosCache = {}; // { chinu: datosDelDoc|null, monteria: ... } — evita releer Firestore en cada click de pestaña
 let infoPosCargando = false;
 
+// Ventas y propinas del día — se leen de fudo_ventas_dia (misma colección que
+// ya usan Cierre de Caja y Reporte de Venta 360), no se duplica ninguna
+// sincronización. Solo se agregan aquí para tener todo lo de Fudo en un
+// mismo lugar de exploración, con el mismo dato ya guardado.
+let infoPosFecha = hoyStr();
+let infoPosVentasCache = {}; // { 'chinu_2026-09-10': docFudo|null, ... }
+let infoPosVentasCargando = false;
+
 const INFO_POS_TABS = [
+  { id:'ventas', label:'Ventas y propinas', icon:'cash' },
   { id:'products', label:'Productos', icon:'chef' },
   { id:'ingredients', label:'Insumos', icon:'box' },
   { id:'users', label:'Personal', icon:'users' },
@@ -17289,6 +17298,108 @@ function infoPosFmtValor(v, fmt){
   return String(v);
 }
 
+function infoPosSetFecha(val){
+  if(!val) return;
+  infoPosFecha = val;
+  renderInfoPosModule(null, null, null, infoPosLastRuta);
+}
+
+// Trae (o vuelve a traer) el resumen de ventas/propinas del día activo desde
+// fudo_ventas_dia — misma colección que ya alimenta Cierre de Caja y Reporte
+// de Venta 360, aquí solo se muestra para tener todo lo de Fudo junto.
+async function infoPosCargarVentas(){
+  if(!window.FS || typeof window.FS.leerResumenFudo !== 'function'){
+    alert('La conexión con Firestore no está lista todavía. Intenta de nuevo en un momento.');
+    return;
+  }
+  const key = infoPosSedeVista + '_' + infoPosFecha;
+  infoPosVentasCargando = true;
+  renderInfoPosModule(null, null, null, infoPosLastRuta);
+  let doc = null;
+  try{
+    doc = await window.FS.leerResumenFudo(infoPosSedeVista, infoPosFecha);
+  }catch(e){
+    console.warn('infoPosCargarVentas: no se pudo leer', e);
+  }
+  infoPosVentasCache[key] = doc || null;
+  infoPosVentasCargando = false;
+  renderInfoPosModule(null, null, null, infoPosLastRuta);
+}
+
+function infoPosVentasHtml(){
+  const key = infoPosSedeVista + '_' + infoPosFecha;
+  const yaIntento = Object.prototype.hasOwnProperty.call(infoPosVentasCache, key);
+  const doc = infoPosVentasCache[key];
+
+  const selectorFecha = `
+    <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:16px;">
+      <label style="font-size:12.5px;color:var(--text-light);">Fecha:
+        <input type="date" value="${infoPosFecha}" onchange="infoPosSetFecha(this.value)" style="margin-left:6px;">
+      </label>
+      <button type="button" class="btn-secondary" style="width:auto;padding:6px 14px;" onclick="infoPosCargarVentas()" ${infoPosVentasCargando?'disabled':''}>${infoPosVentasCargando?'Consultando...':'Actualizar'}</button>
+    </div>`;
+
+  if(infoPosVentasCargando){
+    return selectorFecha + '<div class="verif-box" style="background:var(--tint-dorado);color:var(--dorado);">Consultando ventas del día en Firestore...</div>';
+  }
+  if(!yaIntento){
+    return selectorFecha + '<p style="color:var(--text-light);font-size:13px;">Elige una fecha y presiona "Actualizar" para consultarla.</p>';
+  }
+  if(!doc){
+    return selectorFecha + `<p style="color:var(--text-light);font-size:13px;">No hay ventas de Fudo sincronizadas para <b>${infoPosFecha}</b> en ${infoPosSedeVista==='chinu'?'Chinú':'Montería'}. La sincronización corre sola cada madrugada para el día anterior; si es de hoy, intenta después del cierre.</p>`;
+  }
+
+  const totalDia = doc.totalDia || doc; // respaldo por si es un documento viejo sin turnos
+  const medios = Object.entries(totalDia.porMedioPago || {});
+  const propinasPorMedio = totalDia.propinasPorMedioPago || {};
+  const meseros = Object.values(totalDia.porMesero || {}).sort((a,b)=>(b.totalDinero||0)-(a.totalDinero||0));
+  const personas = totalDia.personasTotal || 0;
+  const ticket = personas ? fmtMoney((totalDia.ventasTotalDinero||0)/personas) : fmtMoney(0);
+
+  const kpi = (color, iconName, valor, label) => `
+    <div class="module-card" style="cursor:default;">
+      <div class="icon-circle" style="background:${hexToRgba(color,0.14)}; color:${color};">${ic(iconName,22)}</div>
+      <h3>${valor}</h3><p>${label}</p>
+    </div>`;
+
+  const kpisHtml = `<div class="module-grid" style="margin-bottom:18px;">
+    ${kpi('#2F7A78','cash', fmtMoney(totalDia.ventasTotalDinero||0), 'Ventas totales')}
+    ${kpi('#B8860B','star', fmtMoney(totalDia.propinasTotal||0), 'Propinas totales')}
+    ${kpi('#3B6EA8','checklist', totalDia.ventasCantidad||0, 'Cantidad de ventas')}
+    ${kpi('#6B4A8A','users', personas, 'Personas atendidas')}
+    ${kpi('#B87333','trend', ticket, 'Ticket promedio')}
+    ${kpi('#C0392B','tray', fmtMoney(totalDia.gastosCajaTotal||0), 'Gastos de caja')}
+  </div>`;
+
+  const turnosHtml = doc.turnos ? `
+    <div style="font-size:12.5px;color:var(--text-light);margin-bottom:16px;">
+      Turno tarde: <b>${fmtMoney((doc.turnos.tarde&&doc.turnos.tarde.ventasTotalDinero)||0)}</b> ·
+      Turno noche: <b>${fmtMoney((doc.turnos.noche&&doc.turnos.noche.ventasTotalDinero)||0)}</b>
+    </div>` : '';
+
+  const mediosHtml = medios.length ? `
+    <table class="mini-table" style="margin-bottom:18px;">
+      <thead><tr><th>Medio de pago</th><th>Ventas</th><th>Propinas</th></tr></thead>
+      <tbody>${medios.map(([m,v])=>`<tr><td>${m}</td><td>${fmtMoney(v)}</td><td>${fmtMoney(propinasPorMedio[m]||0)}</td></tr>`).join('')}</tbody>
+    </table>` : '<p style="color:var(--text-light);font-size:13px;margin-bottom:18px;">Sin desglose por medio de pago para este día.</p>';
+
+  const meserosHtml = meseros.length ? `
+    <table class="mini-table">
+      <thead><tr><th>Mesero</th><th>Ventas</th><th>Total</th></tr></thead>
+      <tbody>${meseros.map(m=>`<tr><td>${m.nombre||'-'}</td><td>${m.ventas||0}</td><td>${fmtMoney(m.totalDinero||0)}</td></tr>`).join('')}</tbody>
+    </table>` : '<p style="color:var(--text-light);font-size:13px;">Sin ventas por mesero para este día.</p>';
+
+  return `
+    ${selectorFecha}
+    ${kpisHtml}
+    ${turnosHtml}
+    <div class="form-section-title" style="margin-top:4px;">Medios de pago</div>
+    ${mediosHtml}
+    <div class="form-section-title">Ventas por mesero</div>
+    ${meserosHtml}
+  `;
+}
+
 function infoPosSetSede(val){
   infoPosSedeVista = val;
   renderInfoPosModule(null, null, null, infoPosLastRuta);
@@ -17345,22 +17456,28 @@ function renderInfoPosModule(sec, group, item, ruta){
 
   const datos = infoPosCache[infoPosSedeVista];
   const yaIntentoCargar = Object.prototype.hasOwnProperty.call(infoPosCache, infoPosSedeVista);
+  const esTabVentas = infoPosTabActiva === 'ventas';
+
+  const tabsHtml = INFO_POS_TABS.map(t=>{
+    const badge = t.id === 'ventas' ? '' : ` (${(datos && datos.totales && datos.totales[t.id]) || 0})`;
+    return `<button class="tab-btn ${t.id===infoPosTabActiva?'active':''}" onclick="infoPosSetTab('${t.id}')">${ic(t.icon,14)}${t.label}${badge}</button>`;
+  }).join('');
 
   let cuerpoHtml;
-  if(infoPosCargando){
+  if(esTabVentas){
+    cuerpoHtml = infoPosVentasHtml();
+  } else if(infoPosCargando){
     cuerpoHtml = '<div class="verif-box" style="background:var(--tint-dorado);color:var(--dorado);">Consultando catálogo en Firestore...</div>';
   } else if(!yaIntentoCargar){
     cuerpoHtml = '<p style="color:var(--text-light);font-size:13px;">Presiona "Actualizar desde Fudo" para consultar el catálogo guardado de esta sede.</p>';
   } else if(!datos){
     cuerpoHtml = `<p style="color:var(--text-light);font-size:13px;">Todavía no hay catálogo sincronizado para <b>${infoPosSedeVista==='chinu'?'Chinú':'Montería'}</b>. Corre manualmente la función <code>sincronizar-catalogo-fudo</code> (Harol o soporte técnico) y vuelve a intentar aquí.</p>`;
   } else {
-    const tabsHtml = INFO_POS_TABS.map(t=>`<button class="tab-btn ${t.id===infoPosTabActiva?'active':''}" onclick="infoPosSetTab('${t.id}')">${ic(t.icon,14)}${t.label} (${(datos.totales && datos.totales[t.id]) || 0})</button>`).join('');
     const actualizadoTxt = datos.actualizadoEn && typeof datos.actualizadoEn.toDate === 'function'
       ? datos.actualizadoEn.toDate().toLocaleString('es-CO')
       : 'Fecha no disponible';
     cuerpoHtml = `
       <div style="font-size:12px;color:var(--text-light);margin-bottom:12px;">Última actualización: <b>${actualizadoTxt}</b></div>
-      <div class="tabs" style="margin-bottom:14px;flex-wrap:wrap;">${tabsHtml}</div>
       ${infoPosTablaHtml(datos, infoPosTabActiva)}
     `;
   }
@@ -17372,15 +17489,20 @@ function renderInfoPosModule(sec, group, item, ruta){
         <div><h2>Información POS</h2><div class="path">${infoPosLastRuta}</div></div>
       </div>
       <p style="font-size:12.5px;color:var(--text-light);margin-bottom:14px;">
-        Catálogo de configuración traído desde Fudo (no son ventas ni transacciones — es el menú, insumos, personal, mesas, salones y cocinas tal como están configurados hoy en el POS). Vista de exploración por ahora; no está conectada a inventario ni a otros módulos.
+        Toda la información que trae la API de Fudo en un solo lugar: ventas y propinas del día, y el catálogo (menú, insumos, personal, mesas, salones y cocinas). Vista de exploración; las ventas/propinas también se ven en Cierre de Caja y Reporte de Venta 360 (misma fuente de datos).
       </p>
       ${sedeSelectorHtml}
-      <button type="button" class="btn-secondary" style="width:auto;padding:8px 16px;margin-bottom:14px;" onclick="infoPosActualizar()" ${infoPosCargando?'disabled':''}>${infoPosCargando?'Consultando...':'Actualizar desde Fudo'}</button>
+      <div class="tabs" style="margin-bottom:14px;flex-wrap:wrap;">${tabsHtml}</div>
+      ${!esTabVentas ? `<button type="button" class="btn-secondary" style="width:auto;padding:8px 16px;margin-bottom:14px;" onclick="infoPosActualizar()" ${infoPosCargando?'disabled':''}>${infoPosCargando?'Consultando...':'Actualizar desde Fudo'}</button>` : ''}
       ${cuerpoHtml}
     </div>`;
   document.getElementById('content').innerHTML = html;
   if(window.innerWidth <= 820) document.getElementById('sidebar').classList.remove('open');
-  if(!infoPosCargando && !yaIntentoCargar) infoPosActualizar();
+  if(!esTabVentas && !infoPosCargando && !yaIntentoCargar) infoPosActualizar();
+  if(esTabVentas){
+    const key = infoPosSedeVista + '_' + infoPosFecha;
+    if(!infoPosVentasCargando && !Object.prototype.hasOwnProperty.call(infoPosVentasCache, key)) infoPosCargarVentas();
+  }
 }
 
 /* ==================================================================
