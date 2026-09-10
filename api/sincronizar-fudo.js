@@ -123,21 +123,19 @@ async function traerVentasDelDia(token, gte, lte) {
 
 // ---------- Traer gastos del día (para "Gastos de caja") ----------
 async function traerGastosDelDia(token, gte, lte) {
-  try {
-    const url =
-      `${FUDO_API_URL}/expenses?` +
-      `filter[createdAt]=and(gte.${gte},lte.${lte})` +
-      `&include=expenseCategory&page[size]=100`;
-    const resp = await fetch(url, {
-      headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
-    });
-    if (!resp.ok) return { gastos: [], incluidos: [] };
-    const cuerpo = await resp.json();
-    return { gastos: cuerpo.data || [], incluidos: cuerpo.included || [] };
-  } catch (e) {
-    // Si el endpoint de gastos falla, no debe tumbar toda la sincronización
-    return { gastos: [], incluidos: [] };
+  const url =
+    `${FUDO_API_URL}/expenses?` +
+    `filter[createdAt]=and(gte.${gte},lte.${lte})` +
+    `&include=expenseCategory&page[size]=100`;
+  const resp = await fetch(url, {
+    headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+  });
+  if (!resp.ok) {
+    const texto = await resp.text();
+    throw new Error(`Fallo consultando /expenses: ${resp.status} ${texto}`);
   }
+  const cuerpo = await resp.json();
+  return { gastos: cuerpo.data || [], incluidos: cuerpo.included || [] };
 }
 
 // ---------- Armar un índice rápido de los "included" por tipo+id ----------
