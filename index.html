@@ -1276,7 +1276,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-app.js";
   import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-auth.js";
-  import { getFirestore, doc, setDoc, collection, onSnapshot, serverTimestamp, enableIndexedDbPersistence } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore.js";
+  import { getFirestore, doc, getDoc, setDoc, collection, onSnapshot, serverTimestamp, enableIndexedDbPersistence } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore.js";
   import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-functions.js";
 
   const firebaseConfig = {
@@ -1451,6 +1451,22 @@ https://github.com/nodeca/pako/blob/main/LICENSE
   }
 
   window.FS = {
+    // Lee el resumen del día que la sincronización automática con Fudo
+    // (función de Vercel) ya dejó escrito en Firestore, en la colección
+    // "fudo_ventas_dia". Devuelve null si ese día/sede todavía no tiene
+    // datos (por ejemplo, si el cron aún no corrió o la sede no tiene
+    // credenciales de Fudo configuradas).
+    async leerResumenFudo(sedeId, fechaYYYYMMDD){
+      try{
+        const ref = doc(fbDb, 'fudo_ventas_dia', sedeId + '_' + fechaYYYYMMDD);
+        const snap = await getDoc(ref);
+        return snap.exists() ? snap.data() : null;
+      }catch(e){
+        console.warn('FS.leerResumenFudo: no se pudo leer', e);
+        return null;
+      }
+    },
+
     // Crea un documento nuevo. legacyId (opcional) es el id que ya trae
     // el registro viejo de DB.push — si se pasa, el id del documento
     // queda "tipo__legacyId" (trazable y sin choques entre tipos).
@@ -4834,6 +4850,8 @@ function cierreFormHtml(){
           <div class="form-field"><label>Nombre del responsable <span class="req-star">*</span></label><input id="ci_responsable" list="ci_personalList" value="${SESSION.nombre}"></div>
           <div class="form-field"><label>Fecha de cierre <span class="req-star">*</span></label><input id="ci_fecha" type="date" value="${hoy}"></div>
         </div>
+        <button type="button" class="btn-secondary" style="width:auto;padding:8px 16px;margin:4px 0 10px;" onclick="traerDatosFudo()">Traer datos de Fudo</button>
+        <div id="ci_fudoMsg" style="font-size:12px;margin-bottom:8px;"></div>
 
         <div class="form-section-title">Conciliación de efectivo, transferencias y tarjetas</div>
         <div class="form-grid">
@@ -4907,6 +4925,53 @@ function cierreFormHtml(){
     <h3 style="margin:24px 0 10px;font-size:15px;">Historial de cierres</h3>
     ${historialHtml}
   `;
+}
+// Trae el resumen del día (ventas por medio de pago, propinas y gastos)
+// que la sincronización automática con Fudo ya dejó en Firestore, y
+// llena los campos del cierre de caja para que el responsable solo
+// tenga que verificar, no digitar todo a mano.
+async function traerDatosFudo(){
+  const msgBox = document.getElementById('ci_fudoMsg');
+  const fecha = document.getElementById('ci_fecha').value || hoyStr();
+  const sede = sedeParaGuardar();
+  if(!window.FS || !window.FS.leerResumenFudo){
+    if(msgBox){ msgBox.style.color = 'var(--rojo)'; msgBox.textContent = 'La conexión con Firestore no está lista todavía. Intenta de nuevo en un momento.'; }
+    return;
+  }
+  if(msgBox){ msgBox.style.color = 'var(--text-light)'; msgBox.textContent = 'Buscando datos de Fudo para ' + fecha + '...'; }
+
+  const resumen = await window.FS.leerResumenFudo(sede, fecha);
+  if(!resumen){
+    if(msgBox){ msgBox.style.color = 'var(--rojo)'; msgBox.textContent = 'Todavía no hay datos de Fudo para esta sede/fecha. Puede que el proceso automático aún no corra para ese día, o que falten las credenciales de Fudo de esta sede.'; }
+    return;
+  }
+
+  // Los medios de pago vienen de Fudo con su nombre propio (ej: "Efectivo",
+  // "Transferencia", "Tarjeta Débito"). Los agrupamos por palabras clave
+  // porque no controlamos cómo los llama cada cajero en Fudo.
+  const porMedioPago = resumen.porMedioPago || {};
+  let efectivo = 0, transferencias = 0, tarjetas = 0, otros = 0;
+  Object.keys(porMedioPago).forEach(function(nombre){
+    const monto = Number(porMedioPago[nombre]) || 0;
+    const n = nombre.toLowerCase();
+    if(n.includes('efectivo') || n.includes('cash')) efectivo += monto;
+    else if(n.includes('transf') || n.includes('nequi') || n.includes('daviplata')) transferencias += monto;
+    else if(n.includes('tarjet') || n.includes('datafono') || n.includes('datáfono') || n.includes('credito') || n.includes('crédito') || n.includes('debito') || n.includes('débito')) tarjetas += monto;
+    else otros += monto;
+  });
+
+  const setVal = (id, val) => { const el = document.getElementById(id); if(el) el.value = val; };
+  setVal('ci_efectivoSistema', efectivo.toFixed(2));
+  setVal('ci_transfSistema', transferencias.toFixed(2));
+  setVal('ci_tarjetasSistema', tarjetas.toFixed(2));
+  setVal('ci_gastosCaja', Number(resumen.gastosCajaTotal || 0).toFixed(2));
+
+  if(typeof renderLiveDiff === 'function') renderLiveDiff();
+
+  let nota = 'Datos de Fudo cargados: ' + (resumen.ventasCantidad || 0) + ' ventas cerradas.';
+  if(otros > 0) nota += ' Nota: $' + otros.toFixed(0) + ' quedó en "otros medios de pago" (revísalo manualmente, por ejemplo anticipos o bonos).';
+  if(!resumen.gastosCajaTotal){ nota += ' Los gastos de caja de Fudo aún no están disponibles automáticamente — verifícalos a mano por ahora.'; }
+  if(msgBox){ msgBox.style.color = 'var(--verde,#2e7d32)'; msgBox.textContent = nota; }
 }
 function guardarCierre(){
   const responsable = document.getElementById('ci_responsable').value.trim();
