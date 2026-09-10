@@ -81,7 +81,7 @@ async function traerVentasDelDia(token, gte, lte) {
   const includes = [
     'items',
     'payments.paymentMethod',
-    'tips.paymentMethod',
+    'tips',
     'discounts',
     'table',
     'waiter',
