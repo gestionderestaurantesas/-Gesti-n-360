@@ -1678,6 +1678,12 @@ https://github.com/nodeca/pako/blob/main/LICENSE
    "function" clásica queda "hoisted" (disponible aquí arriba).
    ================================================================== */
 window._ENCUESTA_PUBLICA_ACTIVA = false;
+// Debe declararse ANTES del IIFE de abajo: si el cliente escanea el QR,
+// el IIFE llama a renderEncuestaPublicaChinu() inmediatamente, y esa
+// función usa esta lista — un `const` más abajo en el archivo todavía
+// no estaría inicializado en ese momento (temporal dead zone) y tronaba
+// con "Cannot access 'ENCUESTA_PUBLICA_MESEROS_CHINU' before initialization".
+const ENCUESTA_PUBLICA_MESEROS_CHINU = ['Sandy','Luisa','Astrid','Joenis','Roger','Jesús'];
 (function(){
   try{
     const params = new URLSearchParams(location.search);
@@ -1759,7 +1765,11 @@ const DB = {
    arriba) — un cliente sin sesión no puede usar el resto de window.FS
    (que exige window._fsSesionLista), por eso esta función es aparte.
    ================================================================== */
-const ENCUESTA_PUBLICA_MESEROS_CHINU = ['Sandy','Luisa','Astrid','Joenis','Roger','Jesús'];
+// (ENCUESTA_PUBLICA_MESEROS_CHINU se movió arriba, justo antes del IIFE
+// que decide si mostrar la encuesta — un `const` declarado aquí abajo
+// quedaba en "temporal dead zone" cuando el IIFE llamaba a
+// renderEncuestaPublicaChinu() antes de llegar a esta línea, y tronaba
+// con "Cannot access before initialization". Ver arriba.
 let encuestaPublicaCalif = null; // 0..10, null = todavía no elige
 let encuestaPublicaEnviando = false;
 
