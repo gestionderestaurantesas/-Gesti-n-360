@@ -1467,6 +1467,22 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       }
     },
 
+    // Lee el catálogo de Fudo (productos, insumos, personal, mesas, salones
+    // y cocinas) que la función manual "sincronizar-catalogo-fudo" dejó en
+    // Firestore, colección "fudo_catalogo" (un documento por sede, no por
+    // fecha, porque es catálogo/configuración, no transacciones del día).
+    // Devuelve null si esa sede todavía no tiene catálogo sincronizado.
+    async leerCatalogoFudo(sedeId){
+      try{
+        const ref = doc(fbDb, 'fudo_catalogo', sedeId);
+        const snap = await getDoc(ref);
+        return snap.exists() ? snap.data() : null;
+      }catch(e){
+        console.warn('FS.leerCatalogoFudo: no se pudo leer', e);
+        return null;
+      }
+    },
+
     // Igual que leerResumenFudo, pero lee la colección "fudo_ventas_detalle"
     // (detalle venta por venta y gasto por gasto, separado por turno).
     async leerDetalleFudo(sedeId, fechaYYYYMMDD){
@@ -2965,7 +2981,8 @@ const NAV = [
     groups:[
       { id:'general', label:'Gerencia', matchArea:null, items:[
         { id:'ger_reporte_general360', label:'Reporte general 360', icon:'chart', roles:['gerencia'], customRender:'renderReporteGeneral360Module' },
-        { id:'ger_control_sedes', label:'Control de sedes externas', icon:'pin', roles:['gerencia'], customRender:'renderControlSedesModule' }
+        { id:'ger_control_sedes', label:'Control de sedes externas', icon:'pin', roles:['gerencia'], customRender:'renderControlSedesModule' },
+        { id:'ger_info_pos', label:'Información POS', icon:'box', roles:['gerencia'], customRender:'renderInfoPosModule' }
       ]},
       { id:'configuracion', label:'Configuración', matchArea:null, items:[
         { id:'cfg_usuarios', label:'Usuarios y permisos', icon:'users', roles:['gerencia'], customRender:'renderUsuariosPermisosModule' },
@@ -17195,6 +17212,175 @@ function controlSedesCuerpoHtml(){
     </p>
     ${tarjetas || '<p style="color:var(--text-light);font-size:13px;">Todavía no hay sedes registradas — créalas desde Configuración → Sedes.</p>'}
   `;
+}
+
+/* ==================================================================
+   INFORMACIÓN POS — vista de exploración del catálogo que trae Fudo
+   (productos, insumos, personal, mesas, salones, cocinas), guardado por
+   la función manual "sincronizar-catalogo-fudo" en Firestore
+   (fudo_catalogo/{sede}). Por ahora es SOLO para explorar y decidir
+   después qué hacer con cada cosa — no está conectada a inventario,
+   mise en place ni ningún otro módulo (pedido explícito de Harol).
+   A propósito NO muestra "customers" (clientes) — excluido también
+   del lado del servidor por los datos personales que trae.
+   ================================================================== */
+let infoPosLastRuta = 'Gerencia → Información POS';
+let infoPosSedeVista = 'chinu'; // 'chinu' | 'monteria' — selector visible solo para gerencia (SESSION.sede==='todas')
+let infoPosTabActiva = 'products';
+let infoPosCache = {}; // { chinu: datosDelDoc|null, monteria: ... } — evita releer Firestore en cada click de pestaña
+let infoPosCargando = false;
+
+const INFO_POS_TABS = [
+  { id:'products', label:'Productos', icon:'chef' },
+  { id:'ingredients', label:'Insumos', icon:'box' },
+  { id:'users', label:'Personal', icon:'users' },
+  { id:'tables', label:'Mesas', icon:'checklist' },
+  { id:'rooms', label:'Salones', icon:'pin' },
+  { id:'kitchens', label:'Cocinas', icon:'chef' },
+];
+
+// Columnas a mostrar por recurso (mismos campos que trae la sincronización).
+const INFO_POS_COLUMNAS = {
+  products: [
+    { key:'name', label:'Nombre' },
+    { key:'price', label:'Precio', fmt:'money' },
+    { key:'cost', label:'Costo', fmt:'money' },
+    { key:'stock', label:'Stock' },
+    { key:'stockControl', label:'Controla stock', fmt:'bool' },
+    { key:'active', label:'Activo', fmt:'bool' },
+    { key:'preparationTime', label:'Tiempo prep. (min)' },
+    { key:'code', label:'Código' },
+  ],
+  ingredients: [
+    { key:'name', label:'Nombre' },
+    { key:'cost', label:'Costo', fmt:'money' },
+    { key:'stock', label:'Stock' },
+    { key:'minStock', label:'Stock mínimo' },
+    { key:'stockControl', label:'Controla stock', fmt:'bool' },
+  ],
+  users: [
+    { key:'name', label:'Nombre' },
+    { key:'email', label:'Correo' },
+    { key:'phone', label:'Teléfono' },
+    { key:'active', label:'Activo', fmt:'bool' },
+    { key:'admin', label:'Administrador', fmt:'bool' },
+    { key:'authPinEnabled', label:'PIN habilitado', fmt:'bool' },
+  ],
+  tables: [
+    { key:'number', label:'Número' },
+    { key:'row', label:'Fila' },
+    { key:'column', label:'Columna' },
+    { key:'shape', label:'Forma' },
+    { key:'size', label:'Tamaño' },
+  ],
+  rooms: [
+    { key:'name', label:'Nombre' },
+  ],
+  kitchens: [
+    { key:'name', label:'Nombre' },
+    { key:'combinedReceiptPrinting', label:'Impresión combinada', fmt:'bool' },
+  ],
+};
+
+function infoPosFmtValor(v, fmt){
+  if(v === null || v === undefined || v === '') return '-';
+  if(fmt === 'bool') return v ? 'Sí' : 'No';
+  if(fmt === 'money') return fmtMoney(Number(v)||0);
+  return String(v);
+}
+
+function infoPosSetSede(val){
+  infoPosSedeVista = val;
+  renderInfoPosModule(null, null, null, infoPosLastRuta);
+}
+
+function infoPosSetTab(val){
+  infoPosTabActiva = val;
+  renderInfoPosModule(null, null, null, infoPosLastRuta);
+}
+
+// Trae (o vuelve a traer) el catálogo de la sede activa desde Firestore.
+async function infoPosActualizar(){
+  if(!window.FS || typeof window.FS.leerCatalogoFudo !== 'function'){
+    alert('La conexión con Firestore no está lista todavía. Intenta de nuevo en un momento.');
+    return;
+  }
+  infoPosCargando = true;
+  renderInfoPosModule(null, null, null, infoPosLastRuta);
+  const datos = await window.FS.leerCatalogoFudo(infoPosSedeVista);
+  infoPosCache[infoPosSedeVista] = datos;
+  infoPosCargando = false;
+  renderInfoPosModule(null, null, null, infoPosLastRuta);
+}
+
+function infoPosTablaHtml(datos, recurso){
+  const cols = INFO_POS_COLUMNAS[recurso] || [];
+  const filas = (datos && Array.isArray(datos[recurso])) ? datos[recurso] : [];
+  if(!filas.length){
+    return '<p style="color:var(--text-light);font-size:13px;">No hay registros de este recurso en el catálogo sincronizado.</p>';
+  }
+  const errorRecurso = datos && datos.erroresPorRecurso && datos.erroresPorRecurso[recurso];
+  const avisoError = errorRecurso ? `<div class="verif-box" style="background:var(--tint-rojo);color:var(--rojo);margin-bottom:10px;">La última sincronización tuvo un error trayendo este recurso: ${errorRecurso}</div>` : '';
+  return `
+    ${avisoError}
+    <table class="mini-table">
+      <thead><tr>${cols.map(c=>`<th>${c.label}</th>`).join('')}</tr></thead>
+      <tbody>${filas.map(f => `<tr>${cols.map(c=>`<td>${infoPosFmtValor(f[c.key], c.fmt)}</td>`).join('')}</tr>`).join('')}</tbody>
+    </table>`;
+}
+
+function renderInfoPosModule(sec, group, item, ruta){
+  if(ruta) infoPosLastRuta = ruta;
+
+  // Si la sesión ya es de una sola sede, se usa esa directamente sin selector.
+  if(SESSION && SESSION.sede && SESSION.sede !== 'todas'){
+    infoPosSedeVista = SESSION.sede;
+  }
+
+  const sedeSelectorHtml = (SESSION && SESSION.sede === 'todas') ? `
+    <div class="tab-bar" style="margin-bottom:14px;">
+      <button class="tab-btn ${infoPosSedeVista==='chinu'?'active':''}" onclick="infoPosSetSede('chinu')">Chinú</button>
+      <button class="tab-btn ${infoPosSedeVista==='monteria'?'active':''}" onclick="infoPosSetSede('monteria')">Montería</button>
+    </div>` : '';
+
+  const datos = infoPosCache[infoPosSedeVista];
+  const yaIntentoCargar = Object.prototype.hasOwnProperty.call(infoPosCache, infoPosSedeVista);
+
+  let cuerpoHtml;
+  if(infoPosCargando){
+    cuerpoHtml = '<div class="verif-box" style="background:var(--tint-dorado);color:var(--dorado);">Consultando catálogo en Firestore...</div>';
+  } else if(!yaIntentoCargar){
+    cuerpoHtml = '<p style="color:var(--text-light);font-size:13px;">Presiona "Actualizar desde Fudo" para consultar el catálogo guardado de esta sede.</p>';
+  } else if(!datos){
+    cuerpoHtml = `<p style="color:var(--text-light);font-size:13px;">Todavía no hay catálogo sincronizado para <b>${infoPosSedeVista==='chinu'?'Chinú':'Montería'}</b>. Corre manualmente la función <code>sincronizar-catalogo-fudo</code> (Harol o soporte técnico) y vuelve a intentar aquí.</p>`;
+  } else {
+    const tabsHtml = INFO_POS_TABS.map(t=>`<button class="tab-btn ${t.id===infoPosTabActiva?'active':''}" onclick="infoPosSetTab('${t.id}')">${ic(t.icon,14)}${t.label} (${(datos.totales && datos.totales[t.id]) || 0})</button>`).join('');
+    const actualizadoTxt = datos.actualizadoEn && typeof datos.actualizadoEn.toDate === 'function'
+      ? datos.actualizadoEn.toDate().toLocaleString('es-CO')
+      : 'Fecha no disponible';
+    cuerpoHtml = `
+      <div style="font-size:12px;color:var(--text-light);margin-bottom:12px;">Última actualización: <b>${actualizadoTxt}</b></div>
+      <div class="tabs" style="margin-bottom:14px;flex-wrap:wrap;">${tabsHtml}</div>
+      ${infoPosTablaHtml(datos, infoPosTabActiva)}
+    `;
+  }
+
+  const html = `
+    <div class="panel">
+      <div class="panel-header">
+        <div class="icon-circle" style="background:${hexToRgba('#2F7A78',0.14)}; color:#2F7A78;">${ic('box',21)}</div>
+        <div><h2>Información POS</h2><div class="path">${infoPosLastRuta}</div></div>
+      </div>
+      <p style="font-size:12.5px;color:var(--text-light);margin-bottom:14px;">
+        Catálogo de configuración traído desde Fudo (no son ventas ni transacciones — es el menú, insumos, personal, mesas, salones y cocinas tal como están configurados hoy en el POS). Vista de exploración por ahora; no está conectada a inventario ni a otros módulos.
+      </p>
+      ${sedeSelectorHtml}
+      <button type="button" class="btn-secondary" style="width:auto;padding:8px 16px;margin-bottom:14px;" onclick="infoPosActualizar()" ${infoPosCargando?'disabled':''}>${infoPosCargando?'Consultando...':'Actualizar desde Fudo'}</button>
+      ${cuerpoHtml}
+    </div>`;
+  document.getElementById('content').innerHTML = html;
+  if(window.innerWidth <= 820) document.getElementById('sidebar').classList.remove('open');
+  if(!infoPosCargando && !yaIntentoCargar) infoPosActualizar();
 }
 
 /* ==================================================================
