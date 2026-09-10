@@ -1684,6 +1684,18 @@ window._ENCUESTA_PUBLICA_ACTIVA = false;
 // no estaría inicializado en ese momento (temporal dead zone) y tronaba
 // con "Cannot access 'ENCUESTA_PUBLICA_MESEROS_CHINU' before initialization".
 const ENCUESTA_PUBLICA_MESEROS_CHINU = ['Sandy','Luisa','Astrid','Joenis','Roger','Jesús'];
+// Mismo motivo que arriba: deben existir ANTES del IIFE, porque
+// renderEncuestaPublicaChinu() (llamada por el IIFE) las usa de
+// inmediato. Antes estaban declaradas más abajo, junto a las funciones
+// que las usan, y volvieron a producir el mismo error de "antes de
+// initialization" que ya se había corregido una vez con los meseros.
+const ENCUESTA_PUBLICA_ASPECTOS = [
+  { campo:'calificacionComida', label:'Sabor y calidad de la comida' },
+  { campo:'calificacionTiempo', label:'Tiempo de espera / atención' },
+  { campo:'calificacionLimpieza', label:'Limpieza del lugar' },
+  { campo:'calificacionAmabilidad', label:'Amabilidad del mesero' }
+];
+let encuestaPublicaSubCalifs = {};
 (function(){
   try{
     const params = new URLSearchParams(location.search);
@@ -1779,17 +1791,6 @@ function encuestaPublicaHoyStr(){
 }
 function encuestaPublicaHoraStr(){ return new Date().toLocaleTimeString('es-CO', {hour:'2-digit', minute:'2-digit'}); }
 
-// Aspectos específicos que se califican con estrellas (1 a 5), además de
-// la calificación general 0-10 — para que el reporte pueda decir POR QUÉ
-// bajó o subió el promedio (ej: "la comida sigue bien, pero el tiempo de
-// espera está cayendo"), no solo un número suelto.
-const ENCUESTA_PUBLICA_ASPECTOS = [
-  { campo:'calificacionComida', label:'Sabor y calidad de la comida' },
-  { campo:'calificacionTiempo', label:'Tiempo de espera / atención' },
-  { campo:'calificacionLimpieza', label:'Limpieza del lugar' },
-  { campo:'calificacionAmabilidad', label:'Amabilidad del mesero' }
-];
-let encuestaPublicaSubCalifs = {};
 function epcStarsHtml(campo){
   const estrellas = [1,2,3,4,5].map(n =>
     `<button type="button" class="epc-star-btn" data-campo="${campo}" data-n="${n}" onclick="encuestaPublicaSetSubCalif('${campo}',${n})" style="background:none;border:none;font-size:26px;cursor:pointer;padding:2px;line-height:1;color:#d8cdb3;">★</button>`
