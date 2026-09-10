@@ -1779,11 +1779,34 @@ function encuestaPublicaHoyStr(){
 }
 function encuestaPublicaHoraStr(){ return new Date().toLocaleTimeString('es-CO', {hour:'2-digit', minute:'2-digit'}); }
 
+// Aspectos específicos que se califican con estrellas (1 a 5), además de
+// la calificación general 0-10 — para que el reporte pueda decir POR QUÉ
+// bajó o subió el promedio (ej: "la comida sigue bien, pero el tiempo de
+// espera está cayendo"), no solo un número suelto.
+const ENCUESTA_PUBLICA_ASPECTOS = [
+  { campo:'calificacionComida', label:'Sabor y calidad de la comida' },
+  { campo:'calificacionTiempo', label:'Tiempo de espera / atención' },
+  { campo:'calificacionLimpieza', label:'Limpieza del lugar' },
+  { campo:'calificacionAmabilidad', label:'Amabilidad del mesero' }
+];
+let encuestaPublicaSubCalifs = {};
+function epcStarsHtml(campo){
+  const estrellas = [1,2,3,4,5].map(n =>
+    `<button type="button" class="epc-star-btn" data-campo="${campo}" data-n="${n}" onclick="encuestaPublicaSetSubCalif('${campo}',${n})" style="background:none;border:none;font-size:26px;cursor:pointer;padding:2px;line-height:1;color:#d8cdb3;">★</button>`
+  ).join('');
+  return `<div id="epcStars_${campo}" style="display:flex;gap:2px;">${estrellas}</div>`;
+}
 function renderEncuestaPublicaChinu(){
+  encuestaPublicaSubCalifs = {};
   const botonesCalif = Array.from({length:11}, (_,i)=>i).map(n =>
     `<button type="button" class="epc-calif-btn" data-n="${n}" onclick="encuestaPublicaSetCalif(${n})" style="width:44px;height:44px;border-radius:10px;border:2px solid var(--bronce);background:#fff;color:var(--espresso);font-size:16px;font-weight:700;cursor:pointer;">${n}</button>`
   ).join('');
   const meserosOpts = ENCUESTA_PUBLICA_MESEROS_CHINU.map(m => `<option value="${m}">${m}</option>`).join('');
+  const aspectosHtml = ENCUESTA_PUBLICA_ASPECTOS.map(a => `
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px;">
+      <span style="font-size:13.5px;color:var(--espresso);">${a.label}</span>
+      ${epcStarsHtml(a.campo)}
+    </div>`).join('');
 
   document.body.innerHTML = `
   <div style="min-height:100vh;background:#FBF6EC;display:flex;justify-content:center;padding:24px 14px;box-sizing:border-box;font-family:'Inter',system-ui,sans-serif;">
@@ -1799,6 +1822,11 @@ function renderEncuestaPublicaChinu(){
         <label style="display:block;font-weight:700;color:var(--espresso);margin-bottom:10px;font-size:14.5px;">¿Qué calificación le das a tu experiencia de hoy? *</label>
         <div id="epcCalifRow" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:6px;">${botonesCalif}</div>
         <div style="display:flex;justify-content:space-between;font-size:11px;color:#8a7960;margin-bottom:16px;"><span>0 = muy mala</span><span>10 = excelente</span></div>
+
+        <div style="border-top:1px solid #efe6d3;padding-top:14px;margin-bottom:2px;">
+          <label style="display:block;font-weight:700;color:var(--espresso);margin-bottom:10px;font-size:13.5px;">Y en detalle, ¿cómo te fue con esto? <span style="font-weight:400;color:#8a7960;">(opcional, nos ayuda mucho)</span></label>
+          ${aspectosHtml}
+        </div>
 
         <div id="epcComentarioWrap" style="display:none;margin-bottom:16px;">
           <label style="display:block;font-weight:600;color:var(--espresso);margin-bottom:6px;font-size:13.5px;">Cuéntanos qué podemos mejorar para ganarnos ese 10</label>
@@ -1845,6 +1873,15 @@ function encuestaPublicaSetCalif(n){
   const wrap = document.getElementById('epcComentarioWrap');
   if(wrap) wrap.style.display = (n < 10) ? 'block' : 'none';
 }
+function encuestaPublicaSetSubCalif(campo, n){
+  encuestaPublicaSubCalifs[campo] = n;
+  const cont = document.getElementById('epcStars_' + campo);
+  if(!cont) return;
+  cont.querySelectorAll('.epc-star-btn').forEach(btn=>{
+    const activo = Number(btn.getAttribute('data-n')) <= n;
+    btn.style.color = activo ? 'var(--bronce)' : '#d8cdb3';
+  });
+}
 
 async function encuestaPublicaEnviar(e){
   e.preventDefault();
@@ -1871,6 +1908,12 @@ async function encuestaPublicaEnviar(e){
     mesero: document.getElementById('epcMesero').value || '',
     comentario: encuestaPublicaCalif < 10 ? (document.getElementById('epcComentario').value || '').trim() : ''
   };
+  // Aspectos por estrellas — opcionales, solo se guarda el campo si el
+  // cliente sí calificó ese aspecto (para no meter ceros falsos en los
+  // promedios del reporte).
+  ENCUESTA_PUBLICA_ASPECTOS.forEach(a => {
+    if(encuestaPublicaSubCalifs[a.campo] != null) datos[a.campo] = encuestaPublicaSubCalifs[a.campo];
+  });
 
   encuestaPublicaEnviando = true;
   const btn = document.getElementById('epcBtnEnviar');
@@ -1884,7 +1927,14 @@ async function encuestaPublicaEnviar(e){
     encuestaPublicaMostrarGracias();
   }catch(err){
     console.error('Error guardando encuesta pública de Chinú:', err);
-    if(errBox) errBox.innerHTML = '<div style="background:#fde8e8;color:#a12727;padding:10px 12px;border-radius:8px;font-size:13px;margin-bottom:14px;">No se pudo enviar tu respuesta (revisa tu conexión a internet) — nada de lo que escribiste se perdió, intenta de nuevo.</div>';
+    // "permission-denied" es casi siempre que faltan o están mal las
+    // reglas de Firestore para encuestas_chinu — un mensaje de "revisa tu
+    // internet" ahí confunde al restaurante sobre dónde está el problema.
+    const esPermiso = err && (err.code === 'permission-denied' || /permission/i.test(err.message||''));
+    const msg = esPermiso
+      ? 'No se pudo guardar tu respuesta por un problema de configuración del restaurante (no es tu conexión). Por favor avísale al restaurante e inténtalo más tarde.'
+      : 'No se pudo enviar tu respuesta (revisa tu conexión a internet) — nada de lo que escribiste se perdió, intenta de nuevo.';
+    if(errBox) errBox.innerHTML = '<div style="background:#fde8e8;color:#a12727;padding:10px 12px;border-radius:8px;font-size:13px;margin-bottom:14px;">' + msg + '</div>';
     if(btn){ btn.disabled = false; btn.textContent = 'Enviar'; }
   } finally {
     encuestaPublicaEnviando = false;
@@ -21197,6 +21247,39 @@ function encuestaCasillaHtml(sec, f, vista){
       ${metaLine}
     </div>`;
 }
+// Promedios de los aspectos específicos (comida, tiempo, limpieza,
+// amabilidad) que hoy solo llena la encuesta de Chinú por estrellas
+// (1-5). Montería no tiene estos campos en su Google Sheet, así que
+// esto se calcula solo sobre las respuestas de Chinú y, si no hay
+// ninguna todavía, no se muestra nada (para no confundir con ceros).
+const ENCUESTA_ASPECTOS_REPORTE = [
+  { campo:'calificacionComida', label:'Comida', icon:'star' },
+  { campo:'calificacionTiempo', label:'Tiempo de espera', icon:'clock' },
+  { campo:'calificacionLimpieza', label:'Limpieza', icon:'sparkle' },
+  { campo:'calificacionAmabilidad', label:'Amabilidad del mesero', icon:'users' }
+];
+function encuestaAspectosChinuHtml(todas){
+  const chinu = (todas||[]).filter(r => (r.sede||'').toLowerCase() === 'chinu');
+  if(!chinu.length) return '';
+  const filas = ENCUESTA_ASPECTOS_REPORTE.map(a=>{
+    const valores = chinu.map(r=>Number(r[a.campo])).filter(n=>!isNaN(n) && n>0);
+    if(!valores.length) return null;
+    const prom = Math.round((valores.reduce((x,y)=>x+y,0)/valores.length)*10)/10;
+    return { label:a.label, prom, n:valores.length };
+  }).filter(Boolean);
+  if(!filas.length) return '';
+  return `
+    <div class="form-section-title">Aspectos específicos (Chinú)</div>
+    <p style="font-size:11.5px;color:var(--text-light);margin-bottom:10px;">Promedio de 1 a 5 estrellas, solo sobre quienes sí calificaron cada aspecto (es opcional en el formulario).</p>
+    <div class="module-grid" style="margin-bottom:18px;">
+      ${filas.map(f=>`
+        <div class="module-card" style="cursor:default;">
+          <div class="icon-circle" style="background:${hexToRgba('#B87333',0.14)};color:#B87333;">${ic('star',20)}</div>
+          <h3>${f.prom} ★</h3>
+          <p>${f.label} <span style="color:var(--text-light);font-size:11px;">(${f.n} resp.)</span></p>
+        </div>`).join('')}
+    </div>`;
+}
 function encuestaResumenHtml(sec){
   const todas = filtrarPorSede(DB.get('encuesta_satisfaccion', []));
   const total = todas.length;
@@ -21225,6 +21308,8 @@ function encuestaResumenHtml(sec){
       <div class="module-card" style="cursor:default;"><div class="icon-circle" style="background:${hexToRgba('#2E7D32',0.14)};color:#2E7D32;">${ic('target',22)}</div><h3>${promedioGeneral || '—'}</h3><p>Calificación promedio</p></div>
       <div class="module-card" style="cursor:default;"><div class="icon-circle" style="background:${hexToRgba('#1E5A70',0.14)};color:#1E5A70;">${ic('trend',22)}</div><h3>${pctCinco}%</h3><p>Calificación 5</p></div>
     </div>
+
+    ${encuestaAspectosChinuHtml(todas)}
 
     <div class="form-section-title">Reseñas por mesero</div>
     <p style="font-size:11.5px;color:var(--text-light);margin-bottom:10px;">Metas: ${ENCUESTA_META_MENSUAL} mensuales · ${ENCUESTA_META_QUINCENAL} quincenales · ${ENCUESTA_META_SEMANAL} semanales. Semana actual: ${kpi.lunes} al ${kpi.domingo} · Quincena actual (Q${kpi.quincena.numero}): ${kpi.quincena.desde} al ${kpi.quincena.hasta} · Mes actual: ${mesNombre}.</p>
