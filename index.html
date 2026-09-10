@@ -2546,10 +2546,13 @@ const AREA_ORDER = ['contabilidad','servicio_cliente','cocina','bar','centro_pro
 // briefing juntos, todos los aseo juntos, todos los mise en place juntos,
 // etc.) en vez de por área — así se ve más organizado.
 const CHECKLIST_CATEGORIA_ORDER = ['alistamiento','briefing','mise_en_place','aseo','prueba','cierre','inspeccion'];
-// Etiqueta de un ítem de menú con su área entre paréntesis (solo aplica a
-// ítems que traen .area, como los de Checklists); el resto queda igual.
-function itemDisplayLabel(it){
-  if(!it.area) return it.label;
+// Etiqueta de un ítem de menú con su área entre paréntesis — solo cuando
+// se pide explícitamente (mostrarArea=true), para una lista plana sin
+// encabezados de grupo; con encabezados de grupo (el caso normal ahora en
+// Checklists, igual que Operación/Gerencia/Calidad) el grupo ya deja claro
+// el área, así que no hace falta repetirla en cada ítem.
+function itemDisplayLabel(it, mostrarArea){
+  if(!mostrarArea || !it.area) return it.label;
   const meta = AREA_META[it.area];
   const areaLabel = meta ? meta.label : it.area;
   return it.label + ' <span style="opacity:.55;font-weight:400;">(' + areaLabel + ')</span>';
@@ -2572,20 +2575,19 @@ function flatItemsOrdenados(groupsConItems){
 const NAV = [
   { id:'checklists', label:'Checklists', icon:'checklist', color:'#2F7A78',
     desc:'Todas las listas de verificación del restaurante, en un solo lugar.',
-    // flatDisplay: se mantienen los grupos por área (para permisos y para
-    // el interruptor de subáreas), pero se muestran como una sola columna,
-    // sin encabezados de grupo, con el área entre paréntesis en cada ítem.
-    flatDisplay:true,
+    // Se muestran con encabezados de grupo (subtítulos), igual que
+    // Operación/Gerencia/Calidad, para que se vea uniforme; los grupos
+    // siguen existiendo para permisos y para el interruptor de subáreas.
     groups:[
       { id:'administracion', label:'Administración', icon:'cash', matchArea:'contabilidad', items:[
         { id:'chk_alistamiento', label:'Alistamiento inicial de caja', icon:'checklist', area:'contabilidad', categoria:'alistamiento', roles:['empleado','administracion','gerencia'], customRender:'renderAlistamientoCajaStandalone' },
-        { id:'chk_cierre_caja', label:'Cierre de área', icon:'checklist', area:'contabilidad', categoria:'cierre', roles:['empleado','administracion','gerencia'], customRender:'renderCierreAreaModule' }
+        { id:'chk_cierre_caja', label:'Cierre de caja', icon:'checklist', area:'contabilidad', categoria:'cierre', roles:['empleado','administracion','gerencia'], customRender:'renderCierreAreaModule' }
       ]},
       { id:'servicio_cliente', label:'Servicio al cliente', icon:'user', matchArea:'servicio_cliente', items:[
         { id:'chk_briefing', label:'Briefing de servicio', icon:'megaphone', area:'servicio_cliente', categoria:'briefing', roles:['empleado','administracion','gerencia'], customRender:'renderBriefingServicioModule' },
         { id:'chk_mise_servicio', label:'Mise en place de servicio', icon:'user', area:'servicio_cliente', categoria:'mise_en_place', roles:['empleado','administracion','gerencia'], customRender:'renderAlistamientoAreaModule' },
         { id:'chk_aseo_salon', label:'Aseo del salón', icon:'checklist', area:'servicio_cliente', categoria:'aseo', roles:['empleado','administracion','gerencia'], customRender:'renderAseoAreaModule' },
-        { id:'chk_cierre_servicio', label:'Cierre de área', icon:'checklist', area:'servicio_cliente', categoria:'cierre', roles:['empleado','administracion','gerencia'], customRender:'renderCierreAreaModule' }
+        { id:'chk_cierre_servicio', label:'Cierre de servicio al cliente', icon:'checklist', area:'servicio_cliente', categoria:'cierre', roles:['empleado','administracion','gerencia'], customRender:'renderCierreAreaModule' }
       ]},
       { id:'cocina', label:'Cocina', icon:'chef', matchArea:'cocina', items:[
         { id:'chk_briefing_cocina', label:'Briefing de cocina', icon:'megaphone', area:'cocina', categoria:'briefing', roles:['empleado','administracion','gerencia'], customRender:'renderBriefingCocinaModule' },
@@ -2597,13 +2599,13 @@ const NAV = [
         { id:'chk_higiene', label:'Aseo de cocina', icon:'checklist', area:'cocina', categoria:'aseo', roles:['empleado','administracion','gerencia'], customRender:'renderAseoAreaModule' },
         { id:'chk_prueba_prep', label:'Prueba de preparaciones diarias', icon:'chef', area:'cocina', categoria:'prueba', roles:['empleado','administracion','gerencia'], customRender:'renderAseoAreaModule' },
         { id:'chk_alistamiento_steward', label:'Alistamiento de steward / lavado de platos', icon:'checklist', area:'cocina', categoria:'alistamiento', roles:['empleado','administracion','gerencia'], customRender:'renderAlistamientoAreaModule', contentKey:'steward' },
-        { id:'chk_cierre_cocina', label:'Cierre de área', icon:'checklist', area:'cocina', categoria:'cierre', roles:['empleado','administracion','gerencia'], customRender:'renderCierreAreaModule' },
-        { id:'chk_cierre_steward', label:'Cierre de área – Steward / lavado de platos', icon:'checklist', area:'cocina', categoria:'cierre', roles:['empleado','administracion','gerencia'], customRender:'renderCierreAreaModule', contentKey:'steward' }
+        { id:'chk_cierre_cocina', label:'Cierre de cocina', icon:'checklist', area:'cocina', categoria:'cierre', roles:['empleado','administracion','gerencia'], customRender:'renderCierreAreaModule' },
+        { id:'chk_cierre_steward', label:'Cierre de steward / lavado de platos', icon:'checklist', area:'cocina', categoria:'cierre', roles:['empleado','administracion','gerencia'], customRender:'renderCierreAreaModule', contentKey:'steward' }
       ]},
       { id:'bar', label:'Bar', icon:'glass', matchArea:'bar', items:[
         { id:'chk_mise_bar', label:'Mise en place de bar', icon:'glass', area:'bar', categoria:'mise_en_place', roles:['empleado','administracion','gerencia'], customRender:'renderAlistamientoAreaModule' },
         { id:'chk_aseo_bar', label:'Aseo del bar', icon:'checklist', area:'bar', categoria:'aseo', roles:['empleado','administracion','gerencia'], customRender:'renderAseoAreaModule' },
-        { id:'chk_cierre_bar', label:'Cierre de área', icon:'checklist', area:'bar', categoria:'cierre', roles:['empleado','administracion','gerencia'], customRender:'renderCierreAreaModule' }
+        { id:'chk_cierre_bar', label:'Cierre de bar', icon:'checklist', area:'bar', categoria:'cierre', roles:['empleado','administracion','gerencia'], customRender:'renderCierreAreaModule' }
       ]},
       { id:'centro_produccion', label:'Centro de producción', icon:'factory', matchArea:'centro_produccion', items:[
         { id:'chk_aseo_cp', label:'Aseo de centro de producción', icon:'checklist', area:'centro_produccion', categoria:'aseo', roles:['empleado','administracion','gerencia'], customRender:'renderAseoAreaModule' }
@@ -3016,7 +3018,7 @@ function renderSidebar(){
         const ib = document.createElement('button');
         ib.className = 'nav-item-btn' + (it.link ? ' nav-group-link' : '');
         ib.id = 'item_' + sec.id + '_' + groupId + '_' + it.id;
-        ib.innerHTML = it.link ? (it.label + ic('external',12)) : itemDisplayLabel(it);
+        ib.innerHTML = it.link ? (it.label + ic('external',12)) : itemDisplayLabel(it, true);
         ib.onclick = it.link ? (() => window.open(it.link, '_blank')) : (() => openModule(sec, group, it));
         itemsWrap.appendChild(ib);
       });
@@ -3439,8 +3441,8 @@ function homeSectionBodyHtml(sec){
   if(sec.flatDisplay){
     flatItemsOrdenados(groups).forEach(({it, groupId})=>{
       html += it.link
-        ? `<div class="home-sub-item" onclick="window.open('${it.link}','_blank')">${ic(it.icon,14)}${itemDisplayLabel(it)} ${ic('external',12)}</div>`
-        : `<div class="home-sub-item" onclick='openModuleById("${sec.id}","${groupId}","${it.id}")'>${ic(it.icon,14)}${itemDisplayLabel(it)}</div>`;
+        ? `<div class="home-sub-item" onclick="window.open('${it.link}','_blank')">${ic(it.icon,14)}${itemDisplayLabel(it, true)} ${ic('external',12)}</div>`
+        : `<div class="home-sub-item" onclick='openModuleById("${sec.id}","${groupId}","${it.id}")'>${ic(it.icon,14)}${itemDisplayLabel(it, true)}</div>`;
     });
   } else {
     groups.forEach(({group, items})=>{
@@ -12744,10 +12746,19 @@ let planifFecha = hoyStr();
 let planifArea = PLANIF_AREAS[0];
 let planifLastRuta = 'Operación → Planificación y asignación de tareas';
 let planifTipoNueva = 'libre';
-let planifVista = 'lista'; // 'lista' | 'dia' | 'personas'
+let planifVista = 'tablero'; // 'tablero' | 'lista' | 'dia' | 'personas' | 'roster'
 let planifCoberturaHoy = null;
 let planifCoberturaCargando = false;
 let planifSeleccion = null; // { tipo:'tarea', id } | { tipo:'persona', usuario, nombre } — para asignar con dos clics
+
+// Filtros y estado del tablero tipo Kanban (vista "Tablero", la principal).
+let planifKFiltroTexto = '';
+let planifKFiltroArea = 'todas';
+let planifKFiltroTurno = 'todos';
+let planifKFiltroResp = 'todos';
+let planifKFiltroEstado = 'todos';
+let planifMostrarNueva = false;
+let planifMsgTablero = '';
 
 function planifSetFecha(v){ planifFecha = v || hoyStr(); renderPlanificacionTareasModule(null,null,null,planifLastRuta); }
 function planifSetArea(v){ planifArea = v; renderPlanificacionTareasModule(null,null,null,planifLastRuta); }
@@ -13218,6 +13229,282 @@ function planifRosterHtml(){
     ${relacionesHtml}`;
 }
 
+/* ------------------------------------------------------------------
+   TABLERO KANBAN — vista principal de Planificación: tarjetas por
+   tarea agrupadas en columnas Pendientes / En curso / Por revisar /
+   Completadas, con indicadores del día, filtros y asignación por
+   desplegable. No reemplaza el modelo de datos existente (sigue
+   siendo tareas_asignadas + tareas_completadas) — solo agrega dos
+   campos opcionales por tarea: .estado (pendiente/en_curso/
+   por_revisar; "completada" se sigue derivando de tareas_completadas
+   como ya funcionaba) y .bloqueada (booleano). Las tareas viejas sin
+   .estado se tratan como "pendiente" sin necesidad de migración.
+   ------------------------------------------------------------------ */
+function planifEstadoTarea(t){
+  if(planifCompletadasDeTarea(t.id).length > 0) return 'completada';
+  return t.estado || 'pendiente';
+}
+function planifSetEstadoTarea(tareaId, estado){
+  const arr = DB.get('tareas_asignadas', []);
+  const idx = arr.findIndex(t=>t.id===tareaId);
+  if(idx===-1) return;
+  arr[idx].estado = estado;
+  DB.set('tareas_asignadas', arr);
+  renderPlanificacionTareasModule(null,null,null,planifLastRuta);
+}
+function planifToggleBloqueada(tareaId){
+  const arr = DB.get('tareas_asignadas', []);
+  const idx = arr.findIndex(t=>t.id===tareaId);
+  if(idx===-1) return;
+  arr[idx].bloqueada = !arr[idx].bloqueada;
+  DB.set('tareas_asignadas', arr);
+  renderPlanificacionTareasModule(null,null,null,planifLastRuta);
+}
+// Reabrir: quita el último registro de tareas_completadas (no borra
+// historial de días anteriores si esa tarea se reutilizó) y la regresa
+// a pendiente. Pensado para cuando gerencia rechaza algo que se marcó
+// como hecho por error.
+function planifReabrirTarea(tareaId){
+  const completadas = DB.get('tareas_completadas', []);
+  let idx = -1;
+  completadas.forEach((c,i) => { if(c.tareaId===tareaId) idx = i; });
+  if(idx===-1) return;
+  completadas.splice(idx, 1);
+  DB.set('tareas_completadas', completadas);
+  planifSetEstadoTarea(tareaId, 'pendiente');
+}
+// El campo .turno guarda un id de PLANIF_TURNOS para tareas creadas a
+// mano, pero para las que vienen de la alarma de un checklist guarda un
+// texto libre tipo "Turno 1 · 08:00" (ver chkAlarmaSincronizarTareaHoy)
+// — de ahí se extrae la hora, si la trae.
+function planifHoraDeTarea(t){
+  const m = /(\d{1,2}:\d{2})/.exec(t.turno || '');
+  return m ? m[1] : '';
+}
+function planifHoraActualStr(){
+  const d = new Date();
+  return String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0');
+}
+function planifTareaVencida(t){
+  if(planifEstadoTarea(t)==='completada') return false;
+  const hoy = hoyStr();
+  if(t.fecha < hoy) return true;
+  if(t.fecha > hoy) return false;
+  const hora = planifHoraDeTarea(t);
+  if(!hora) return false;
+  return planifHoraActualStr() > hora;
+}
+// Periodicidad — solo informativa, según lo que ya sabe la app de cada
+// checklist. Todo lo que no está en el mapa se asume diario, que es el
+// caso de la enorme mayoría (mise en place, aseo, briefing, cierres).
+const PLANIF_PERIODICIDAD_MAP = {
+  cal_plagas: 'Mensual', cal_capacitacion: 'Según cronograma', cal_certificados: 'Según vigencia',
+  cal_trampas: 'Cada 2 días (internas)'
+};
+function planifPeriodicidadDeTarea(t){
+  if(t.tipo !== 'checklist') return 'Una vez';
+  return PLANIF_PERIODICIDAD_MAP[t.checklistId] || 'Diaria';
+}
+// Abre la pantalla del checklist/módulo detrás de una tarea (botón
+// "Ver" de cada tarjeta) — busca en todo NAV, no solo en Checklists,
+// porque los checklists de Calidad viven en su propia sección.
+function planifAbrirTareaId(tareaId){
+  const t = DB.get('tareas_asignadas', []).find(x=>x.id===tareaId);
+  if(!t || t.tipo!=='checklist' || !t.checklistId) return;
+  let found = null;
+  NAV.forEach(sec => (sec.groups||[]).forEach(g => (g.items||[]).forEach(it => { if(it.id===t.checklistId) found = { sec, group:g, item:it }; })));
+  if(found) openModule(found.sec, found.group, found.item);
+}
+function planifKSetTexto(v){ planifKFiltroTexto = v; renderPlanificacionTareasModule(null,null,null,planifLastRuta); }
+function planifKSetArea(v){ planifKFiltroArea = v; renderPlanificacionTareasModule(null,null,null,planifLastRuta); }
+function planifKSetTurno(v){ planifKFiltroTurno = v; renderPlanificacionTareasModule(null,null,null,planifLastRuta); }
+function planifKSetResp(v){ planifKFiltroResp = v; renderPlanificacionTareasModule(null,null,null,planifLastRuta); }
+function planifKSetEstado(v){ planifKFiltroEstado = v; renderPlanificacionTareasModule(null,null,null,planifLastRuta); }
+function planifKLimpiarFiltros(){
+  planifKFiltroTexto=''; planifKFiltroArea='todas'; planifKFiltroTurno='todos'; planifKFiltroResp='todos'; planifKFiltroEstado='todos';
+  renderPlanificacionTareasModule(null,null,null,planifLastRuta);
+}
+function planifKToggleNueva(){ planifMostrarNueva = !planifMostrarNueva; renderPlanificacionTareasModule(null,null,null,planifLastRuta); }
+// Crea de una vez, para la fecha activa, una tarea por cada checklist
+// que existe en el menú (incluye los cierres de área) — así solo queda
+// pendiente asignarle el responsable a cada una desde su tarjeta, sin
+// tener que darlas de alta una por una. No duplica: si un checklist ya
+// tiene tarea creada ese día, lo deja igual (por si ya tiene avance o
+// responsable asignado).
+function planifCrearTodosLosChecklistsHoy(){
+  const fecha = planifFecha;
+  const sede = sedeParaGuardar();
+  const catalogo = chkCatalogo();
+  const existentes = new Set(
+    filtrarPorSede(DB.get('tareas_asignadas', [])).filter(t => t.fecha===fecha && t.tipo==='checklist').map(t => t.checklistId)
+  );
+  let creadas = 0;
+  catalogo.forEach(c => {
+    if(!c.area || existentes.has(c.id)) return;
+    DB.push('tareas_asignadas', {
+      fecha, area: c.area, turno: '', tipo:'checklist', descripcion:'', checklistId: c.id, checklistLabel: c.label,
+      sede, creadoPor: SESSION.nombre, creadoPorUsuario: SESSION.usuario
+    });
+    existentes.add(c.id);
+    creadas++;
+  });
+  planifMsgTablero = creadas
+    ? `Se crearon ${creadas} tarea(s) nueva(s) de checklist para ${fecha}. Ya solo falta asignarles responsable.`
+    : `Todos los checklists de ${fecha} ya tenían su tarea creada.`;
+  renderPlanificacionTareasModule(null,null,null,planifLastRuta);
+}
+function planifKanbanFiltrar(tareas){
+  const q = (planifKFiltroTexto||'').toLowerCase().trim();
+  return tareas.filter(t => {
+    if(planifKFiltroArea!=='todas' && t.area!==planifKFiltroArea) return false;
+    if(planifKFiltroTurno!=='todos' && t.turno!==planifKFiltroTurno) return false;
+    if(planifKFiltroResp==='sin_asignar' && t.asignadoA) return false;
+    if(planifKFiltroResp!=='todos' && planifKFiltroResp!=='sin_asignar' && t.asignadoA!==planifKFiltroResp) return false;
+    if(planifKFiltroEstado!=='todos' && planifEstadoTarea(t)!==planifKFiltroEstado) return false;
+    if(q){
+      const label = t.tipo==='checklist' ? (t.checklistLabel||'') : (t.descripcion||'');
+      if((label+' '+(t.asignadoANombre||'')).toLowerCase().indexOf(q)===-1) return false;
+    }
+    return true;
+  });
+}
+function planifKanbanKpisHtml(tareasDia){
+  const total = tareasDia.length;
+  const completadas = tareasDia.filter(t=>planifEstadoTarea(t)==='completada').length;
+  const pct = total ? Math.round((completadas/total)*100) : 0;
+  const sinResp = tareasDia.filter(t=>!t.asignadoA).length;
+  const vencidas = tareasDia.filter(t=>planifTareaVencida(t)).length;
+  const porRevisar = tareasDia.filter(t=>planifEstadoTarea(t)==='por_revisar').length;
+  const bloqueadas = tareasDia.filter(t=>t.bloqueada).length;
+  return `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:16px;">
+    <div class="stat-card2 ${total && pct===100 ? 'ok':''}"><div class="lbl">Avance del día</div><div class="val">${pct}%</div><div class="sub">${completadas}/${total} tareas completadas</div></div>
+    <div class="stat-card2 ${sinResp?'bad':'ok'}"><div class="lbl">Sin responsable</div><div class="val">${sinResp}</div><div class="sub">Necesitan asignación</div></div>
+    <div class="stat-card2 ${vencidas?'bad':'ok'}"><div class="lbl">Vencidas</div><div class="val">${vencidas}</div><div class="sub">Fuera de plazo</div></div>
+    <div class="stat-card2"><div class="lbl">Por revisar</div><div class="val">${porRevisar}</div><div class="sub">Esperan validación</div></div>
+    <div class="stat-card2 ${bloqueadas?'bad':''}"><div class="lbl">Bloqueadas</div><div class="val">${bloqueadas}</div><div class="sub">Necesitan ayuda</div></div>
+  </div>`;
+}
+function planifKanbanFiltrosHtml(usuariosDisp){
+  const areaOpts = PLANIF_AREAS.map(a=>`<option value="${a}" ${planifKFiltroArea===a?'selected':''}>${(AREA_META[a]||{label:a}).label}</option>`).join('');
+  const turnoOpts = PLANIF_TURNOS.map(t=>`<option value="${t.id}" ${planifKFiltroTurno===t.id?'selected':''}>${t.label}</option>`).join('');
+  const respOpts = usuariosDisp.map(u=>`<option value="${u.usuario}" ${planifKFiltroResp===u.usuario?'selected':''}>${u.nombre||u.usuario}</option>`).join('');
+  const estadoOpts = [
+    {id:'todos', label:'Todos los activos'},{id:'pendiente', label:'Pendiente'},{id:'en_curso', label:'En curso'},
+    {id:'por_revisar', label:'Por revisar'},{id:'completada', label:'Completada'}
+  ].map(e=>`<option value="${e.id}" ${planifKFiltroEstado===e.id?'selected':''}>${e.label}</option>`).join('');
+  return `
+    <div class="form-grid" style="margin-bottom:6px;">
+      <div class="form-field"><label>Buscar tarea o persona</label><input type="text" value="${(planifKFiltroTexto||'').replace(/"/g,'&quot;')}" placeholder="Buscar..." onchange="planifKSetTexto(this.value)"></div>
+      <div class="form-field"><label>Área</label><select onchange="planifKSetArea(this.value)"><option value="todas" ${planifKFiltroArea==='todas'?'selected':''}>Todas las áreas</option>${areaOpts}</select></div>
+      <div class="form-field"><label>Turno</label><select onchange="planifKSetTurno(this.value)"><option value="todos" ${planifKFiltroTurno==='todos'?'selected':''}>Todos los turnos</option>${turnoOpts}</select></div>
+      <div class="form-field"><label>Responsable</label><select onchange="planifKSetResp(this.value)"><option value="todos" ${planifKFiltroResp==='todos'?'selected':''}>Todos</option><option value="sin_asignar" ${planifKFiltroResp==='sin_asignar'?'selected':''}>Sin asignar</option>${respOpts}</select></div>
+      <div class="form-field"><label>Estado</label><select onchange="planifKSetEstado(this.value)">${estadoOpts}</select></div>
+    </div>
+    <button type="button" class="btn-secondary" style="padding:6px 12px;font-size:12px;margin-bottom:14px;" onclick="planifKLimpiarFiltros()">Limpiar filtros</button>`;
+}
+function planifFormNuevaTareaHtml(turnoOptions, checklistOptions){
+  const areaOpts = PLANIF_AREAS.map(a=>`<option value="${a}" ${a===planifArea?'selected':''}>${(AREA_META[a]||{label:a}).label}</option>`).join('');
+  return `<div style="background:var(--white);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:16px;">
+    <div class="form-section-title" style="margin-top:0;">Nueva tarea</div>
+    <div class="form-grid">
+      <div class="form-field"><label>Área</label><select onchange="planifSetArea(this.value)">${areaOpts}</select></div>
+      <div class="form-field"><label>Turno</label><select id="pl_turno">${turnoOptions}</select></div>
+      <div class="form-field"><label>Tipo de tarea</label>
+        <select id="pl_tipo" onchange="planifSetTipoNueva(this.value)">
+          <option value="libre" ${planifTipoNueva==='libre'?'selected':''}>Tarea libre</option>
+          <option value="checklist" ${planifTipoNueva==='checklist'?'selected':''}>Checklist existente</option>
+        </select>
+      </div>
+    </div>
+    ${planifTipoNueva==='libre'
+      ? `<div class="form-field" style="margin-top:10px;"><label>Descripción de la tarea</label><textarea id="pl_descripcion" rows="2" placeholder="Ej: Limpiar cava 2 a fondo"></textarea></div>`
+      : (checklistOptions
+          ? `<div class="form-field" style="margin-top:10px;"><label>Checklist</label><select id="pl_checklist"><option value="">Seleccionar...</option>${checklistOptions}</select></div>`
+          : `<p style="color:var(--text-light);font-size:12.5px;margin-top:10px;">Esta área no tiene checklists en el menú todavía.</p>`)
+    }
+    <button class="btn-primary" style="width:auto;padding:10px 18px;margin-top:12px;" onclick="planifCrearTarea()">Asignar tarea</button>
+    <div id="pl_msg"></div>
+  </div>`;
+}
+function planifKanbanTarjetaHtml(t, usuariosDisp){
+  const estado = planifEstadoTarea(t);
+  const label = t.tipo==='checklist' ? (t.checklistLabel || 'Checklist') : t.descripcion;
+  const areaLabel = (AREA_META[t.area]||{label:t.area}).label;
+  const turnoLabel = (PLANIF_TURNOS.find(x=>x.id===t.turno)||{}).label || t.turno || '';
+  const hora = planifHoraDeTarea(t);
+  const vencida = planifTareaVencida(t);
+  const completadas = planifCompletadasDeTarea(t.id);
+  const puedeAprobar = SESSION && (SESSION.rol==='administracion' || SESSION.rol==='gerencia');
+
+  let acciones = '';
+  if(estado==='pendiente'){
+    acciones = `<button type="button" class="btn-secondary" style="padding:5px 10px;font-size:11px;" onclick="planifSetEstadoTarea('${t.id}','en_curso')">Iniciar</button>
+      <button type="button" class="btn-secondary" style="padding:5px 10px;font-size:11px;" onclick="planifMarcarCompletada('${t.id}')">Marcar hecha</button>`;
+  } else if(estado==='en_curso'){
+    acciones = `<button type="button" class="btn-secondary" style="padding:5px 10px;font-size:11px;" onclick="planifSetEstadoTarea('${t.id}','por_revisar')">Enviar a revisión</button>
+      <button type="button" class="btn-secondary" style="padding:5px 10px;font-size:11px;" onclick="planifMarcarCompletada('${t.id}')">Marcar hecha</button>`;
+  } else if(estado==='por_revisar'){
+    acciones = (puedeAprobar ? `<button type="button" class="btn-primary" style="padding:5px 10px;font-size:11px;width:auto;" onclick="planifMarcarCompletada('${t.id}')">Aprobar</button>` : '')
+      + `<button type="button" class="btn-secondary" style="padding:5px 10px;font-size:11px;" onclick="planifSetEstadoTarea('${t.id}','en_curso')">Devolver</button>`;
+  } else if(estado==='completada' && puedeAprobar){
+    acciones = `<button type="button" class="btn-secondary" style="padding:5px 10px;font-size:11px;" onclick="planifReabrirTarea('${t.id}')">Reabrir</button>`;
+  }
+  const verBtn = (t.tipo==='checklist') ? `<button type="button" class="btn-secondary" style="padding:5px 10px;font-size:11px;" onclick="planifAbrirTareaId('${t.id}')">Ver</button>` : '';
+  const bloquearBtn = estado!=='completada' ? `<button type="button" class="btn-secondary" style="padding:5px 8px;font-size:11px;" onclick="planifToggleBloqueada('${t.id}')" title="${t.bloqueada?'Desbloquear':'Marcar bloqueada'}">${t.bloqueada?'🔓':'🚧'}</button>` : '';
+
+  return `<div style="background:var(--white);border:1px solid ${t.bloqueada?'#E0A100':'var(--border)'};border-radius:10px;padding:12px;margin-bottom:10px;">
+    ${t.bloqueada ? `<span style="font-size:10px;font-weight:700;color:#8A6100;background:#FFF3D6;border-radius:6px;padding:2px 8px;display:inline-block;margin:0 6px 6px 0;">🚧 Bloqueada</span>` : ''}
+    ${vencida ? `<span style="font-size:10px;font-weight:700;color:#B7423A;background:#FBE3E1;border-radius:6px;padding:2px 8px;display:inline-block;margin-bottom:6px;">Vencida</span>` : ''}
+    <div style="font-size:10.5px;color:var(--text-light);text-transform:uppercase;letter-spacing:.3px;font-weight:700;margin-bottom:3px;">${t.tipo==='checklist' ? 'Checklist' : 'Tarea libre'}</div>
+    <div style="font-weight:700;font-size:13.5px;margin-bottom:4px;">${label}</div>
+    <div style="font-size:11px;color:var(--text-light);margin-bottom:8px;">${areaLabel}${turnoLabel ? ' · ' + turnoLabel : ''}${hora ? ' · ' + hora : ''} · ${planifPeriodicidadDeTarea(t)}</div>
+    <div style="margin-bottom:8px;">${planifAsignarSelectHtml(t, usuariosDisp)}</div>
+    ${estado==='completada' ? `<div style="font-size:11px;color:var(--verde);margin-bottom:8px;">✓ Hecha por ${(completadas[completadas.length-1]||{}).responsable || ''}</div>` : ''}
+    <div style="display:flex;flex-wrap:wrap;gap:6px;">
+      ${acciones}${verBtn}${bloquearBtn}
+      <button type="button" class="btn-secondary" style="padding:5px 8px;font-size:11px;" onclick="planifEliminarTarea('${t.id}')" title="Quitar">&times;</button>
+    </div>
+  </div>`;
+}
+function planifKanbanColumnaHtml(titulo, colorDot, tareas, usuariosDisp, vacioTexto){
+  const tarjetas = tareas.length ? tareas.map(t=>planifKanbanTarjetaHtml(t, usuariosDisp)).join('') : `<p style="color:var(--text-light);font-size:12px;">${vacioTexto}</p>`;
+  return `<div style="flex:1;min-width:260px;background:var(--marfil);border:1px solid var(--border);border-radius:12px;padding:12px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+      <div style="font-weight:700;font-size:13px;display:flex;align-items:center;gap:6px;"><span style="width:8px;height:8px;border-radius:50%;background:${colorDot};display:inline-block;"></span>${titulo}</div>
+      <span class="badge" style="font-size:11px;">${tareas.length}</span>
+    </div>
+    ${tarjetas}
+  </div>`;
+}
+function planifCuerpoTableroHtml(turnoOptions, checklistOptions){
+  const usuariosDisp = planifUsuariosDisponibles();
+  const tareasDia = planifTareasDeDiaTodasAreas(planifFecha);
+  const filtradas = planifKanbanFiltrar(tareasDia);
+  const porEstado = { pendiente:[], en_curso:[], por_revisar:[], completada:[] };
+  filtradas.forEach(t => { (porEstado[planifEstadoTarea(t)] || porEstado.pendiente).push(t); });
+  return `
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;margin-bottom:14px;">
+      <div class="form-grid" style="max-width:220px;margin:0;">
+        <div class="form-field"><label>Fecha</label><input type="date" value="${planifFecha}" onchange="planifSetFecha(this.value)"></div>
+      </div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;">
+        <button class="btn-secondary" style="width:auto;padding:9px 16px;" onclick="planifCrearTodosLosChecklistsHoy()" title="Crea una tarea por cada checklist del menú (incluye cierres) para esta fecha, sin responsable — solo falta asignarlo.">Crear todos los checklists del día</button>
+        <button class="btn-primary" style="width:auto;padding:9px 16px;" onclick="planifKToggleNueva()">${planifMostrarNueva ? 'Cerrar' : '+ Nueva tarea'}</button>
+      </div>
+    </div>
+    ${planifMsgTablero ? `<div class="badge badge-verde" style="margin-bottom:14px;display:inline-block;">${planifMsgTablero}</div>` : ''}
+    ${planifKanbanKpisHtml(tareasDia)}
+    ${planifMostrarNueva ? planifFormNuevaTareaHtml(turnoOptions, checklistOptions) : ''}
+    ${planifKanbanFiltrosHtml(usuariosDisp)}
+    <div style="font-size:11.5px;color:var(--text-light);margin-bottom:10px;">${filtradas.length} tareas en esta vista · Indicadores del día completo</div>
+    <div style="display:flex;gap:14px;flex-wrap:wrap;align-items:flex-start;">
+      ${planifKanbanColumnaHtml('Pendientes', '#C9A227', porEstado.pendiente, usuariosDisp, 'No hay tareas en este estado.')}
+      ${planifKanbanColumnaHtml('En curso', '#2F7A78', porEstado.en_curso, usuariosDisp, 'No hay tareas en este estado.')}
+      ${planifKanbanColumnaHtml('Por revisar', '#8E6FB0', porEstado.por_revisar, usuariosDisp, 'Las entregas pendientes de validar aparecerán aquí.')}
+      ${planifKanbanColumnaHtml('Completadas', '#1E7B3C', porEstado.completada, usuariosDisp, 'Todavía no hay tareas completadas.')}
+    </div>`;
+}
+
 function renderPlanificacionTareasModule(sec, group, item, ruta){
   if(ruta) planifLastRuta = ruta;
   const secOp = sec || NAV.find(s=>s.id==='operacion');
@@ -13257,9 +13544,10 @@ function renderPlanificacionTareasModule(sec, group, item, ruta){
 
   const vistaTabsHtml = `
     <div class="tab-bar" style="margin-bottom:16px;">
-      <button class="tab-btn ${planifVista==='lista'?'active':''}" onclick="planifSetVista('lista')">Lista por área</button>
-      <button class="tab-btn ${planifVista==='dia'?'active':''}" onclick="planifSetVista('dia')">Vista del día</button>
+      <button class="tab-btn ${planifVista==='tablero'?'active':''}" onclick="planifSetVista('tablero')">Tablero</button>
+      <button class="tab-btn ${planifVista==='lista'?'active':''}" onclick="planifSetVista('lista')">Por turno</button>
       <button class="tab-btn ${planifVista==='personas'?'active':''}" onclick="planifSetVista('personas')">Por persona</button>
+      <button class="tab-btn ${planifVista==='dia'?'active':''}" onclick="planifSetVista('dia')">Asignación rápida</button>
       <button class="tab-btn ${planifVista==='roster'?'active':''}" onclick="planifSetVista('roster')">Roster fijo (Montería)</button>
     </div>`;
 
@@ -13305,6 +13593,13 @@ function renderPlanificacionTareasModule(sec, group, item, ruta){
       ${planifHojasIndividualesHtml()}`;
 
   const cuerpoRoster = planifRosterHtml();
+  const cuerpoTablero = planifCuerpoTableroHtml(turnoOptions, checklistOptions);
+
+  const cuerpoActual = planifVista==='dia' ? cuerpoDia
+    : (planifVista==='personas' ? cuerpoPersonas
+    : (planifVista==='roster' ? cuerpoRoster
+    : (planifVista==='lista' ? cuerpoLista
+    : cuerpoTablero)));
 
   const html = `
     <div class="panel">
@@ -13312,9 +13607,9 @@ function renderPlanificacionTareasModule(sec, group, item, ruta){
         <div class="icon-circle" style="background:${hexToRgba(secOp.color,0.14)}; color:${secOp.color};">${ic('checklist',21)}</div>
         <div><h2>Planificación y asignación de tareas</h2><div class="path">${planifLastRuta}</div></div>
       </div>
-      <p style="color:var(--text-light);font-size:12px;margin-bottom:14px;">Asigna tareas por área y turno para un día, y a cada persona — quien esté cubriendo ese turno (según Horarios) o quien tenga la tarea asignada la marca como hecha. Puede ser una tarea libre o uno de los checklists que ya existen en la app.</p>
+      <p style="color:var(--text-light);font-size:12px;margin-bottom:14px;">Un responsable, un plazo y un resultado claro para cada tarea. Puede ser una tarea libre o uno de los checklists que ya existen en la app.</p>
       ${vistaTabsHtml}
-      ${planifVista==='dia' ? cuerpoDia : (planifVista==='personas' ? cuerpoPersonas : (planifVista==='roster' ? cuerpoRoster : cuerpoLista))}
+      ${cuerpoActual}
     </div>`;
   document.getElementById('content').innerHTML = html;
 }
