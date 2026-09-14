@@ -1966,13 +1966,30 @@ async function encuestaPublicaEnviar(e){
   }
 }
 
+// Link de reseñas de Google del negocio "Córdova Restaurante" (Chinú). Solo
+// se ofrece a quien calificó con 5 estrellas en la encuesta interna — no
+// tiene sentido (ni conviene) empujar a Google a alguien insatisfecho.
+// Google ya no permite dejar las 5 estrellas puestas de antemano en el
+// link (bloqueó ese truco hace años); lo máximo que se puede hacer es
+// llevar a la persona directo al cuadro de reseña para que ella misma
+// las marque, con el texto invitándola a poner 5.
+const ENCUESTA_PUBLICA_LINK_GOOGLE = 'https://share.google/Df7X6AggOwGGwXvCa';
+
 function encuestaPublicaMostrarGracias(){
+  const esCincoEstrellas = encuestaPublicaCalif === 5;
+  const bloqueGoogle = esCincoEstrellas ? `
+      <a href="${ENCUESTA_PUBLICA_LINK_GOOGLE}" target="_blank" rel="noopener"
+         style="display:flex;align-items:center;justify-content:center;gap:8px;margin-top:22px;padding:14px;border-radius:12px;background:linear-gradient(180deg, var(--bronce), #6B8F1E);color:#fff;font-weight:700;font-size:15px;text-decoration:none;">
+        ⭐ Califícanos también en Google
+      </a>
+      <p style="color:#8a7960;font-size:12px;margin-top:8px;">Nos ayudas mucho a que más personas nos conozcan. Se abre Google y solo tienes que tocar las 5 estrellas y enviar.</p>` : '';
   document.body.innerHTML = `
   <div style="min-height:100vh;background:#FBF6EC;display:flex;align-items:center;justify-content:center;padding:24px;box-sizing:border-box;font-family:'Inter',system-ui,sans-serif;">
     <div style="text-align:center;max-width:380px;">
       <div style="font-size:48px;margin-bottom:10px;">🙏</div>
       <h1 style="font-family:'Playfair Display',Georgia,serif;color:var(--espresso);font-size:24px;margin:0 0 10px;">¡Gracias por tu opinión!</h1>
       <p style="color:#6b5a45;font-size:14px;">Tu respuesta ya quedó registrada. En Restaurante Córdova la usamos para seguir mejorando cada día.</p>
+      ${bloqueGoogle}
     </div>
   </div>`;
 }
