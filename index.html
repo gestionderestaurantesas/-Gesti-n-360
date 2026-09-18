@@ -3742,6 +3742,14 @@ function homeItemPorIdSinFiltro(itemId){
   NAV.forEach(sec => (sec.groups||[]).forEach(g => (g.items||[]).forEach(it => { if(it.id===itemId) found = { sec, group:g, item:it }; })));
   return found;
 }
+// Análoga a homeIrA, pero sin pasar por el filtro de permisos (homeIrA usa
+// homeItemPorId, que solo busca entre lo que el menú de esta cuenta
+// muestra hoy — por eso "Empezar" no reaccionaba en tareas fuera del rol
+// de puesto de la persona, aunque sí se le hubieran asignado ese día).
+function homeIrASinFiltro(itemId){
+  const x = homeItemPorIdSinFiltro(itemId);
+  if(x) openModule(x.sec, x.group, x.item);
+}
 // Emoji representativo por área — solo decorativo, para que cada tarjeta
 // se reconozca de un vistazo sin tener que leer el texto.
 const HOME_AREA_EMOJI = {
@@ -3750,25 +3758,30 @@ const HOME_AREA_EMOJI = {
 };
 function homeAreaEmoji(areaId){ return HOME_AREA_EMOJI[areaId] || '📋'; }
 
-// "Hora límite" aproximada de cada turno, para calcular la alarma de
-// cumplimiento cuando la tarea no trae una hora exacta (t.hora). Son
-// horas de referencia (no exactas), solo para avisar a tiempo — si más
-// adelante se necesita más precisión, se puede afinar por sede.
-const HOME_TURNO_LIMITE = { manana: 12, tarde: 18, noche: 23 };
-function homeAlarmaTarea(t){
-  let limite = null;
-  if(t.hora){
-    const partes = String(t.hora).split(':').map(Number);
-    if(!isNaN(partes[0])) limite = partes[0] + ((partes[1]||0)/60);
-  } else if(t.turno && HOME_TURNO_LIMITE[t.turno] != null){
-    limite = HOME_TURNO_LIMITE[t.turno];
+// Solo se calcula la alarma de cumplimiento si la tarea trae una hora
+// límite REAL (t.hora, asignada en Planificación o en la alarma del
+// checklist) — si no la tiene, no se muestra ninguna insignia (antes
+// decía "Sin hora límite", que no aportaba nada). Como t.turno puede
+// venir como texto libre de otras pantallas (ej. "Turno 2 · 20:58"), se
+// intenta sacar la hora de ahí también como respaldo.
+function homeHoraLimiteDe(t){
+  if(t.hora && /^\d{1,2}:\d{2}/.test(t.hora)) return t.hora.slice(0,5);
+  if(t.turno){
+    const m = String(t.turno).match(/(\d{1,2}:\d{2})\s*$/);
+    if(m) return m[1];
   }
-  if(limite == null) return { emoji:'🕒', texto:'Sin hora límite', clase:'neutral' };
+  return null;
+}
+function homeAlarmaTarea(t){
+  const horaLimite = homeHoraLimiteDe(t);
+  if(!horaLimite) return null;
+  const partes = horaLimite.split(':').map(Number);
+  const limite = partes[0] + ((partes[1]||0)/60);
   const ahora = new Date();
   const horaAhora = ahora.getHours() + ahora.getMinutes()/60;
-  if(horaAhora > limite) return { emoji:'🔴', texto:'Atrasada', clase:'rojo' };
-  if(limite - horaAhora <= 1) return { emoji:'🟠', texto:'Por vencer', clase:'ambar' };
-  return { emoji:'🟢', texto:'A tiempo', clase:'verde' };
+  if(horaAhora > limite) return { emoji:'🔴', texto:'Atrasada (' + horaLimite + ')', clase:'rojo' };
+  if(limite - horaAhora <= 1) return { emoji:'🟠', texto:'Por vencer · ' + horaLimite, clase:'ambar' };
+  return { emoji:'🟢', texto:'Hasta las ' + horaLimite, clase:'verde' };
 }
 
 function homeAgendaHtml(){
@@ -3791,16 +3804,17 @@ function homeAgendaHtml(){
     // tarea libre (sin pantalla propia), "Empezar" la marca como hecha.
     const destino = (t.tipo === 'checklist' && t.checklistId) ? homeItemPorIdSinFiltro(t.checklistId) : null;
     const onclick = destino
-      ? `homeIrA('${t.checklistId}')`
+      ? `homeIrASinFiltro('${t.checklistId}')`
       : `homeMarcarTareaHecha('${t.id}','${t.fecha}','${t.area}')`;
     const alarma = homeAlarmaTarea(t);
+    const horaLimite = homeHoraLimiteDe(t);
     return `<div class="hm-task-card">
       <div class="hm-task-card-top">
         <span class="hm-task-emoji">${homeAreaEmoji(t.area)}</span>
-        <span class="hm-task-alarm hm-task-alarm-${alarma.clase}">${alarma.emoji} ${homeEsc(alarma.texto)}</span>
+        ${alarma ? `<span class="hm-task-alarm hm-task-alarm-${alarma.clase}">${alarma.emoji} ${homeEsc(alarma.texto)}</span>` : ''}
       </div>
       <div class="hm-task-card-title">${homeEsc(label)}</div>
-      <div class="hm-task-card-sub">${homeEsc(areaLabel)}${turnoLabel ? ' · ' + homeEsc(turnoLabel) : ''}${t.hora ? ' · ' + homeEsc(t.hora) : ''}</div>
+      <div class="hm-task-card-sub">${homeEsc(areaLabel)}${(turnoLabel && !horaLimite) ? ' · ' + homeEsc(turnoLabel) : ''}</div>
       <button type="button" class="hm-btn primary" onclick="${onclick}">▶️ Empezar</button>
     </div>`;
   };
@@ -13584,6 +13598,8 @@ function planifListaResumenHtml(titulo, tareas, vacioTexto){
 function planifCrearTarea(){
   const turnoEl = document.getElementById('pl_turno');
   const turno = turnoEl ? turnoEl.value : '';
+  const horaEl = document.getElementById('pl_hora');
+  const hora = horaEl ? horaEl.value : '';
   const tipo = planifTipoNueva;
   let descripcion = '', checklistId = '', checklistLabel = '';
   if(tipo==='libre'){
@@ -13596,7 +13612,7 @@ function planifCrearTarea(){
     if(!checklistId){ showMsg('pl_msg','Selecciona el checklist a asignar.','rojo'); return; }
   }
   DB.push('tareas_asignadas', {
-    fecha: planifFecha, area: planifArea, turno, tipo, descripcion, checklistId, checklistLabel,
+    fecha: planifFecha, area: planifArea, turno, hora, tipo, descripcion, checklistId, checklistLabel,
     sede: sedeParaGuardar(), creadoPor: SESSION.nombre, creadoPorUsuario: SESSION.usuario
   });
   showMsg('pl_msg','Tarea asignada.','verde');
@@ -14062,6 +14078,7 @@ function planifFormNuevaTareaHtml(turnoOptions, checklistOptions){
     <div class="form-grid">
       <div class="form-field"><label>Área</label><select onchange="planifSetArea(this.value)">${areaOpts}</select></div>
       <div class="form-field"><label>Turno</label><select id="pl_turno">${turnoOptions}</select></div>
+      <div class="form-field"><label>Hora límite (opcional)</label><input type="time" id="pl_hora"></div>
       <div class="form-field"><label>Tipo de tarea</label>
         <select id="pl_tipo" onchange="planifSetTipoNueva(this.value)">
           <option value="libre" ${planifTipoNueva==='libre'?'selected':''}>Tarea libre</option>
@@ -22245,10 +22262,11 @@ function chkAlarmaSincronizarTareaHoy(checklistId, turnoKey){
     arr[idx].asignadoA = turno.responsable;
     arr[idx].asignadoANombre = turno.responsableNombre || '';
     arr[idx].turno = turnoLabel;
+    arr[idx].hora = turno.hora || '';
     DB.set('tareas_asignadas', arr);
   } else {
     DB.push('tareas_asignadas', {
-      fecha: hoy, area: info.area, turno: turnoLabel, tipo:'checklist', descripcion:'',
+      fecha: hoy, area: info.area, turno: turnoLabel, hora: turno.hora || '', tipo:'checklist', descripcion:'',
       checklistId, checklistLabel: info.label, sede,
       creadoPor:'Alarma del checklist', creadoPorUsuario:'sistema',
       asignadoA: turno.responsable, asignadoANombre: turno.responsableNombre || '',
