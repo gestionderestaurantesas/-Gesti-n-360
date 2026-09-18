@@ -966,18 +966,23 @@ input:focus,select:focus,textarea:focus{outline:3px solid rgba(143,185,42,.12)!i
 .hm-agenda-area-title{ font-size:11.5px; font-weight:700; text-transform:uppercase; letter-spacing:.04em; color:var(--dorado); margin:14px 0 2px; }
 .hm-agenda-area:first-of-type .hm-agenda-area-title{ margin-top:2px; }
 /* — Tarjetas de tareas pendientes (Inicio, empleados) — */
-.hm-task-grid{ display:flex; flex-wrap:nowrap; overflow-x:auto; gap:12px; margin:6px 0 10px; padding-bottom:4px; -webkit-overflow-scrolling:touch; }
-.hm-task-card{ border:1px solid var(--border); border-radius:14px; padding:14px; background:var(--white); display:flex; flex-direction:column; box-shadow:0 1px 4px rgba(0,0,0,0.04); flex:0 0 220px; width:220px; }
-.hm-task-card-top{ display:flex; align-items:flex-start; justify-content:space-between; gap:6px; margin-bottom:8px; }
-.hm-task-emoji{ font-size:26px; line-height:1; }
-.hm-task-alarm{ font-size:10.5px; font-weight:700; padding:3px 8px; border-radius:20px; white-space:nowrap; }
+/* Apiladas verticalmente (una debajo de otra) para que TODAS queden
+   siempre visibles de un vistazo, sin depender de hacer scroll lateral. */
+.hm-task-grid{ display:flex; flex-direction:column; gap:10px; margin:6px 0 10px; }
+.hm-task-card{ border:1px solid var(--border); border-radius:14px; padding:12px 16px; background:var(--white); display:flex; align-items:center; gap:14px; box-shadow:0 1px 4px rgba(0,0,0,0.04); width:100%; box-sizing:border-box; }
+.hm-task-card-abierta{ align-items:flex-start; }
+.hm-task-card-top{ display:flex; align-items:center; flex:0 0 auto; }
+.hm-task-card-body{ flex:1; min-width:0; }
+.hm-task-emoji{ font-size:24px; line-height:1; }
+.hm-task-alarm{ font-size:10.5px; font-weight:700; padding:3px 8px; border-radius:20px; white-space:nowrap; display:inline-block; margin-left:6px; vertical-align:middle; }
 .hm-task-alarm-rojo{ background:#FBE4E1; color:#B7423A; }
 .hm-task-alarm-ambar{ background:#FBF0DD; color:#B8860B; }
 .hm-task-alarm-verde{ background:#E7F3E8; color:#2E7D32; }
 .hm-task-alarm-neutral{ background:#EEF0F1; color:#64737A; }
 .hm-task-card-title{ font-size:13.5px; font-weight:700; color:var(--espresso); line-height:1.3; margin-bottom:2px; }
-.hm-task-card-sub{ font-size:11px; color:var(--text-light); margin-bottom:10px; }
-.hm-task-card .hm-btn{ margin-top:auto; width:100%; justify-content:center; }
+.hm-task-card-sub{ font-size:11px; color:var(--text-light); }
+.hm-task-card .hm-btn{ flex:0 0 auto; margin-left:auto; }
+.hm-task-card-abierta .hm-btn{ margin-left:0; }
 .hm-agenda-hechas{ margin-top:16px; padding-top:12px; border-top:1px solid var(--border); }
 .hm-agenda-hechas-title{ font-size:11.5px; font-weight:700; color:var(--text-light); margin-bottom:6px; }
 .hm-agenda-hecha-row{ display:flex; align-items:center; gap:8px; font-size:12.5px; color:var(--text-light); padding:3px 0; }
@@ -3801,20 +3806,37 @@ function homeAgendaHtml(){
     // directo a esa pantalla — aunque el rol de puesto de la persona no
     // la tenga marcada en Roles y tareas, porque el solo hecho de tenerla
     // asignada hoy ya autoriza a abrir ESA pantalla puntual. Si es una
-    // tarea libre (sin pantalla propia), "Empezar" la marca como hecha.
+    // tarea libre (sin pantalla propia), "Empezar" abre un formulario para
+    // dejar el resumen de lo que se hizo antes de poder completarla.
     const destino = (t.tipo === 'checklist' && t.checklistId) ? homeItemPorIdSinFiltro(t.checklistId) : null;
-    const onclick = destino
-      ? `homeIrASinFiltro('${t.checklistId}')`
-      : `homeMarcarTareaHecha('${t.id}','${t.fecha}','${t.area}')`;
     const alarma = homeAlarmaTarea(t);
     const horaLimite = homeHoraLimiteDe(t);
+    const subLinea = `${homeEsc(areaLabel)}${(turnoLabel && !horaLimite) ? ' · ' + homeEsc(turnoLabel) : ''}`;
+
+    if(!destino && homeResultadoAbiertoId === t.id){
+      return `<div class="hm-task-card hm-task-card-abierta">
+        <div class="hm-task-card-top"><span class="hm-task-emoji">${homeAreaEmoji(t.area)}</span></div>
+        <div class="hm-task-card-body">
+          <div class="hm-task-card-title">${homeEsc(label)}</div>
+          <div class="hm-task-card-sub">${subLinea}</div>
+          <textarea id="home_resultado_${t.id}" rows="2" maxlength="400" placeholder="¿Qué hiciste? Resume el resultado (obligatorio)" style="width:100%;box-sizing:border-box;margin-top:8px;padding:8px;border:1px solid var(--border);border-radius:8px;font-family:inherit;font-size:12.5px;resize:vertical;"></textarea>
+          <div style="display:flex;gap:8px;margin-top:8px;">
+            <button type="button" class="hm-btn primary" onclick="homeGuardarResultadoLibre('${t.id}','${t.fecha}','${t.area}')">✅ Completar</button>
+            <button type="button" class="hm-btn" onclick="homeCancelarResultado()">Cancelar</button>
+          </div>
+        </div>
+      </div>`;
+    }
+
+    const onclick = destino
+      ? `homeIrASinFiltro('${t.checklistId}')`
+      : `homeAbrirResultado('${t.id}')`;
     return `<div class="hm-task-card">
-      <div class="hm-task-card-top">
-        <span class="hm-task-emoji">${homeAreaEmoji(t.area)}</span>
-        ${alarma ? `<span class="hm-task-alarm hm-task-alarm-${alarma.clase}">${alarma.emoji} ${homeEsc(alarma.texto)}</span>` : ''}
+      <div class="hm-task-card-top"><span class="hm-task-emoji">${homeAreaEmoji(t.area)}</span></div>
+      <div class="hm-task-card-body">
+        <div class="hm-task-card-title">${homeEsc(label)}${alarma ? ` <span class="hm-task-alarm hm-task-alarm-${alarma.clase}">${alarma.emoji} ${homeEsc(alarma.texto)}</span>` : ''}</div>
+        <div class="hm-task-card-sub">${subLinea}</div>
       </div>
-      <div class="hm-task-card-title">${homeEsc(label)}</div>
-      <div class="hm-task-card-sub">${homeEsc(areaLabel)}${(turnoLabel && !horaLimite) ? ' · ' + homeEsc(turnoLabel) : ''}</div>
       <button type="button" class="hm-btn primary" onclick="${onclick}">▶️ Empezar</button>
     </div>`;
   };
@@ -3825,15 +3847,19 @@ function homeAgendaHtml(){
       ? `<div class="hm-empty">${ic('check',26)}<strong>¡Todo listo por hoy! 🎉</strong><span>Ya completaste las ${mias.length} tarea(s) que tenías asignadas.</span></div>`
       : `<div class="hm-empty">${ic('check',26)}<strong>Sin tareas asignadas</strong><span>Hoy no tienes tareas asignadas en Planificación.</span></div>`;
   } else {
-    // Todas las tarjetas en una sola fila horizontal, una al lado de la
-    // otra (el área de cada una ya se ve dentro de la tarjeta) — sin
-    // separar en bloques apilados por área.
+    // Todas las tarjetas apiladas verticalmente, una debajo de otra, para
+    // que siempre queden visibles sin necesidad de deslizar.
     cuerpo = `<div class="hm-task-grid">${pendientes.map(tarjeta).join('')}</div>`;
   }
 
+  const completadasReg = DB.get('tareas_completadas', []);
   const hechasHtml = hechas.length ? `<div class="hm-agenda-hechas">
     <div class="hm-agenda-hechas-title">✅ Completadas hoy (${hechas.length})</div>
-    ${hechas.map(t => `<div class="hm-agenda-hecha-row">✅ <strong>${homeEsc(t.tipo === 'checklist' ? (t.checklistLabel || 'Checklist') : (t.descripcion || 'Tarea'))}</strong></div>`).join('')}
+    ${hechas.map(t => {
+      const comp = completadasReg.filter(c => c.tareaId === t.id).slice(-1)[0];
+      const resumen = comp && comp.resultado ? ` — ${homeEsc(comp.resultado)}` : '';
+      return `<div class="hm-agenda-hecha-row">✅ <strong>${homeEsc(t.tipo === 'checklist' ? (t.checklistLabel || 'Checklist') : (t.descripcion || 'Tarea'))}</strong>${resumen}</div>`;
+    }).join('')}
   </div>` : '';
 
   return `<section class="hm-panel hm-panel-agenda">
@@ -3842,9 +3868,27 @@ function homeAgendaHtml(){
     ${hechasHtml}
   </section>`;
 }
-function homeMarcarTareaHecha(tareaId, fecha, area){
+// Estado (en memoria) de qué tarea libre tiene abierto su formulario de
+// resultado en Inicio — solo una a la vez.
+let homeResultadoAbiertoId = null;
+function homeAbrirResultado(tareaId){
+  homeResultadoAbiertoId = tareaId;
+  goHome();
+}
+function homeCancelarResultado(){
+  homeResultadoAbiertoId = null;
+  goHome();
+}
+function homeGuardarResultadoLibre(tareaId, fecha, area){
+  const el = document.getElementById('home_resultado_' + tareaId);
+  const resultado = el ? el.value.trim() : '';
+  if(!resultado){ alert('Escribe un resumen del resultado antes de completar la tarea.'); return; }
+  homeResultadoAbiertoId = null;
+  homeMarcarTareaHecha(tareaId, fecha, area, resultado);
+}
+function homeMarcarTareaHecha(tareaId, fecha, area, resultado){
   DB.push('tareas_completadas', {
-    tareaId:tareaId, fecha:fecha, area:area,
+    tareaId:tareaId, fecha:fecha, area:area, resultado: resultado || '',
     sede: sedeParaGuardar(), responsable: SESSION.nombre, usuario: SESSION.usuario
   });
   goHome();
@@ -13604,7 +13648,7 @@ function planifCrearTarea(){
   let descripcion = '', checklistId = '', checklistLabel = '';
   if(tipo==='libre'){
     descripcion = (document.getElementById('pl_descripcion')||{}).value ? document.getElementById('pl_descripcion').value.trim() : '';
-    if(!descripcion){ showMsg('pl_msg','Escribe la descripción de la tarea.','rojo'); return; }
+    if(!descripcion || descripcion.length < 15){ showMsg('pl_msg','Escribe una explicación detallada de la tarea (mínimo 15 caracteres).','rojo'); return; }
   } else {
     const sel = document.getElementById('pl_checklist');
     checklistId = sel ? sel.value : '';
@@ -14087,7 +14131,7 @@ function planifFormNuevaTareaHtml(turnoOptions, checklistOptions){
       </div>
     </div>
     ${planifTipoNueva==='libre'
-      ? `<div class="form-field" style="margin-top:10px;"><label>Descripción de la tarea</label><textarea id="pl_descripcion" rows="2" placeholder="Ej: Limpiar cava 2 a fondo"></textarea></div>`
+      ? `<div class="form-field" style="margin-top:10px;"><label>Descripción detallada de la tarea <span class="req-star">*</span></label><textarea id="pl_descripcion" rows="3" maxlength="500" placeholder="Explica con detalle qué hay que hacer, dónde y qué se espera lograr"></textarea></div>`
       : (checklistOptions
           ? `<div class="form-field" style="margin-top:10px;"><label>Checklist</label><select id="pl_checklist"><option value="">Seleccionar...</option>${checklistOptions}</select></div>`
           : `<p style="color:var(--text-light);font-size:12.5px;margin-top:10px;">Esta área no tiene checklists en el menú todavía.</p>`)
@@ -14238,7 +14282,7 @@ function renderPlanificacionTareasModule(sec, group, item, ruta){
         </div>
       </div>
       ${planifTipoNueva==='libre'
-        ? `<div class="form-field" style="margin-top:10px;"><label>Descripción de la tarea</label><textarea id="pl_descripcion" rows="2" placeholder="Ej: Limpiar cava 2 a fondo"></textarea></div>`
+        ? `<div class="form-field" style="margin-top:10px;"><label>Descripción detallada de la tarea <span class="req-star">*</span></label><textarea id="pl_descripcion" rows="3" maxlength="500" placeholder="Explica con detalle qué hay que hacer, dónde y qué se espera lograr"></textarea></div>`
         : (checklistOptions
             ? `<div class="form-field" style="margin-top:10px;"><label>Checklist</label><select id="pl_checklist"><option value="">Seleccionar...</option>${checklistOptions}</select></div>`
             : `<p style="color:var(--text-light);font-size:12.5px;margin-top:10px;">Esta área no tiene checklists en el menú todavía.</p>`)
