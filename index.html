@@ -4727,6 +4727,7 @@ function enterApp(){
   navAplicarHash();
   if(typeof chkAlarmaIniciar === 'function') chkAlarmaIniciar();
   if(typeof miseCocinaAlarmaMasterIniciar === 'function') miseCocinaAlarmaMasterIniciar();
+  if(typeof asistenteIniciarVigilanciaInactividad === 'function') asistenteIniciarVigilanciaInactividad();
   tourOfrecerSiPendiente();
   // Fase 1 de la migración a la nube: en cuanto Firestore confirme que ya
   // sincronizó (window._fsAlListo), sube lo que este dispositivo tenga
@@ -9116,7 +9117,51 @@ function asistenteDatosPermitidos(){
 
 function asistenteHistorialKey(){ return 'asistente_chat_' + (SESSION ? SESSION.usuario : 'anon'); }
 function asistenteHistorial(){ return DB.get(asistenteHistorialKey(), []); }
-function asistenteGuardarHistorial(hist){ DB.set(asistenteHistorialKey(), hist.slice(-40)); }
+function asistenteGuardarHistorial(hist){
+  DB.set(asistenteHistorialKey(), hist.slice(-40));
+  // Cada vez que hay actividad real (se guardó al menos un mensaje) se
+  // marca la hora — es lo que usa asistenteVencerSiInactivo() para saber
+  // cuánto tiempo lleva la conversación en silencio.
+  if(hist && hist.length) DB.set(asistenteUltimaActividadKey(), Date.now());
+}
+
+// La conversación con HJ-IA no se queda abierta para siempre: si pasan
+// más de ASISTENTE_INACTIVIDAD_MS sin un mensaje nuevo, lo que se habló
+// se guarda como una conversación cerrada en "asistente_conversaciones"
+// (para poder repasarla después) y la ventana vuelve a quedar en blanco,
+// lista para una pregunta nueva — como si se abriera de cero.
+const ASISTENTE_INACTIVIDAD_MS = 15 * 60 * 1000; // 15 minutos sin actividad
+function asistenteUltimaActividadKey(){ return 'asistente_ultima_actividad_' + (SESSION ? SESSION.usuario : 'anon'); }
+function asistenteArchivarConversacion(hist){
+  if(!hist || !hist.length) return;
+  try {
+    DB.push('asistente_conversaciones', {
+      usuario: SESSION.usuario, nombre: SESSION.nombre, sede: sedeParaGuardar(),
+      inicio: hist[0].ts || null, fin: hist[hist.length - 1].ts || Date.now(),
+      mensajes: hist
+    });
+  } catch(e){ /* que un fallo al archivar nunca bloquee el chat */ }
+}
+function asistenteVencerSiInactivo(){
+  const hist = asistenteHistorial();
+  if(!hist.length) return false;
+  const ultima = DB.get(asistenteUltimaActividadKey(), 0);
+  if(!ultima || (Date.now() - ultima) < ASISTENTE_INACTIVIDAD_MS) return false;
+  asistenteArchivarConversacion(hist);
+  DB.set(asistenteHistorialKey(), []);
+  return true;
+}
+// Vigilancia periódica: aunque la persona deje la pantalla de HJ-IA
+// abierta sin tocar nada, cada minuto se revisa si ya pasó el tiempo de
+// inactividad — si es así, se archiva y se refresca la vista para que se
+// vea vacía de inmediato, sin esperar a que alguien navegue y regrese.
+let asistenteIntervaloInactividad = null;
+function asistenteIniciarVigilanciaInactividad(){
+  if(asistenteIntervaloInactividad) return;
+  asistenteIntervaloInactividad = setInterval(function(){
+    if(asistenteVencerSiInactivo() && document.getElementById('ast_mensajes')) asistenteRefrescarVista();
+  }, 60 * 1000);
+}
 
 // 'home' cuando el widget vive embebido en Inicio, 'standalone' cuando se
 // abrió como pantalla completa desde el menú — así "Borrar conversación",
@@ -14642,6 +14687,7 @@ function asistenteHablarBurbuja(idBurbuja){
 // muestra la miguita de pan (solo tiene sentido en la pantalla completa).
 function asistenteWidgetHtml(opts){
   opts = opts || {};
+  asistenteVencerSiInactivo();
   const hist = asistenteHistorial();
   const primerNombre = (SESSION && SESSION.nombre) ? SESSION.nombre.split(' ')[0] : '';
   const saludoInicial = { rol:'assistant', texto: `Hola${primerNombre ? ', ' + primerNombre : ''}. Estoy aquí para ayudarte a organizar tareas, analizar resultados y encontrar respuestas sobre la operación del restaurante. ¿Por dónde comenzamos?` };
@@ -14697,7 +14743,8 @@ function asistentePreguntaRapida(texto){
   asistenteEnviar();
 }
 function asistenteBorrarConversacion(){
-  asistenteGuardarHistorial([]);
+  asistenteArchivarConversacion(asistenteHistorial());
+  DB.set(asistenteHistorialKey(), []);
   asistenteRefrescarVista();
 }
 
