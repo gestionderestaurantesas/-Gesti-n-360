@@ -965,6 +965,23 @@ input:focus,select:focus,textarea:focus{outline:3px solid rgba(143,185,42,.12)!i
 .hm-agenda-area:first-of-type{ margin-top:0; }
 .hm-agenda-area-title{ font-size:11.5px; font-weight:700; text-transform:uppercase; letter-spacing:.04em; color:var(--dorado); margin:14px 0 2px; }
 .hm-agenda-area:first-of-type .hm-agenda-area-title{ margin-top:2px; }
+/* — Tarjetas de tareas pendientes (Inicio, empleados) — */
+.hm-task-grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(210px,1fr)); gap:12px; margin:6px 0 4px; }
+.hm-task-card{ border:1px solid var(--border); border-radius:14px; padding:14px; background:var(--white); display:flex; flex-direction:column; box-shadow:0 1px 4px rgba(0,0,0,0.04); }
+.hm-task-card-top{ display:flex; align-items:flex-start; justify-content:space-between; gap:6px; margin-bottom:8px; }
+.hm-task-emoji{ font-size:26px; line-height:1; }
+.hm-task-alarm{ font-size:10.5px; font-weight:700; padding:3px 8px; border-radius:20px; white-space:nowrap; }
+.hm-task-alarm-rojo{ background:#FBE4E1; color:#B7423A; }
+.hm-task-alarm-ambar{ background:#FBF0DD; color:#B8860B; }
+.hm-task-alarm-verde{ background:#E7F3E8; color:#2E7D32; }
+.hm-task-alarm-neutral{ background:#EEF0F1; color:#64737A; }
+.hm-task-card-title{ font-size:13.5px; font-weight:700; color:var(--espresso); line-height:1.3; margin-bottom:2px; }
+.hm-task-card-sub{ font-size:11px; color:var(--text-light); margin-bottom:10px; }
+.hm-task-card .hm-btn{ margin-top:auto; width:100%; justify-content:center; }
+.hm-agenda-hechas{ margin-top:16px; padding-top:12px; border-top:1px solid var(--border); }
+.hm-agenda-hechas-title{ font-size:11.5px; font-weight:700; color:var(--text-light); margin-bottom:6px; }
+.hm-agenda-hecha-row{ display:flex; align-items:center; gap:8px; font-size:12.5px; color:var(--text-light); padding:3px 0; }
+.hm-agenda-hecha-row strong{ color:var(--espresso); font-weight:600; text-decoration:line-through; }
 
 /* — Explorar — */
 
@@ -3725,57 +3742,97 @@ function homeItemPorIdSinFiltro(itemId){
   NAV.forEach(sec => (sec.groups||[]).forEach(g => (g.items||[]).forEach(it => { if(it.id===itemId) found = { sec, group:g, item:it }; })));
   return found;
 }
+// Emoji representativo por área — solo decorativo, para que cada tarjeta
+// se reconozca de un vistazo sin tener que leer el texto.
+const HOME_AREA_EMOJI = {
+  contabilidad: '💰', servicio_cliente: '🧑‍💼', cocina: '🍳', bar: '🍹',
+  centro_produccion: '🏭', mantenimiento: '🔧', inspecciones: '🔍', bodega: '📦'
+};
+function homeAreaEmoji(areaId){ return HOME_AREA_EMOJI[areaId] || '📋'; }
+
+// "Hora límite" aproximada de cada turno, para calcular la alarma de
+// cumplimiento cuando la tarea no trae una hora exacta (t.hora). Son
+// horas de referencia (no exactas), solo para avisar a tiempo — si más
+// adelante se necesita más precisión, se puede afinar por sede.
+const HOME_TURNO_LIMITE = { manana: 12, tarde: 18, noche: 23 };
+function homeAlarmaTarea(t){
+  let limite = null;
+  if(t.hora){
+    const partes = String(t.hora).split(':').map(Number);
+    if(!isNaN(partes[0])) limite = partes[0] + ((partes[1]||0)/60);
+  } else if(t.turno && HOME_TURNO_LIMITE[t.turno] != null){
+    limite = HOME_TURNO_LIMITE[t.turno];
+  }
+  if(limite == null) return { emoji:'🕒', texto:'Sin hora límite', clase:'neutral' };
+  const ahora = new Date();
+  const horaAhora = ahora.getHours() + ahora.getMinutes()/60;
+  if(horaAhora > limite) return { emoji:'🔴', texto:'Atrasada', clase:'rojo' };
+  if(limite - horaAhora <= 1) return { emoji:'🟠', texto:'Por vencer', clase:'ambar' };
+  return { emoji:'🟢', texto:'A tiempo', clase:'verde' };
+}
+
 function homeAgendaHtml(){
   if(!SESSION || !SESSION.usuario) return '';
   const hoy = hoyStr();
   const mias = filtrarPorSede(DB.get('tareas_asignadas', [])).filter(t => t.fecha === hoy && t.asignadoA === SESSION.usuario);
   const completadasIds = new Set(DB.get('tareas_completadas', []).map(c => c.tareaId));
-  const pendientesCount = mias.filter(t => !completadasIds.has(t.id)).length;
+  const pendientes = mias.filter(t => !completadasIds.has(t.id));
+  const hechas = mias.filter(t => completadasIds.has(t.id));
 
-  const fila = t => {
-    const hecha = completadasIds.has(t.id);
+  const tarjeta = t => {
     const label = t.tipo === 'checklist' ? (t.checklistLabel || 'Checklist') : (t.descripcion || 'Tarea');
+    const areaLabel = (AREA_META[t.area] || { label: t.area || 'General' }).label;
     let turnoLabel = '';
     try{ turnoLabel = (PLANIF_TURNOS.find(x => x.id === t.turno) || {}).label || t.turno || ''; }catch(e){ turnoLabel = t.turno || ''; }
     // Si la tarea viene de un checklist real de la app, "Empezar" lleva
-    // directo a esa pantalla. Si no tiene pantalla asociada (tarea libre
-    // escrita a mano), "Empezar" simplemente la marca como iniciada/hecha
-    // — nunca se le llama "Marcar hecha" al botón, según se pidió.
+    // directo a esa pantalla — aunque el rol de puesto de la persona no
+    // la tenga marcada en Roles y tareas, porque el solo hecho de tenerla
+    // asignada hoy ya autoriza a abrir ESA pantalla puntual. Si es una
+    // tarea libre (sin pantalla propia), "Empezar" la marca como hecha.
     const destino = (t.tipo === 'checklist' && t.checklistId) ? homeItemPorIdSinFiltro(t.checklistId) : null;
-    const accionHtml = hecha
-      ? `<span class="hm-badge-ok">${ic('check',14)} Hecha</span>`
-      : destino
-        ? `<button type="button" class="hm-btn mini" onclick="homeIrA('${t.checklistId}')">Empezar</button>`
-        : `<button type="button" class="hm-btn mini" onclick="homeMarcarTareaHecha('${t.id}','${t.fecha}','${t.area}')">Empezar</button>`;
-    return `<div class="hm-task ${hecha?'hm-task-done':''}">
-      <span class="hm-task-hora">${homeEsc(t.hora || turnoLabel || '—')}</span>
-      <span class="hm-task-txt"><strong>${homeEsc(label)}</strong></span>
-      ${accionHtml}
+    const onclick = destino
+      ? `homeIrA('${t.checklistId}')`
+      : `homeMarcarTareaHecha('${t.id}','${t.fecha}','${t.area}')`;
+    const alarma = homeAlarmaTarea(t);
+    return `<div class="hm-task-card">
+      <div class="hm-task-card-top">
+        <span class="hm-task-emoji">${homeAreaEmoji(t.area)}</span>
+        <span class="hm-task-alarm hm-task-alarm-${alarma.clase}">${alarma.emoji} ${homeEsc(alarma.texto)}</span>
+      </div>
+      <div class="hm-task-card-title">${homeEsc(label)}</div>
+      <div class="hm-task-card-sub">${homeEsc(areaLabel)}${turnoLabel ? ' · ' + homeEsc(turnoLabel) : ''}${t.hora ? ' · ' + homeEsc(t.hora) : ''}</div>
+      <button type="button" class="hm-btn primary" onclick="${onclick}">▶️ Empezar</button>
     </div>`;
   };
 
   let cuerpo;
-  if(!mias.length){
-    cuerpo = `<div class="hm-empty">${ic('check',26)}<strong>Sin tareas asignadas</strong><span>Hoy no tienes tareas asignadas en Planificación.</span></div>`;
+  if(!pendientes.length){
+    cuerpo = mias.length
+      ? `<div class="hm-empty">${ic('check',26)}<strong>¡Todo listo por hoy! 🎉</strong><span>Ya completaste las ${mias.length} tarea(s) que tenías asignadas.</span></div>`
+      : `<div class="hm-empty">${ic('check',26)}<strong>Sin tareas asignadas</strong><span>Hoy no tienes tareas asignadas en Planificación.</span></div>`;
   } else {
-    // Agrupadas por área (encabezado con el nombre del área), y dentro de
-    // cada área: pendientes primero, hechas al final.
+    // Agrupadas por área (encabezado con el nombre del área), en tarjetas.
     const orden = [];
-    mias.forEach(t => { if(orden.indexOf(t.area) === -1) orden.push(t.area); });
+    pendientes.forEach(t => { if(orden.indexOf(t.area) === -1) orden.push(t.area); });
     cuerpo = orden.map(areaId => {
       const areaLabel = (AREA_META[areaId] || { label: areaId || 'General' }).label;
-      const tareasArea = mias.filter(t => t.area === areaId)
-        .sort((a,b) => (completadasIds.has(a.id)?1:0) - (completadasIds.has(b.id)?1:0));
+      const tareasArea = pendientes.filter(t => t.area === areaId);
       return `<div class="hm-agenda-area">
-        <div class="hm-agenda-area-title">${homeEsc(areaLabel)}</div>
-        ${tareasArea.map(fila).join('')}
+        <div class="hm-agenda-area-title">${homeAreaEmoji(areaId)} ${homeEsc(areaLabel)}</div>
+        <div class="hm-task-grid">${tareasArea.map(tarjeta).join('')}</div>
       </div>`;
     }).join('');
   }
 
+  const hechasHtml = hechas.length ? `<div class="hm-agenda-hechas">
+    <div class="hm-agenda-hechas-title">✅ Completadas hoy (${hechas.length})</div>
+    ${hechas.map(t => `<div class="hm-agenda-hecha-row">✅ <strong>${homeEsc(t.tipo === 'checklist' ? (t.checklistLabel || 'Checklist') : (t.descripcion || 'Tarea'))}</strong></div>`).join('')}
+  </div>` : '';
+
   return `<section class="hm-panel hm-panel-agenda">
-    <div class="hm-panel-head"><div><h2>Tus tareas de hoy</h2><p>${mias.length ? (pendientesCount + ' de ' + mias.length + ' pendiente(s)') : 'Nada asignado por ahora.'}</p></div>${ic('clock',18)}</div>
+    <div class="hm-panel-head"><div><h2>Tus tareas de hoy</h2><p>${mias.length ? (pendientes.length + ' de ' + mias.length + ' pendiente(s)') : 'Nada asignado por ahora.'}</p></div>${ic('clock',18)}</div>
     ${cuerpo}
+    ${hechasHtml}
   </section>`;
 }
 function homeMarcarTareaHecha(tareaId, fecha, area){
