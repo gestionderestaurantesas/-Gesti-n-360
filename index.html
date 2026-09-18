@@ -966,8 +966,8 @@ input:focus,select:focus,textarea:focus{outline:3px solid rgba(143,185,42,.12)!i
 .hm-agenda-area-title{ font-size:11.5px; font-weight:700; text-transform:uppercase; letter-spacing:.04em; color:var(--dorado); margin:14px 0 2px; }
 .hm-agenda-area:first-of-type .hm-agenda-area-title{ margin-top:2px; }
 /* — Tarjetas de tareas pendientes (Inicio, empleados) — */
-.hm-task-grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(210px,1fr)); gap:12px; margin:6px 0 4px; }
-.hm-task-card{ border:1px solid var(--border); border-radius:14px; padding:14px; background:var(--white); display:flex; flex-direction:column; box-shadow:0 1px 4px rgba(0,0,0,0.04); }
+.hm-task-grid{ display:flex; flex-wrap:nowrap; overflow-x:auto; gap:12px; margin:6px 0 10px; padding-bottom:4px; -webkit-overflow-scrolling:touch; }
+.hm-task-card{ border:1px solid var(--border); border-radius:14px; padding:14px; background:var(--white); display:flex; flex-direction:column; box-shadow:0 1px 4px rgba(0,0,0,0.04); flex:0 0 220px; width:220px; }
 .hm-task-card-top{ display:flex; align-items:flex-start; justify-content:space-between; gap:6px; margin-bottom:8px; }
 .hm-task-emoji{ font-size:26px; line-height:1; }
 .hm-task-alarm{ font-size:10.5px; font-weight:700; padding:3px 8px; border-radius:20px; white-space:nowrap; }
@@ -3811,17 +3811,10 @@ function homeAgendaHtml(){
       ? `<div class="hm-empty">${ic('check',26)}<strong>¡Todo listo por hoy! 🎉</strong><span>Ya completaste las ${mias.length} tarea(s) que tenías asignadas.</span></div>`
       : `<div class="hm-empty">${ic('check',26)}<strong>Sin tareas asignadas</strong><span>Hoy no tienes tareas asignadas en Planificación.</span></div>`;
   } else {
-    // Agrupadas por área (encabezado con el nombre del área), en tarjetas.
-    const orden = [];
-    pendientes.forEach(t => { if(orden.indexOf(t.area) === -1) orden.push(t.area); });
-    cuerpo = orden.map(areaId => {
-      const areaLabel = (AREA_META[areaId] || { label: areaId || 'General' }).label;
-      const tareasArea = pendientes.filter(t => t.area === areaId);
-      return `<div class="hm-agenda-area">
-        <div class="hm-agenda-area-title">${homeAreaEmoji(areaId)} ${homeEsc(areaLabel)}</div>
-        <div class="hm-task-grid">${tareasArea.map(tarjeta).join('')}</div>
-      </div>`;
-    }).join('');
+    // Todas las tarjetas en una sola fila horizontal, una al lado de la
+    // otra (el área de cada una ya se ve dentro de la tarjeta) — sin
+    // separar en bloques apilados por área.
+    cuerpo = `<div class="hm-task-grid">${pendientes.map(tarjeta).join('')}</div>`;
   }
 
   const hechasHtml = hechas.length ? `<div class="hm-agenda-hechas">
