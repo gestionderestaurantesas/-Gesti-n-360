@@ -961,6 +961,10 @@ input:focus,select:focus,textarea:focus{outline:3px solid rgba(143,185,42,.12)!i
    empleado al entrar, por eso lleva borde/fondo distinto al resto de
    paneles de Inicio. */
 .hm-panel-agenda{ border:1.5px solid var(--bronce); background:linear-gradient(180deg, rgba(143,185,42,0.06), var(--white) 60px); }
+.hm-agenda-area{ margin-top:6px; }
+.hm-agenda-area:first-of-type{ margin-top:0; }
+.hm-agenda-area-title{ font-size:11.5px; font-weight:700; text-transform:uppercase; letter-spacing:.04em; color:var(--dorado); margin:14px 0 2px; }
+.hm-agenda-area:first-of-type .hm-agenda-area-title{ margin-top:2px; }
 
 /* — Explorar — */
 
@@ -3709,44 +3713,66 @@ function homeAtencionAccion(i){
 
 /* Agenda del día de ESTA persona (cualquier rol): solo lo que quedó
    asignado a su usuario en Planificación para hoy. */
+// Busca un ítem en TODO el NAV sin filtrar por permisos — a diferencia de
+// homeItemPorId (que solo busca entre lo que el menú de esta cuenta
+// muestra hoy). Si a la persona le asignaron esta tarea puntual en
+// Planificación, eso ya es autorización suficiente para abrir ESA
+// pantalla puntual desde Inicio, aunque su rol de puesto no la tenga
+// marcada en Roles y tareas (por ejemplo, un mesero al que un día le
+// asignan un checklist de cocina).
+function homeItemPorIdSinFiltro(itemId){
+  let found = null;
+  NAV.forEach(sec => (sec.groups||[]).forEach(g => (g.items||[]).forEach(it => { if(it.id===itemId) found = { sec, group:g, item:it }; })));
+  return found;
+}
 function homeAgendaHtml(){
   if(!SESSION || !SESSION.usuario) return '';
   const hoy = hoyStr();
   const mias = filtrarPorSede(DB.get('tareas_asignadas', [])).filter(t => t.fecha === hoy && t.asignadoA === SESSION.usuario);
   const completadasIds = new Set(DB.get('tareas_completadas', []).map(c => c.tareaId));
-  // Se muestran TODAS las tareas del día (pendientes y hechas), no solo
-  // las pendientes — el empleado debe ver de un vistazo su lista completa
-  // y qué le falta. Pendientes primero, hechas al final.
-  const ordenadas = mias.slice().sort((a,b) => (completadasIds.has(a.id)?1:0) - (completadasIds.has(b.id)?1:0));
   const pendientesCount = mias.filter(t => !completadasIds.has(t.id)).length;
+
   const fila = t => {
     const hecha = completadasIds.has(t.id);
     const label = t.tipo === 'checklist' ? (t.checklistLabel || 'Checklist') : (t.descripcion || 'Tarea');
     let turnoLabel = '';
     try{ turnoLabel = (PLANIF_TURNOS.find(x => x.id === t.turno) || {}).label || t.turno || ''; }catch(e){ turnoLabel = t.turno || ''; }
-    const areaLabel = (AREA_META[t.area] || { label:t.area || '' }).label;
     // Si la tarea viene de un checklist real de la app, "Empezar" lleva
-    // directo a esa pantalla (no solo marca hecha a ciegas). Las tareas
-    // libres (sin checklist asociado) no tienen a dónde navegar, así que
-    // ahí sí se deja marcar hecha directamente.
-    const destino = (t.tipo === 'checklist' && t.checklistId && typeof homeItemPorId === 'function') ? homeItemPorId(t.checklistId) : null;
-    let accionHtml;
-    if(hecha){
-      accionHtml = `<span class="hm-badge-ok">${ic('check',14)} Hecha</span>`;
-    } else if(destino){
-      accionHtml = `<button type="button" class="hm-btn mini" onclick="homeIrA('${t.checklistId}')">Empezar</button>`;
-    } else {
-      accionHtml = `<button type="button" class="hm-btn mini" onclick="homeMarcarTareaHecha('${t.id}','${t.fecha}','${t.area}')">Marcar hecha</button>`;
-    }
+    // directo a esa pantalla. Si no tiene pantalla asociada (tarea libre
+    // escrita a mano), "Empezar" simplemente la marca como iniciada/hecha
+    // — nunca se le llama "Marcar hecha" al botón, según se pidió.
+    const destino = (t.tipo === 'checklist' && t.checklistId) ? homeItemPorIdSinFiltro(t.checklistId) : null;
+    const accionHtml = hecha
+      ? `<span class="hm-badge-ok">${ic('check',14)} Hecha</span>`
+      : destino
+        ? `<button type="button" class="hm-btn mini" onclick="homeIrA('${t.checklistId}')">Empezar</button>`
+        : `<button type="button" class="hm-btn mini" onclick="homeMarcarTareaHecha('${t.id}','${t.fecha}','${t.area}')">Empezar</button>`;
     return `<div class="hm-task ${hecha?'hm-task-done':''}">
       <span class="hm-task-hora">${homeEsc(t.hora || turnoLabel || '—')}</span>
-      <span class="hm-task-txt"><strong>${homeEsc(label)}</strong><small>${homeEsc(areaLabel)}${turnoLabel ? ' · ' + homeEsc(turnoLabel) : ''}</small></span>
+      <span class="hm-task-txt"><strong>${homeEsc(label)}</strong></span>
       ${accionHtml}
     </div>`;
   };
-  const cuerpo = ordenadas.length
-    ? ordenadas.map(fila).join('')
-    : `<div class="hm-empty">${ic('check',26)}<strong>Sin tareas asignadas</strong><span>Hoy no tienes tareas asignadas en Planificación.</span></div>`;
+
+  let cuerpo;
+  if(!mias.length){
+    cuerpo = `<div class="hm-empty">${ic('check',26)}<strong>Sin tareas asignadas</strong><span>Hoy no tienes tareas asignadas en Planificación.</span></div>`;
+  } else {
+    // Agrupadas por área (encabezado con el nombre del área), y dentro de
+    // cada área: pendientes primero, hechas al final.
+    const orden = [];
+    mias.forEach(t => { if(orden.indexOf(t.area) === -1) orden.push(t.area); });
+    cuerpo = orden.map(areaId => {
+      const areaLabel = (AREA_META[areaId] || { label: areaId || 'General' }).label;
+      const tareasArea = mias.filter(t => t.area === areaId)
+        .sort((a,b) => (completadasIds.has(a.id)?1:0) - (completadasIds.has(b.id)?1:0));
+      return `<div class="hm-agenda-area">
+        <div class="hm-agenda-area-title">${homeEsc(areaLabel)}</div>
+        ${tareasArea.map(fila).join('')}
+      </div>`;
+    }).join('');
+  }
+
   return `<section class="hm-panel hm-panel-agenda">
     <div class="hm-panel-head"><div><h2>Tus tareas de hoy</h2><p>${mias.length ? (pendientesCount + ' de ' + mias.length + ' pendiente(s)') : 'Nada asignado por ahora.'}</p></div>${ic('clock',18)}</div>
     ${cuerpo}
@@ -4112,12 +4138,16 @@ function goHome(){
   // esta vista para no competir con eso. Gerencia/administración siguen
   // viendo los accesos rápidos, que sí les sirve como panel de trabajo.
   if(SESSION && SESSION.rol === 'empleado'){
+    // Para empleados, Inicio se reduce a sus tareas del día — sin
+    // accesos rápidos ni las tarjetas de categorías (Checklists,
+    // Calidad, etc.), que solo agregaban ruido a lo que en realidad
+    // necesita ver: qué le toca hoy y empezarlo.
     html += homeAgendaHtml();
   } else {
     html += homeAccesosHtml();
     html += homeAgendaHtml();
+    html += homeColumnasHtml();
   }
-  html += homeColumnasHtml();
   html += `<section class="hm-panel">${asistenteWidgetHtml()}</section>`;
   html += homePieHtml();
   html += '</div>';
