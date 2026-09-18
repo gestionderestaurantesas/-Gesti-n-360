@@ -2903,7 +2903,6 @@ const NAV = [
       { id:'servicio_cliente', label:'Servicio al cliente', icon:'user', matchArea:'servicio_cliente', items:[
         { id:'chk_briefing', label:'Briefing de servicio', icon:'megaphone', area:'servicio_cliente', categoria:'briefing', roles:['empleado','administracion','gerencia'], customRender:'renderBriefingServicioModule' },
         { id:'chk_mise_servicio', label:'Mise en place de servicio', icon:'user', area:'servicio_cliente', categoria:'mise_en_place', roles:['empleado','administracion','gerencia'], customRender:'renderAlistamientoAreaModule' },
-        { id:'chk_aseo_salon', label:'Aseo del salón', icon:'checklist', area:'servicio_cliente', categoria:'aseo', roles:['empleado','administracion','gerencia'], customRender:'renderAseoAreaModule' },
         { id:'chk_cierre_servicio', label:'Cierre de servicio al cliente', icon:'checklist', area:'servicio_cliente', categoria:'cierre', roles:['empleado','administracion','gerencia'], customRender:'renderCierreAreaModule' }
       ]},
       { id:'cocina', label:'Cocina', icon:'chef', matchArea:'cocina', items:[
@@ -2913,7 +2912,6 @@ const NAV = [
         { id:'chk_mise_cocina_armado', label:'Mise en place: Armado / Cantador', icon:'chef', area:'cocina', categoria:'mise_en_place', roles:['empleado','administracion','gerencia'], customRender:'renderMiseCocinaModule', estacion:'armado' },
         { id:'chk_mise_cocina_corrientes', label:'Mise en place: Corrientes / Sopas / Mote', icon:'chef', area:'cocina', categoria:'mise_en_place', roles:['empleado','administracion','gerencia'], customRender:'renderMiseCocinaModule', estacion:'corrientes' },
         { id:'chk_mise_cocina_pastas', label:'Mise en place: Pastas y Mariscos', icon:'chef', area:'cocina', categoria:'mise_en_place', roles:['empleado','administracion','gerencia'], customRender:'renderMiseCocinaModule', estacion:'pastas_mariscos' },
-        { id:'chk_higiene', label:'Aseo de cocina', icon:'checklist', area:'cocina', categoria:'aseo', roles:['empleado','administracion','gerencia'], customRender:'renderAseoAreaModule' },
         { id:'chk_prueba_prep', label:'Prueba de preparaciones diarias', icon:'chef', area:'cocina', categoria:'prueba', roles:['empleado','administracion','gerencia'], customRender:'renderAseoAreaModule' },
         { id:'chk_alistamiento_steward', label:'Alistamiento de steward / lavado de platos', icon:'checklist', area:'cocina', categoria:'alistamiento', roles:['empleado','administracion','gerencia'], customRender:'renderAlistamientoAreaModule', contentKey:'steward' },
         { id:'chk_cierre_cocina', label:'Cierre de cocina', icon:'checklist', area:'cocina', categoria:'cierre', roles:['empleado','administracion','gerencia'], customRender:'renderCierreAreaModule' },
@@ -2921,24 +2919,29 @@ const NAV = [
       ]},
       { id:'bar', label:'Bar', icon:'glass', matchArea:'bar', items:[
         { id:'chk_mise_bar', label:'Mise en place de bar', icon:'glass', area:'bar', categoria:'mise_en_place', roles:['empleado','administracion','gerencia'], customRender:'renderAlistamientoAreaModule' },
-        { id:'chk_aseo_bar', label:'Aseo del bar', icon:'checklist', area:'bar', categoria:'aseo', roles:['empleado','administracion','gerencia'], customRender:'renderAseoAreaModule' },
         { id:'chk_cierre_bar', label:'Cierre de bar', icon:'checklist', area:'bar', categoria:'cierre', roles:['empleado','administracion','gerencia'], customRender:'renderCierreAreaModule' }
-      ]},
-      { id:'centro_produccion', label:'Centro de producción', icon:'factory', matchArea:'centro_produccion', items:[
-        { id:'chk_aseo_cp', label:'Aseo de centro de producción', icon:'checklist', area:'centro_produccion', categoria:'aseo', roles:['empleado','administracion','gerencia'], customRender:'renderAseoAreaModule' }
-      ]},
-      { id:'aseo_comun', label:'Aseo de áreas comunes', icon:'checklist', matchArea:null, items:[
-        { id:'chk_aseo_periferica', label:'Aseo del área periférica', icon:'checklist', categoria:'aseo', roles:['empleado','administracion','gerencia'], customRender:'renderAseoAreaModule' },
-        { id:'chk_aseo_banos_internos', label:'Aseo de baños internos', icon:'checklist', categoria:'aseo', roles:['empleado','administracion','gerencia'], customRender:'renderAseoAreaModule' },
-        { id:'chk_aseo_banos_publicos', label:'Aseo de baños públicos', icon:'checklist', categoria:'aseo', roles:['empleado','administracion','gerencia'], customRender:'renderAseoAreaModule' },
-        { id:'chk_aseo_traperos', label:'Aseo de zona de traperos', icon:'checklist', categoria:'aseo', roles:['empleado','administracion','gerencia'], customRender:'renderAseoAreaModule' }
       ]}
     ]},
   { id:'calidad', label:'Calidad', icon:'shield', color:'#2F7A78',
     desc:'Inocuidad alimentaria: limpieza y desinfección, manipuladores, plagas, residuos, agua potable, capacitación y certificados — con la información del programa de calidad de Innovafood.',
     groups:[
       { id:'cal_diarios', label:'Checklists diarios', icon:'checklist', matchArea:null, items:[
-        { id:'cal_lyd', label:'Limpieza y desinfección diaria (RC-F01)', icon:'checklist', categoria:'aseo', roles:['empleado','administracion','gerencia'], customRender:'renderAseoAreaModule' },
+        // Limpieza y desinfección diaria (RC-F01): antes existía un ítem
+        // genérico único ("cal_lyd") separado de las listas de aseo por
+        // área que vivían en la sección Checklists — eso generaba doble
+        // trabajo (se podía llenar aseo dos veces el mismo día, una vez
+        // por cada camino). Se decidió con Harol dejar un solo lugar: las
+        // mismas 8 listas de aseo por área, ahora agrupadas aquí bajo
+        // RC-F01, usando los MISMOS ids que ya tenían en Checklists (no se
+        // pierde ningún dato histórico ya guardado).
+        { id:'chk_aseo_salon', label:'Aseo del salón (RC-F01)', icon:'checklist', area:'servicio_cliente', categoria:'aseo', roles:['empleado','administracion','gerencia'], customRender:'renderAseoAreaModule' },
+        { id:'chk_higiene', label:'Aseo de cocina (RC-F01)', icon:'checklist', area:'cocina', categoria:'aseo', roles:['empleado','administracion','gerencia'], customRender:'renderAseoAreaModule' },
+        { id:'chk_aseo_bar', label:'Aseo del bar (RC-F01)', icon:'checklist', area:'bar', categoria:'aseo', roles:['empleado','administracion','gerencia'], customRender:'renderAseoAreaModule' },
+        { id:'chk_aseo_cp', label:'Aseo de centro de producción (RC-F01)', icon:'checklist', area:'centro_produccion', categoria:'aseo', roles:['empleado','administracion','gerencia'], customRender:'renderAseoAreaModule' },
+        { id:'chk_aseo_periferica', label:'Aseo del área periférica (RC-F01)', icon:'checklist', categoria:'aseo', roles:['empleado','administracion','gerencia'], customRender:'renderAseoAreaModule' },
+        { id:'chk_aseo_banos_internos', label:'Aseo de baños internos (RC-F01)', icon:'checklist', categoria:'aseo', roles:['empleado','administracion','gerencia'], customRender:'renderAseoAreaModule' },
+        { id:'chk_aseo_banos_publicos', label:'Aseo de baños públicos (RC-F01)', icon:'checklist', categoria:'aseo', roles:['empleado','administracion','gerencia'], customRender:'renderAseoAreaModule' },
+        { id:'chk_aseo_traperos', label:'Aseo de zona de traperos (RC-F01)', icon:'checklist', categoria:'aseo', roles:['empleado','administracion','gerencia'], customRender:'renderAseoAreaModule' },
         { id:'cal_manip', label:'Inspección de manipuladores (RC-F02)', icon:'user', roles:['administracion','gerencia'], customRender:'renderManipuladoresModule' },
         { id:'cal_residuos', label:'Control de residuos sólidos (RC-F04)', icon:'box', categoria:'aseo', roles:['empleado','administracion','gerencia'], customRender:'renderAseoAreaModule' },
         { id:'cal_trampas', label:'Limpieza de trampas de grasa', icon:'wrench', roles:['empleado','administracion','gerencia'], customRender:'renderTrampasGrasaModule' },
