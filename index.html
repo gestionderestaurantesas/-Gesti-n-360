@@ -201,6 +201,12 @@
      ============================================================ */
   #mainApp{ display:flex; min-height:100vh; }
 
+  /* Para empleados (no administración/gerencia) se quita la barra lateral
+     por completo — su Inicio ya se reduce a "sus tareas del día", así que
+     el menú de módulos solo agregaba ruido y una vía a pantallas que de
+     todos modos no puede usar. El contenido ocupa el ancho completo. */
+  body.sin-sidebar #sidebar, body.sin-sidebar #mobileMenuBtn{ display:none !important; }
+
   #sidebar{
     width:275px; flex-shrink:0;
     /* Color fijo (no usa var(--espresso), que se invierte en tema oscuro
@@ -4708,6 +4714,10 @@ function enterApp(){
   document.getElementById('userNameLabel').textContent = SESSION.nombre;
   document.getElementById('userRoleLabel').textContent = (ROL_LABEL[SESSION.rol] || SESSION.rol) + (SESSION.rolPuesto ? ' · ' + rolPuestoLabel(SESSION.rolPuesto) : '');
   document.getElementById('userAvatar').textContent = SESSION.nombre.charAt(0).toUpperCase();
+  // La barra lateral solo tiene sentido para quien administra el
+  // restaurante (administración/gerencia); a un empleado se la quitamos
+  // para simplificarle la pantalla — su Inicio ya trae todo lo que necesita.
+  document.body.classList.toggle('sin-sidebar', SESSION.rol === 'empleado');
   alarmasGerenciaActualizarBoton();
   if(typeof topbarActualizarNotificaciones === 'function') topbarActualizarNotificaciones();
   renderSidebar();
