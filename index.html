@@ -3020,7 +3020,14 @@ const NAV = [
         { id:'coc_comida_personal', label:'Comida del personal', icon:'chef', roles:['empleado','administracion','gerencia'], customRender:'renderComidaPersonalModule' },
         { id:'coc_bajas', label:'Reporte de bajas', icon:'down', roles:['empleado','administracion','gerencia'], customRender:'renderBajasModule' },
         { id:'coc_mejora', label:'Prueba, desarrollo y mejora constante', icon:'target', roles:['empleado','administracion','gerencia'], customRender:'renderMejoraContinuaModule' },
-        { id:'coc_fotos_platos', label:'Fotos de platos', icon:'camera', roles:['empleado','administracion','gerencia'], customRender:'renderFotosPlatosModule' }
+        { id:'coc_fotos_platos', label:'Fotos de platos', icon:'camera', roles:['empleado','administracion','gerencia'], customRender:'renderFotosPlatosModule' },
+        { id:'op_produccion_cocina', label:'Recibos y conteo (Producción)', icon:'box', roles:['empleado','administracion','gerencia'], customRender:'renderProduccionModule', tab:'recibos' }
+      ]},
+      { id:'centro_produccion', label:'Centro de producción', icon:'factory', matchArea:'centro_produccion', items:[
+        { id:'op_produccion', label:'Producción', icon:'box', roles:['empleado','administracion','gerencia'], customRender:'renderProduccionModule' }
+      ]},
+      { id:'bar', label:'Bar', icon:'glass', matchArea:'bar', items:[
+        { id:'op_produccion_bar', label:'Conteo de bar (Producción)', icon:'box', roles:['empleado','administracion','gerencia'], customRender:'renderProduccionModule', tab:'conteo' }
       ]},
       { id:'inspeccion', label:'Inspección', icon:'search', matchArea:'inspecciones', items:[
         { id:'coc_inspeccion', label:'Inspección de cocina', icon:'search', roles:['empleado','administracion','gerencia'], areaObjetivo:'cocina', customRender:'renderInspeccionAreaModule' },
@@ -15259,6 +15266,1019 @@ function renderInventarioModule(sec, group, item, ruta){
   document.getElementById('content').innerHTML = html;
   if(window.innerWidth <= 820) document.getElementById('sidebar').classList.remove('open');
 }
+
+/* ==================================================================
+   PRODUCCIÓN — Centro de producción (carnes): ingreso de porciones,
+   despacho a cocina/bar/eventos, confirmación de recibido en destino y
+   conteo físico mensual (producción + catálogos propios de cocina/bar).
+   Adaptado del desarrollo "Córdova Pro" que Harol ya usaba aparte: misma
+   lógica de negocio y de costos, pero corriendo sobre la base de datos
+   de esta app (Firestore compartido, sin login ni respaldo propios).
+   ================================================================== */
+
+// ---- Datos ----
+function prodIngresos(){ return DB.get('produccion_ingresos', []); }
+function prodGuardarIngresos(arr){ DB.set('produccion_ingresos', arr); }
+function prodDespachos(){ return DB.get('produccion_despachos', []); }
+function prodGuardarDespachos(arr){ DB.set('produccion_despachos', arr); }
+function prodConteos(){ return DB.get('produccion_conteos', []); }
+function prodAjustes(){ return DB.get('produccion_ajustes', []); }
+
+const PRODUCCION_CATALOGO_DEFAULT = [
+  'Cerdo Infantil','Cerdo Parrilla','Cerdo Especial','Lomo de Cerdo','Sobrebarriga',
+  'Costilla BBQ','Lengua','Desmechada','Chicharrón','Especial','Punta de Anca',
+  'Tocineta','Tomahawk','Ribeye','Carne','Carne Molida','Camarón','Pechuga Infantil',
+  'Chorizo','Pechuga Filete','Pechuga Abierta','Salsa de Tocineta','Ajo Amarillo','Piña Caramelizada'
+];
+const PRODUCCION_PROVEEDORES = ['MEGABASTOS','CHORIZOS MINGO','SURTIDELICIAS','CABEZA Y COLA','FRUVER MEGA COSECHAS','PORCICARNES','ATLANTIC','OLÍMPICA','MAKRO','D1','DISLICORES','RAÚL CASTRO','DISTRICAMPI','SETAS DE LA COSTA','SUPER CARNES JH','CLUB CÁRNICO','GRANJA MONTE VERDE'];
+const PRODUCCION_DESTINOS = ['Cocina Montería','Cocina Chinú','Eventos','Bar'];
+
+function prodCatalogo(){
+  let c = DB.get('produccion_catalogo', null);
+  if(!c){ c = { productos:[...PRODUCCION_CATALOGO_DEFAULT], catalogoCocina:[], catalogoBar:[] }; DB.set('produccion_catalogo', c); }
+  if(!c.productos || !c.productos.length) c.productos = [...PRODUCCION_CATALOGO_DEFAULT];
+  if(!c.catalogoCocina) c.catalogoCocina = [];
+  if(!c.catalogoBar) c.catalogoBar = [];
+  return c;
+}
+function prodGuardarCatalogo(c){ DB.set('produccion_catalogo', c); }
+function prodSiguienteTicketN(){
+  const n = DB.get('produccion_ticket_n', 1);
+  DB.set('produccion_ticket_n', n + 1);
+  return n;
+}
+function prodNormalizeName(s){ return (s||'').trim().replace(/\s+/g,' '); }
+function prodStripAccents(s){ return (s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,''); }
+function prodFindCatalogMatch(nombre){
+  const norm = prodStripAccents(prodNormalizeName(nombre)).toLowerCase();
+  if(!norm) return null;
+  return prodCatalogo().productos.find(m => prodStripAccents(m).toLowerCase() === norm) || null;
+}
+function prodRegistrarProductoNuevo(nombreCrudo){
+  const nombre = prodNormalizeName(nombreCrudo);
+  if(!nombre) return null;
+  const existente = prodFindCatalogMatch(nombre);
+  if(existente) return existente;
+  const c = prodCatalogo();
+  c.productos.push(nombre);
+  prodGuardarCatalogo(c);
+  return nombre;
+}
+
+// ---- Stock (fuente única de verdad para Dashboard, Despacho, Recibos y Estadísticas) ----
+function prodStock(){
+  const s = {};
+  const ensure = prod => { if(!s[prod]) s[prod] = { prod, ing:0, desp:0, ajuste:0, costoTotal:0 }; return s[prod]; };
+  prodIngresos().forEach(i => { if(!i.prod) return; const x = ensure(i.prod); x.ing += i.cant||0; x.costoTotal += (i.cant||0)*(i.costoPorc||0); });
+  prodDespachos().forEach(d => { if(!d.prod) return; ensure(d.prod).desp += d.cant||0; });
+  prodAjustes().forEach(a => { if(!a.prod) return; ensure(a.prod).ajuste += a.delta||0; });
+  return Object.values(s).map(x => ({ ...x, stk: Math.max(0, x.ing - x.desp + x.ajuste), costoProm: x.ing>0 ? x.costoTotal/x.ing : 0 }));
+}
+function prodGetStk(prod){ return (prodStock().find(x=>x.prod===prod)||{stk:0}).stk; }
+function prodGetCostoProm(prod){ return (prodStock().find(x=>x.prod===prod)||{costoProm:0}).costoProm; }
+function prodCalcVariacionCosto(prod){
+  const lotes = prodIngresos().filter(i=>i.prod===prod && i.tipo!=='inicial' && i.costoPorc>0).sort((a,b)=>(a.ts||0)-(b.ts||0));
+  if(lotes.length<2) return null;
+  const ultimo = lotes[lotes.length-1].costoPorc;
+  const anteriores = lotes.slice(0,-1);
+  const promAnterior = anteriores.reduce((s,i)=>s+i.costoPorc,0)/anteriores.length;
+  return promAnterior===0 ? null : ((ultimo-promAnterior)/promAnterior)*100;
+}
+function prodFmt(v){ return '$' + Math.round(v||0).toLocaleString('es-CO'); }
+function prodDescargarArchivo(contenido, nombre, tipo){
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([contenido], {type:tipo}));
+  a.download = nombre;
+  a.click();
+}
+
+// ---- Permisos: qué pestañas y qué áreas de conteo ve cada quien ----
+function prodEsAdmin(){ return SESSION.rol==='administracion' || SESSION.rol==='gerencia'; }
+function prodTabsPermitidos(){
+  if(prodEsAdmin()) return ['dash','ingreso','desp','recibos','conteo','hist','stats','config'];
+  if(SESSION.area==='centro_produccion') return ['ingreso','desp','conteo'];
+  if(SESSION.area==='cocina') return ['recibos','conteo'];
+  if(SESSION.area==='bar') return ['conteo'];
+  return ['dash'];
+}
+function prodConteoAreasPermitidas(){
+  if(prodEsAdmin()) return ['produccion','cocina','bar'];
+  if(SESSION.area==='centro_produccion') return ['produccion'];
+  if(SESSION.area==='cocina') return ['cocina'];
+  if(SESSION.area==='bar') return ['bar'];
+  return [];
+}
+function prodPuedeConfirmarRecibo(){ return prodEsAdmin() || SESSION.area==='cocina'; }
+function prodPuedeBorrar(){ return prodEsAdmin(); }
+
+// ---- Módulo: entrada + pestañas ----
+let prodActiveTab = null;
+let prodLastRuta = '';
+const PROD_TAB_META = {
+  dash:{label:'Dashboard', icon:'chart'}, ingreso:{label:'Ingreso', icon:'box'},
+  desp:{label:'Despacho', icon:'truck'}, recibos:{label:'Recibos', icon:'flag'},
+  conteo:{label:'Conteo', icon:'checklist'}, hist:{label:'Historial', icon:'calendar'},
+  stats:{label:'Estadísticas', icon:'trend'}, config:{label:'Configurar', icon:'gear'}
+};
+function renderProduccionModule(sec, group, item, ruta){
+  if(ruta) prodLastRuta = ruta;
+  const permitidos = prodTabsPermitidos();
+  let tab = (item && item.tab) || prodActiveTab;
+  if(!tab || !permitidos.includes(tab)) tab = permitidos[0];
+  prodSetTab(tab);
+}
+function prodSetTab(tabId){
+  prodActiveTab = tabId;
+  prodRenderBody();
+}
+function prodRenderBody(){
+  const permitidos = prodTabsPermitidos();
+  const tab = permitidos.includes(prodActiveTab) ? prodActiveTab : permitidos[0];
+  prodActiveTab = tab;
+  const tabsHtml = permitidos.map(t => {
+    const m = PROD_TAB_META[t];
+    return `<button class="tab-btn ${t===tab?'active':''}" onclick="prodSetTab('${t}')">${ic(m.icon,14)}${m.label}</button>`;
+  }).join('');
+  let bodyHtml;
+  if(tab==='dash') bodyHtml = prodDashHtml();
+  else if(tab==='ingreso') bodyHtml = prodIngresoHtml();
+  else if(tab==='desp') bodyHtml = prodDespachoHtml();
+  else if(tab==='recibos') bodyHtml = prodRecibosHtml();
+  else if(tab==='conteo') bodyHtml = prodConteoHtml();
+  else if(tab==='hist') bodyHtml = prodHistHtml();
+  else if(tab==='stats') bodyHtml = prodStatsHtml();
+  else bodyHtml = prodConfigHtml();
+  const html = `
+    <div class="panel">
+      <div class="panel-header">
+        <div class="icon-circle" style="background:${hexToRgba('#2F7A78',0.14)}; color:#2F7A78;">${ic('box',21)}</div>
+        <div><h2>Producción</h2><div class="path">${prodLastRuta}</div></div>
+      </div>
+      <div class="tab-bar">${tabsHtml}</div>
+      ${bodyHtml}
+    </div>
+    ${prodModalesHtml()}`;
+  document.getElementById('content').innerHTML = html;
+  if(window.innerWidth <= 820) document.getElementById('sidebar').classList.remove('open');
+}
+
+// ---- Modales compartidos (ticket de despacho, revisar conteo, revisar ajustes) ----
+function prodModalesHtml(){
+  const respOpciones = personalDeSede().map(u=>`<option value="${homeEsc(u.nombre)}">`).join('');
+  return `
+  <div id="pr_ticketModal" class="hm-modal-overlay no-print" style="display:none;" onclick="if(event.target===this) prodCerrarTicket()">
+    <div class="hm-modal sm">
+      <div class="hm-modal-head"><h2>🖨 Ticket de despacho</h2><button class="btn-secondary" style="padding:5px 10px;" onclick="prodCerrarTicket()">✕</button></div>
+      <div class="hm-modal-body" id="pr_ticketBody"></div>
+      <div class="hm-modal-foot"><div class="hm-modal-acciones"><button class="btn-primary" style="width:auto;padding:8px 16px;" onclick="window.print()">Imprimir</button></div></div>
+    </div>
+  </div>
+  <div id="pr_conteoModal" class="hm-modal-overlay no-print" style="display:none;" onclick="if(event.target===this) prodCerrarConteoReview()">
+    <div class="hm-modal sm">
+      <div class="hm-modal-head"><h2 id="pr_conteoModalTitulo">Verificar conteo</h2><button class="btn-secondary" style="padding:5px 10px;" onclick="prodCerrarConteoReview()">✕</button></div>
+      <div class="hm-modal-body">
+        <table class="mini-table"><thead><tr><th>Producto</th><th style="text-align:right">Cant.</th><th style="text-align:right">Costo</th><th style="text-align:right">Subtotal</th></tr></thead><tbody id="pr_conteoModalBody"></tbody></table>
+        <div style="display:flex;justify-content:space-between;margin-top:10px;padding-top:10px;border-top:2px solid var(--verde);"><strong>Total</strong><strong id="pr_conteoModalTotal" style="color:var(--verde);"></strong></div>
+        <div class="form-field" style="margin-top:12px;" id="pr_conteoModalRespRow"><label>Responsable del conteo</label><input id="pr_conteoModalResp" list="pr_conteoRespList"></div>
+        <datalist id="pr_conteoRespList">${respOpciones}</datalist>
+      </div>
+      <div class="hm-modal-foot" id="pr_conteoModalFooter"><div class="hm-modal-acciones"><button class="btn-primary" style="width:auto;padding:8px 16px;" onclick="prodConfirmarConteo()">✅ Confirmar y guardar</button></div></div>
+    </div>
+  </div>
+  <div id="pr_ajusteModal" class="hm-modal-overlay no-print" style="display:none;" onclick="if(event.target===this) prodCerrarAjusteReview()">
+    <div class="hm-modal sm">
+      <div class="hm-modal-head"><h2>📦 Verificar ajustes de conteo — Producción</h2><button class="btn-secondary" style="padding:5px 10px;" onclick="prodCerrarAjusteReview()">✕</button></div>
+      <div class="hm-modal-body">
+        <table class="mini-table"><thead><tr><th>Producto</th><th style="text-align:right">Sistema → Contado</th><th style="text-align:right">Diferencia</th></tr></thead><tbody id="pr_ajusteModalBody"></tbody></table>
+        <p style="font-size:11.5px;color:var(--text-light);margin-top:10px;">El costo promedio no cambia — solo se corrige la cantidad. Queda registrado aparte, sin mezclarse con compras ni Recibos.</p>
+        <div class="form-field" style="margin-top:12px;"><label>Responsable del conteo</label><input id="pr_ajusteModalResp" list="pr_conteoRespList"></div>
+      </div>
+      <div class="hm-modal-foot"><div class="hm-modal-acciones"><button class="btn-primary" style="width:auto;padding:8px 16px;" onclick="prodConfirmarAjusteConteo()">✅ Aplicar ajustes</button></div></div>
+    </div>
+  </div>`;
+}
+
+// ===================================================================
+// DASHBOARD
+// ===================================================================
+function prodDashHtml(){
+  const sp = prodStock();
+  const totIng = prodIngresos().reduce((s,x)=>s+(x.cant||0),0);
+  const totDesp = prodDespachos().reduce((s,x)=>s+(x.cant||0),0);
+  const totStk = sp.reduce((s,x)=>s+x.stk,0);
+  let costoTotal=0, ingTotal=0;
+  sp.forEach(s=>{ if(s.costoProm>0){ costoTotal += s.costoProm*s.ing; ingTotal += s.ing; } });
+  const costoPromedio = ingTotal>0 ? costoTotal/ingTotal : 0;
+  const criticos = sp.filter(s=>s.stk<=0 && s.ing>0).length;
+  const bajos = sp.filter(s=>s.stk>0 && s.stk < s.ing*0.15).length;
+
+  const alertas = [];
+  [...new Set(prodIngresos().map(i=>i.prod))].forEach(prod=>{
+    const v = prodCalcVariacionCosto(prod);
+    if(v===null) return;
+    if(v>15) alertas.push({icon:'🔺', clase:'rojo', prod, msg:`Costo subió +${v.toFixed(1)}% vs. ingreso anterior`});
+    else if(v<-15) alertas.push({icon:'🟢', clase:'verde', prod, msg:`Costo bajó ${Math.abs(v).toFixed(1)}% vs. ingreso anterior`});
+  });
+  sp.filter(s=>s.stk<=0 && s.ing>0).forEach(s=>alertas.push({icon:'🔴', clase:'rojo', prod:s.prod, msg:'Sin stock'}));
+  const alertasHtml = alertas.length ? `
+    <div class="panel" style="border-left:4px solid var(--rojo);margin-bottom:16px;">
+      <div style="font-weight:700;color:var(--rojo);margin-bottom:8px;">⚠️ Alertas (${alertas.length})</div>
+      ${alertas.map(a=>`<div style="display:flex;gap:8px;padding:5px 0;border-bottom:1px solid var(--border);font-size:13px;"><span>${a.icon}</span><strong>${homeEsc(a.prod)}</strong><span style="margin-left:auto;color:${a.clase==='rojo'?'var(--rojo)':'var(--verde)'};font-weight:600;">${a.msg}</span></div>`).join('')}
+    </div>` : '';
+
+  const stockRows = sp.length ? [...sp].sort((a,b)=>a.prod.localeCompare(b.prod,'es')).map(s=>{
+    const estado = s.stk<=0 ? {t:'AGOTADO', c:'badge-rojo'} : (s.stk < s.ing*0.15 ? {t:'BAJO', c:'badge-dorado'} : {t:'OK', c:'badge-verde'});
+    return `<tr><td>${homeEsc(s.prod)}</td><td>${s.ing}</td><td>${s.desp}</td><td><strong>${s.stk}</strong> <span class="badge ${estado.c}">${estado.t}</span></td></tr>`;
+  }).join('') : `<tr><td colspan="4" style="text-align:center;color:var(--text-light);padding:16px;">Sin ingresos todavía</td></tr>`;
+
+  let valorTotal = 0;
+  const valorRows = sp.filter(s=>s.stk>0).sort((a,b)=>a.prod.localeCompare(b.prod,'es')).map(s=>{
+    const valor = s.costoProm * s.stk;
+    valorTotal += valor;
+    return `<tr><td>${homeEsc(s.prod)}</td><td style="text-align:right">${s.stk}</td><td style="text-align:right">${s.costoProm>0?prodFmt(s.costoProm):'—'}</td><td style="text-align:right">${valor>0?'<strong style="color:var(--verde)">'+prodFmt(valor)+'</strong>':'—'}</td></tr>`;
+  }).join('');
+
+  const ultimoCocina = prodConteos().filter(c=>c.area==='cocina').sort((a,b)=>(b.ts||0)-(a.ts||0))[0];
+  const ultimoBar = prodConteos().filter(c=>c.area==='bar').sort((a,b)=>(b.ts||0)-(a.ts||0))[0];
+  const valCocina = ultimoCocina ? ultimoCocina.total : 0;
+  const valBar = ultimoBar ? ultimoBar.total : 0;
+  const totalCentralizado = valorTotal + valCocina + valBar;
+
+  const movimientos = [
+    ...prodIngresos().map(x=>({ts:x.ts||0, f:x.f, mod:'📦 Ingreso', item:x.prod, det:`${x.cant} porc. · ${x.prov||'—'}`, resp:x.resp})),
+    ...prodDespachos().map(x=>({ts:x.ts||0, f:x.f, mod:'📤 Despacho', item:x.prod, det:`${x.cant} porc. → ${x.dest}`, resp:x.re})),
+    ...prodAjustes().map(x=>({ts:x.ts||0, f:x.f, mod:'🔧 Ajuste', item:x.prod, det:`${x.delta>0?'+':''}${x.delta} porc. (conteo físico)`, resp:x.resp}))
+  ].sort((a,b)=>b.ts-a.ts).slice(0,10);
+  const movRows = movimientos.length ? movimientos.map(x=>`<tr><td>${x.f||'—'}</td><td>${x.mod}</td><td><strong>${homeEsc(x.item)}</strong></td><td>${homeEsc(x.det)}</td><td>${homeEsc(x.resp||'—')}</td></tr>`).join('') : `<tr><td colspan="5" style="text-align:center;color:var(--text-light);padding:16px;">Sin movimientos</td></tr>`;
+
+  return `
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:16px;">
+      <div class="stat-card2"><div class="lbl">Total ingresado</div><div class="val">${totIng.toLocaleString('es-CO')}</div><div class="sub">porciones históricas</div></div>
+      <div class="stat-card2 ok"><div class="lbl">Stock actual</div><div class="val">${totStk.toLocaleString('es-CO')}</div><div class="sub">Despachadas: ${totDesp.toLocaleString('es-CO')}</div></div>
+      <div class="stat-card2 ${criticos>0?'bad':''}"><div class="lbl">Productos críticos</div><div class="val">${criticos}</div><div class="sub">Agotados: ${criticos} · Bajos: ${bajos}</div></div>
+      <div class="stat-card2"><div class="lbl">Costo prom. / porción</div><div class="val">${costoPromedio>0?prodFmt(costoPromedio):'—'}</div><div class="sub">Sobre ${ingTotal.toLocaleString('es-CO')} porciones</div></div>
+    </div>
+    ${alertasHtml}
+    <div class="panel" style="margin-bottom:16px;">
+      <div class="form-section-title" style="margin-top:0;">Stock por producto</div>
+      <div style="overflow-x:auto;"><table class="mini-table"><thead><tr><th>Producto</th><th>Ingresado</th><th>Despachado</th><th>Stock</th></tr></thead><tbody>${stockRows}</tbody></table></div>
+    </div>
+    <div class="panel" style="margin-bottom:16px;border:2px solid var(--verde);">
+      <div class="form-section-title" style="margin-top:0;display:flex;align-items:center;">Valor total del inventario <span style="margin-left:auto;font-size:18px;font-weight:800;color:var(--verde);">${prodFmt(valorTotal)}</span></div>
+      <div style="overflow-x:auto;"><table class="mini-table"><thead><tr><th>Producto</th><th style="text-align:right">Stock</th><th style="text-align:right">Costo/porc</th><th style="text-align:right">Valor</th></tr></thead><tbody>${valorRows || '<tr><td colspan="4" style="text-align:center;color:var(--text-light);padding:16px;">Sin stock</td></tr>'}</tbody></table></div>
+    </div>
+    <div class="panel" style="margin-bottom:16px;">
+      <div class="form-section-title" style="margin-top:0;">🏢 Inventario centralizado <span style="font-size:11px;color:var(--text-light);font-weight:400;">Producción + Cocina + Bar</span></div>
+      <table class="mini-table">
+        <tr><td>📦 Producción</td><td style="text-align:right"><strong>${prodFmt(valorTotal)}</strong></td><td style="text-align:right;color:var(--text-light);font-size:11.5px;">Stock actual</td></tr>
+        <tr><td>🍳 Cocina</td><td style="text-align:right"><strong>${prodFmt(valCocina)}</strong></td><td style="text-align:right;color:var(--text-light);font-size:11.5px;">${ultimoCocina?'Conteo '+ultimoCocina.f:'Sin conteo aún'}</td></tr>
+        <tr><td>🍹 Bar</td><td style="text-align:right"><strong>${prodFmt(valBar)}</strong></td><td style="text-align:right;color:var(--text-light);font-size:11.5px;">${ultimoBar?'Conteo '+ultimoBar.f:'Sin conteo aún'}</td></tr>
+        <tr style="background:var(--tint-verde);"><td style="font-weight:800;">TOTAL CENTRALIZADO</td><td style="text-align:right;font-weight:800;color:var(--verde);">${prodFmt(totalCentralizado)}</td><td></td></tr>
+      </table>
+    </div>
+    <div class="panel">
+      <div class="form-section-title" style="margin-top:0;display:flex;align-items:center;">Últimos movimientos ${prodEsAdmin() ? `<button class="btn-secondary" style="margin-left:auto;padding:5px 10px;font-size:11px;" onclick="prodExportCSV()">⬇ CSV</button>` : ''}</div>
+      <div style="overflow-x:auto;"><table class="mini-table"><thead><tr><th>Fecha</th><th>Módulo</th><th>Ítem</th><th>Movimiento</th><th>Responsable</th></tr></thead><tbody>${movRows}</tbody></table></div>
+      ${prodEsAdmin() ? `<button class="btn-secondary" style="margin-top:10px;padding:8px 14px;font-size:12.5px;" onclick="prodImprimirInventario()">🖨️ Imprimir conteo de inventario</button>` : ''}
+    </div>`;
+}
+
+// ===================================================================
+// INGRESO
+// ===================================================================
+function prodOpcionesProducto(selectedVal){
+  const cat = prodCatalogo().productos;
+  const usados = prodIngresos().map(i=>i.prod).filter(n=>n);
+  const todos = [...new Set([...cat, ...usados])].sort((a,b)=>a.localeCompare(b,'es'));
+  return todos.map(n=>`<option value="${homeEsc(n)}" ${n===selectedVal?'selected':''}>${homeEsc(n)}</option>`).join('');
+}
+function prodIngresoHtml(){
+  const respList = personalDeSede().map(u=>`<option value="${homeEsc(u.nombre)}">`).join('');
+  const provList = PRODUCCION_PROVEEDORES.map(p=>`<option value="${p}">`).join('');
+  const ingresos = [...prodIngresos()].sort((a,b)=>(b.ts||0)-(a.ts||0));
+  const filas = ingresos.length ? ingresos.map(i=>{
+    const esInicial = i.tipo==='inicial';
+    const tipoBadge = esInicial ? `<span class="badge badge-dorado">INICIAL</span>` : `<span class="badge badge-azul">COMPRA</span>`;
+    const sinCosto = !esInicial && (!i.valorFactura || i.valorFactura===0);
+    const valStr = esInicial ? '—' : (sinCosto ? '<span style="color:var(--dorado);font-weight:700;">$0 ⚠️</span>' : prodFmt(i.valorFactura));
+    const costoStr = i.costoPorc>0 ? prodFmt(i.costoPorc) : '—';
+    const editBtn = prodEsAdmin() ? `<button class="btn-secondary" style="padding:4px 8px;font-size:11px;" onclick="prodEditarIngreso('${i.id}')">✏️</button>` : '';
+    const delBtn = prodPuedeBorrar() ? `<button class="btn-secondary" style="padding:4px 8px;font-size:11px;color:#B7423A;" onclick="prodEliminarIngreso('${i.id}')">✕</button>` : '';
+    return `<tr>
+      <td>${i.f||'—'}</td><td>${tipoBadge}</td><td><strong>${homeEsc(i.prod)}</strong></td><td><strong>${i.cant}</strong></td>
+      <td>${valStr}</td><td>${costoStr}</td><td>${esInicial?'—':homeEsc(i.prov||'—')}</td><td>${esInicial?'—':homeEsc(i.fac||'—')}</td>
+      <td>${homeEsc(i.resp||'—')}</td><td style="display:flex;gap:4px;">${editBtn}${delBtn}</td>
+    </tr>`;
+  }).join('') : `<tr><td colspan="10" style="text-align:center;color:var(--text-light);padding:16px;">Sin ingresos todavía</td></tr>`;
+
+  return `
+    <div class="panel" style="margin-bottom:16px;">
+      <div class="form-section-title" style="margin-top:0;">Nuevo ingreso de porciones</div>
+      <label id="pr_i_toggleWrap" style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:9px;margin-bottom:14px;background:var(--crema);border:1px dashed var(--border);cursor:pointer;">
+        <input type="checkbox" id="pr_i_inicial" onchange="prodToggleIngresoInicial()" style="width:18px;height:18px;">
+        <div><div style="font-weight:700;font-size:13.5px;">📦 Carga inicial de inventario</div><div style="font-size:11.5px;color:var(--text-light);">Stock existente sin factura — no calcula costo</div></div>
+      </label>
+      <div class="form-grid" id="pr_i_grid">
+        <div class="form-field"><label>Fecha</label><input type="date" id="pr_i_f" value="${hoyStr()}"></div>
+        <div class="form-field"><label>Producto</label>
+          <select id="pr_i_prod" onchange="prodOnIngresoProdChange()">
+            <option value="">-- Seleccionar --</option>
+            ${prodOpcionesProducto('')}
+            <option value="__NUEVO__">+ Producto nuevo…</option>
+          </select>
+          <div id="pr_i_stkHint" style="font-size:11.5px;font-weight:600;margin-top:3px;"></div>
+        </div>
+        <div class="form-field"><label>Cantidad de porciones</label><input type="number" id="pr_i_cant" min="1" step="1" placeholder="0" oninput="prodIngresoCalcCosto()"></div>
+        <div class="form-field" id="pr_i_valRow"><label>Valor de factura (COP $)</label><input type="number" id="pr_i_val" min="0" placeholder="0" oninput="prodIngresoCalcCosto()"></div>
+        <div class="form-field"><label>Costo por porción</label><input type="text" id="pr_i_costoDisp" readonly placeholder="—" style="background:var(--crema);font-weight:700;"></div>
+        <div class="form-field" id="pr_i_provRow"><label>Proveedor</label><input id="pr_i_prov" list="pr_provList" placeholder="Nombre del proveedor"></div>
+        <div class="form-field" id="pr_i_facRow"><label># Factura</label><input id="pr_i_fac" placeholder="FAC-001"></div>
+        <div class="form-field"><label>Responsable</label><input id="pr_i_resp" list="pr_respList" value="${homeEsc(SESSION.nombre||'')}"></div>
+        <div class="form-field"><label>Observaciones</label><input id="pr_i_obs" placeholder="Opcional"></div>
+      </div>
+      <datalist id="pr_provList">${provList}</datalist>
+      <datalist id="pr_respList">${respList}</datalist>
+      <div style="display:flex;gap:10px;margin-top:14px;">
+        <button class="btn-primary" id="pr_i_saveBtn" style="width:auto;padding:10px 18px;" onclick="prodGuardarIngreso()">✅ Registrar ingreso</button>
+        <button class="btn-secondary" style="padding:10px 18px;" onclick="prodRenderBody()">Limpiar</button>
+      </div>
+      <div id="pr_i_msg"></div>
+    </div>
+    <div class="panel">
+      <div class="form-section-title" style="margin-top:0;">Ingresos registrados</div>
+      <div style="overflow-x:auto;"><table class="mini-table"><thead><tr><th>Fecha</th><th>Tipo</th><th>Producto</th><th>Cant.</th><th>Valor factura</th><th>Costo/porc</th><th>Proveedor</th><th>Factura</th><th>Resp.</th><th></th></tr></thead><tbody>${filas}</tbody></table></div>
+    </div>`;
+}
+function prodToggleIngresoInicial(){
+  const chk = document.getElementById('pr_i_inicial');
+  const on = chk.checked;
+  ['pr_i_valRow','pr_i_provRow','pr_i_facRow'].forEach(id=>{
+    const el = document.getElementById(id); if(el) el.style.display = on ? 'none' : '';
+  });
+  const wrap = document.getElementById('pr_i_toggleWrap');
+  if(wrap){ wrap.style.background = on ? 'var(--tint-dorado)' : 'var(--crema)'; wrap.style.borderColor = on ? 'var(--dorado)' : 'var(--border)'; }
+  const btn = document.getElementById('pr_i_saveBtn');
+  if(btn) btn.textContent = on ? '📦 Registrar carga inicial' : '✅ Registrar ingreso';
+  prodIngresoCalcCosto();
+}
+function prodIngresoCalcCosto(){
+  const cantEl = document.getElementById('pr_i_cant');
+  const valEl = document.getElementById('pr_i_val');
+  const inicialEl = document.getElementById('pr_i_inicial');
+  const disp = document.getElementById('pr_i_costoDisp');
+  if(!disp) return;
+  const cant = +(cantEl && cantEl.value) || 0;
+  const isInicial = inicialEl && inicialEl.checked;
+  if(isInicial){ disp.value = '$0 (carga inicial)'; return; }
+  const val = +(valEl && valEl.value) || 0;
+  if(!cant || !val){ disp.value = '—'; return; }
+  disp.value = prodFmt(val/cant) + ' / porción';
+}
+function prodOnIngresoProdChange(){
+  const sel = document.getElementById('pr_i_prod');
+  if(!sel) return;
+  if(sel.value === '__NUEVO__'){
+    const raw = prompt('Nombre del producto nuevo (revisa que no exista ya con otro nombre parecido):');
+    if(raw===null){ sel.value=''; return; }
+    const nombre = prodNormalizeName(raw);
+    if(!nombre){ sel.value=''; return; }
+    const existente = prodFindCatalogMatch(nombre);
+    if(existente && existente!==nombre) alert(`Ya existe como "${existente}" — se usó ese para no duplicar`);
+    const final = prodRegistrarProductoNuevo(nombre);
+    sel.innerHTML = '<option value="">-- Seleccionar --</option>' + prodOpcionesProducto(final) + '<option value="__NUEVO__">+ Producto nuevo…</option>';
+    sel.value = final;
+  }
+  const hint = document.getElementById('pr_i_stkHint');
+  if(!hint) return;
+  if(!sel.value){ hint.textContent=''; return; }
+  const stk = prodGetStk(sel.value);
+  hint.textContent = `Stock actual: ${stk} porciones`;
+  hint.style.color = stk<=0 ? 'var(--rojo)' : (stk<10 ? 'var(--dorado)' : 'var(--azul)');
+}
+function prodGuardarIngreso(){
+  const prod = document.getElementById('pr_i_prod').value;
+  const cant = +document.getElementById('pr_i_cant').value;
+  const isInicial = document.getElementById('pr_i_inicial').checked;
+  if(!prod || prod==='__NUEVO__'){ showMsg('pr_i_msg','Selecciona el producto.','rojo'); return; }
+  if(!cant || cant<=0){ showMsg('pr_i_msg','Ingresa la cantidad de porciones.','rojo'); return; }
+  const valEl = document.getElementById('pr_i_val');
+  const val = isInicial ? 0 : (+(valEl && valEl.value) || 0);
+  const costoPorc = (!isInicial && cant>0) ? val/cant : 0;
+  const provEl = document.getElementById('pr_i_prov');
+  const facEl = document.getElementById('pr_i_fac');
+  DB.push('produccion_ingresos', {
+    ts: Date.now(), tipo: isInicial?'inicial':'compra',
+    f: document.getElementById('pr_i_f').value || hoyStr(),
+    prod, cant, valorFactura: val, costoPorc,
+    prov: isInicial ? '—' : prodNormalizeName(provEl ? provEl.value : ''),
+    fac: isInicial ? '—' : (facEl ? facEl.value.trim() : ''),
+    resp: document.getElementById('pr_i_resp').value.trim() || SESSION.nombre,
+    obs: document.getElementById('pr_i_obs').value.trim(),
+    sede: sedeParaGuardar(), creadoPorUsuario: SESSION.usuario
+  });
+  showMsg('pr_i_msg', `✅ ${cant} porciones de ${prod} ingresadas${isInicial?' (carga inicial)':''}.`, 'verde');
+  prodRenderBody();
+}
+function prodEliminarIngreso(id){
+  const i = prodIngresos().find(x=>x.id===id);
+  let warn = '';
+  if(i && prodDespachos().some(d=>d.prod===i.prod)) warn = '\n\n⚠️ Ya se despachó este producto — borrar este ingreso puede dejar el stock inconsistente.';
+  if(!confirm('¿Eliminar este ingreso?'+warn)) return;
+  prodGuardarIngresos(prodIngresos().filter(x=>x.id!==id));
+  prodRenderBody();
+}
+function prodEditarIngreso(id){
+  const i = prodIngresos().find(x=>x.id===id);
+  if(!i) return;
+  const prov = prompt('Proveedor:', i.prov==='—'?'':(i.prov||''));
+  if(prov===null) return;
+  const valStr = prompt('Valor de factura ($):', i.valorFactura||0);
+  if(valStr===null) return;
+  const fac = prompt('N° de factura:', i.fac==='—'?'':(i.fac||''));
+  if(fac===null) return;
+  const val = +valStr || 0;
+  i.prov = prodNormalizeName(prov) || i.prov;
+  i.fac = fac.trim() || i.fac;
+  i.valorFactura = val;
+  i.costoPorc = i.cant>0 ? val/i.cant : 0;
+  prodGuardarIngresos(prodIngresos());
+  prodRenderBody();
+}
+
+// ===================================================================
+// DESPACHO
+// ===================================================================
+function prodDespachoHtml(){
+  const respList = personalDeSede().map(u=>`<option value="${homeEsc(u.nombre)}">`).join('');
+  const sp = [...prodStock()].sort((a,b)=>a.prod.localeCompare(b.prod,'es'));
+  const opciones = sp.map(s=>`<option value="${homeEsc(s.prod)}">${homeEsc(s.prod)} — ${s.stk} disponibles</option>`).join('');
+  const despachos = [...prodDespachos()].sort((a,b)=>(b.ts||0)-(a.ts||0));
+  const destColor = {'Cocina Montería':'badge-azul','Cocina Chinú':'badge-dorado','Eventos':'badge-gris','Bar':'badge-verde'};
+  const filas = despachos.length ? despachos.map(d=>{
+    const delBtn = prodPuedeBorrar() ? `<button class="btn-secondary" style="padding:4px 8px;font-size:11px;color:#B7423A;" onclick="prodEliminarDespacho('${d.id}')">✕</button>` : '';
+    return `<tr>
+      <td><strong style="color:var(--azul)">${d.ticket||'—'}</strong></td><td>${d.f||'—'}</td><td><strong>${homeEsc(d.prod)}</strong></td><td><strong>${d.cant}</strong></td>
+      <td><span class="badge ${destColor[d.dest]||'badge-gris'}">${homeEsc(d.dest)}</span></td><td>${homeEsc(d.re||'—')}</td><td>${homeEsc(d.rr||'—')}</td>
+      <td style="display:flex;gap:4px;"><button class="btn-secondary" style="padding:4px 8px;font-size:11px;" onclick="prodVerTicket('${d.id}')">🖨</button>${delBtn}</td>
+    </tr>`;
+  }).join('') : `<tr><td colspan="8" style="text-align:center;color:var(--text-light);padding:16px;">Sin despachos todavía</td></tr>`;
+
+  return `
+    <div class="panel" style="margin-bottom:16px;">
+      <div class="form-section-title" style="margin-top:0;">Nuevo despacho</div>
+      <div class="form-grid">
+        <div class="form-field"><label>Fecha</label><input type="date" id="pr_d_f" value="${hoyStr()}"></div>
+        <div class="form-field"><label>Producto a despachar</label>
+          <select id="pr_d_prod" onchange="prodOnDespProdChange()"><option value="">-- Seleccionar --</option>${opciones}</select>
+          <div id="pr_d_stkHint" style="font-size:11.5px;font-weight:600;margin-top:3px;"></div>
+        </div>
+        <div class="form-field"><label>Cantidad (porciones)</label><input type="number" id="pr_d_cant" min="1" placeholder="0" oninput="prodDespCalc()">
+          <div id="pr_d_restHint" style="font-size:11.5px;font-weight:600;margin-top:3px;"></div>
+        </div>
+        <div class="form-field"><label>Destino</label><select id="pr_d_dest">${PRODUCCION_DESTINOS.map(d=>`<option>${d}</option>`).join('')}</select></div>
+        <div class="form-field"><label>Responsable entrega</label><input id="pr_d_re" list="pr_d_respList" value="${homeEsc(SESSION.nombre||'')}"></div>
+        <div class="form-field"><label>Responsable recibe</label><input id="pr_d_rr" list="pr_d_respList" placeholder="Quién recibe"></div>
+        <div class="form-field"><label>Observaciones</label><input id="pr_d_obs" placeholder="Opcional"></div>
+      </div>
+      <datalist id="pr_d_respList">${respList}</datalist>
+      <div style="display:flex;gap:10px;margin-top:14px;">
+        <button class="btn-primary" style="width:auto;padding:10px 18px;" onclick="prodGuardarDespacho()">✅ Registrar despacho</button>
+        <button class="btn-secondary" style="padding:10px 18px;" onclick="prodRenderBody()">Limpiar</button>
+      </div>
+      <div id="pr_d_msg"></div>
+    </div>
+    <div class="panel">
+      <div class="form-section-title" style="margin-top:0;">Despachos registrados</div>
+      <div style="overflow-x:auto;"><table class="mini-table"><thead><tr><th>Ticket</th><th>Fecha</th><th>Producto</th><th>Porc.</th><th>Destino</th><th>Entrega</th><th>Recibe</th><th></th></tr></thead><tbody>${filas}</tbody></table></div>
+    </div>`;
+}
+function prodOnDespProdChange(){
+  const prod = document.getElementById('pr_d_prod').value;
+  const hint = document.getElementById('pr_d_stkHint');
+  if(!prod){ hint.textContent=''; return; }
+  const stk = prodGetStk(prod);
+  hint.textContent = `Stock disponible: ${stk} porciones`;
+  hint.style.color = stk<=0 ? 'var(--rojo)' : (stk<10 ? 'var(--dorado)' : 'var(--azul)');
+  prodDespCalc();
+}
+function prodDespCalc(){
+  const prodEl = document.getElementById('pr_d_prod');
+  const cantEl = document.getElementById('pr_d_cant');
+  const hint = document.getElementById('pr_d_restHint');
+  if(!hint || !prodEl || !cantEl) return;
+  const prod = prodEl.value;
+  const cant = +cantEl.value || 0;
+  if(!prod || !cant){ hint.textContent=''; return; }
+  const stk = prodGetStk(prod);
+  const rest = stk - cant;
+  hint.textContent = `Quedarán ${Math.max(0,rest)} disponibles`;
+  hint.style.color = rest<0 ? 'var(--rojo)' : (rest<5 ? 'var(--dorado)' : 'var(--azul)');
+}
+function prodGuardarDespacho(){
+  const prod = document.getElementById('pr_d_prod').value;
+  const cant = +document.getElementById('pr_d_cant').value;
+  if(!prod){ showMsg('pr_d_msg','Selecciona un producto.','rojo'); return; }
+  if(!cant || cant<1){ showMsg('pr_d_msg','Ingresa la cantidad a despachar.','rojo'); return; }
+  const stk = prodGetStk(prod);
+  if(cant>stk){ showMsg('pr_d_msg', `Stock insuficiente. Disponible: ${stk} porciones.`, 'rojo'); return; }
+  const ticketN = prodSiguienteTicketN();
+  const rec = DB.push('produccion_despachos', {
+    ts: Date.now(), ticket: 'T-' + String(ticketN).padStart(4,'0'),
+    f: document.getElementById('pr_d_f').value || hoyStr(),
+    hora: new Date().toLocaleTimeString('es-CO',{hour:'2-digit',minute:'2-digit'}),
+    prod, cant, dest: document.getElementById('pr_d_dest').value,
+    re: document.getElementById('pr_d_re').value.trim() || SESSION.nombre,
+    rr: document.getElementById('pr_d_rr').value.trim(),
+    obs: document.getElementById('pr_d_obs').value.trim(),
+    recibido:false, recibidoF:null,
+    sede: sedeParaGuardar(), creadoPorUsuario: SESSION.usuario
+  });
+  showMsg('pr_d_msg', `✅ ${cant} porciones de ${prod} despachadas a ${rec.dest}.`, 'verde');
+  prodRenderBody();
+  prodVerTicket(rec.id);
+}
+function prodEliminarDespacho(id){
+  if(!confirm('¿Eliminar este despacho?')) return;
+  prodGuardarDespachos(prodDespachos().filter(x=>x.id!==id));
+  prodRenderBody();
+}
+function prodVerTicket(id){
+  const d = prodDespachos().find(x=>x.id===id);
+  if(!d) return;
+  const costoU = prodGetCostoProm(d.prod);
+  const costoT = costoU * (d.cant||0);
+  document.getElementById('pr_ticketBody').innerHTML = `
+    <div style="text-align:center;margin-bottom:12px;"><div style="font-size:11px;color:var(--text-light);font-weight:700;">N° TICKET</div><div style="font-size:22px;font-weight:900;">${d.ticket||'—'}</div></div>
+    <div class="form-grid" style="margin-bottom:10px;">
+      <div><div style="font-size:10.5px;color:var(--text-light);font-weight:700;text-transform:uppercase;">Fecha</div><div style="font-weight:700;">${d.f||'—'}</div></div>
+      <div><div style="font-size:10.5px;color:var(--text-light);font-weight:700;text-transform:uppercase;">Hora</div><div style="font-weight:700;">${d.hora||'—'}</div></div>
+    </div>
+    <div style="background:var(--crema);border-radius:8px;padding:12px;margin-bottom:10px;border-left:4px solid var(--bronce);">
+      <div style="font-size:10.5px;color:var(--text-light);font-weight:700;text-transform:uppercase;">Producto despachado</div>
+      <div style="font-size:16px;font-weight:800;">${homeEsc(d.prod)}</div>
+      <div style="font-size:22px;font-weight:900;">${d.cant} <span style="font-size:12px;font-weight:600;color:var(--text-light);">porciones</span></div>
+    </div>
+    <div style="margin-bottom:10px;"><div style="font-size:10.5px;color:var(--text-light);font-weight:700;text-transform:uppercase;">Destino</div><div style="font-weight:800;">${homeEsc(d.dest)}</div></div>
+    <div class="form-grid" style="margin-bottom:10px;">
+      <div><div style="font-size:10.5px;color:var(--text-light);font-weight:700;text-transform:uppercase;">Entrega</div><div style="font-weight:700;">${homeEsc(d.re||'—')}</div></div>
+      <div><div style="font-size:10.5px;color:var(--text-light);font-weight:700;text-transform:uppercase;">Recibe</div><div style="font-weight:700;">${homeEsc(d.rr||'—')}</div></div>
+    </div>
+    <div class="form-grid" style="margin-bottom:10px;">
+      <div><div style="font-size:10.5px;color:var(--text-light);font-weight:700;text-transform:uppercase;">Costo unit.</div><div style="font-weight:700;">${costoU>0?prodFmt(costoU):'—'}</div></div>
+      <div><div style="font-size:10.5px;color:var(--text-light);font-weight:700;text-transform:uppercase;">Costo total</div><div style="font-weight:800;">${costoT>0?prodFmt(costoT):'—'}</div></div>
+    </div>
+    ${d.obs ? `<div><div style="font-size:10.5px;color:var(--text-light);font-weight:700;text-transform:uppercase;">Observaciones</div><div style="font-style:italic;">${homeEsc(d.obs)}</div></div>` : ''}
+  `;
+  document.getElementById('pr_ticketModal').style.display='flex';
+}
+function prodCerrarTicket(){ document.getElementById('pr_ticketModal').style.display='none'; }
+
+// ===================================================================
+// RECIBOS (confirmación en destino)
+// ===================================================================
+function prodRecibosHtml(){
+  const despachos = [...prodDespachos()].sort((a,b)=>(b.ts||0)-(a.ts||0));
+  const destColor = {'Cocina Montería':'badge-azul','Cocina Chinú':'badge-dorado','Eventos':'badge-gris','Bar':'badge-verde'};
+  const puedeConfirmar = prodPuedeConfirmarRecibo();
+  const filas = despachos.length ? despachos.map(d=>{
+    const recibido = !!d.recibido;
+    const estado = recibido ? `<span class="badge badge-verde">✅ Recibido${d.recibidoF?' · '+d.recibidoF:''}</span>` : `<span class="badge badge-dorado">⏳ Pendiente</span>`;
+    const btn = (puedeConfirmar && !recibido) ? `<button class="btn-primary" style="width:auto;padding:5px 12px;font-size:11.5px;" onclick="prodConfirmarRecibido('${d.id}')">✅ Confirmar</button>` : '';
+    const costoU = prodGetCostoProm(d.prod);
+    const costoT = costoU * (d.cant||0);
+    return `<tr>
+      <td><strong style="color:var(--azul)">${d.ticket||'—'}</strong></td><td>${d.f||'—'}</td><td><strong>${homeEsc(d.prod)}</strong></td><td><strong>${d.cant}</strong></td>
+      <td><span class="badge ${destColor[d.dest]||'badge-gris'}">${homeEsc(d.dest)}</span></td>
+      <td>${costoU>0?prodFmt(costoU):'—'}</td><td>${costoT>0?'<strong>'+prodFmt(costoT)+'</strong>':'—'}</td><td>${estado}</td><td>${btn}</td>
+    </tr>`;
+  }).join('') : `<tr><td colspan="9" style="text-align:center;color:var(--text-light);padding:16px;">Sin despachos todavía</td></tr>`;
+
+  return `
+    <div class="panel">
+      <div class="form-section-title" style="margin-top:0;display:flex;align-items:center;">Despachos del centro de producción
+        <span style="font-size:11.5px;color:var(--text-light);font-weight:400;margin-left:8px;">Confirma aquí lo que recibiste — el costo es para digitar en Fudo</span>
+        <button class="btn-secondary" style="margin-left:auto;padding:5px 10px;font-size:11px;" onclick="prodExportRecibosCSV()">⬇ CSV para Fudo</button>
+      </div>
+      <div style="overflow-x:auto;"><table class="mini-table"><thead><tr><th>Ticket</th><th>Fecha</th><th>Producto</th><th>Cant.</th><th>Destino</th><th>Costo/porc</th><th>Costo total</th><th>Estado</th><th></th></tr></thead><tbody>${filas}</tbody></table></div>
+    </div>`;
+}
+function prodConfirmarRecibido(id){
+  const d = prodDespachos().find(x=>x.id===id);
+  if(!d) return;
+  d.recibido = true; d.recibidoF = hoyStr();
+  prodGuardarDespachos(prodDespachos());
+  prodRenderBody();
+}
+function prodExportRecibosCSV(){
+  let csv = 'Ticket,Fecha,Producto,Cantidad,Destino,Costo por porcion,Costo total,Estado,Fecha recibido\n';
+  [...prodDespachos()].reverse().forEach(d=>{
+    const costoU = prodGetCostoProm(d.prod);
+    csv += `${d.ticket||''},${d.f||''},${d.prod},${d.cant},${d.dest},${Math.round(costoU)},${Math.round(costoU*(d.cant||0))},${d.recibido?'Recibido':'Pendiente'},${d.recibidoF||''}\n`;
+  });
+  prodDescargarArchivo(csv, `recibos_produccion_${hoyStr()}.csv`, 'text/csv;charset=utf-8;');
+}
+
+// ===================================================================
+// CONTEO (producción con ajuste de stock + catálogos propios cocina/bar)
+// ===================================================================
+function prodConteoHtml(){
+  const areas = prodConteoAreasPermitidas();
+  let html = '';
+  if(areas.includes('produccion')) html += prodConteoProduccionHtml();
+  if(areas.includes('cocina')) html += prodConteoAreaHtml('cocina');
+  if(areas.includes('bar')) html += prodConteoAreaHtml('bar');
+  if(!areas.length) html = `<div class="panel"><p style="color:var(--text-light);">No tienes un área de conteo asignada.</p></div>`;
+  return html;
+}
+function prodConteoProduccionHtml(){
+  const sp = [...prodStock()].sort((a,b)=>a.prod.localeCompare(b.prod,'es'));
+  const filas = sp.length ? sp.map((s,i)=>`
+    <tr>
+      <td><strong>${homeEsc(s.prod)}</strong></td>
+      <td style="text-align:right">${s.stk}</td>
+      <td style="text-align:right">${s.costoProm>0?prodFmt(s.costoProm):'—'}</td>
+      <td style="text-align:right"><input type="number" min="0" step="1" id="pr_pc_cant_${i}" placeholder="—" style="width:90px;text-align:right;" oninput="prodActualizarDiferenciaConteoProd(${i},${s.stk})"></td>
+      <td style="text-align:right" id="pr_pc_dif_${i}">—</td>
+    </tr>`).join('') : `<tr><td colspan="5" style="text-align:center;color:var(--text-light);padding:16px;">Sin productos con movimiento todavía</td></tr>`;
+  const ajustes = [...prodAjustes()].sort((a,b)=>(b.ts||0)-(a.ts||0));
+  const histFilas = ajustes.length ? ajustes.map(a=>`<tr><td>${a.f||'—'}</td><td><strong>${homeEsc(a.prod)}</strong></td><td style="color:${a.delta>0?'var(--verde)':'var(--rojo)'}">${a.delta>0?'+':''}${a.delta}</td><td>${a.stkDespues}</td><td>${homeEsc(a.resp||'—')}</td></tr>`).join('') : `<tr><td colspan="5" style="text-align:center;color:var(--text-light);padding:16px;">Sin ajustes registrados</td></tr>`;
+  return `
+    <div class="panel" style="margin-bottom:16px;border:2px solid var(--azul);">
+      <div class="form-section-title" style="margin-top:0;display:flex;align-items:center;">📦 Conteo físico de producción
+        <span style="font-size:11.5px;color:var(--text-light);font-weight:400;margin-left:8px;">Compara el stock del sistema con tu conteo real</span>
+        <button class="btn-secondary" style="margin-left:auto;padding:5px 10px;font-size:11px;" onclick="prodMarcarTodoConteoProdEnCero()">🧹 Poner todo en 0</button>
+      </div>
+      <div style="overflow-x:auto;"><table class="mini-table"><thead><tr><th>Producto</th><th style="text-align:right">Stock sistema</th><th style="text-align:right">Costo prom.</th><th style="text-align:right">Cantidad contada</th><th style="text-align:right">Diferencia</th></tr></thead><tbody>${filas}</tbody></table></div>
+      <div style="display:flex;gap:10px;margin-top:12px;">
+        <button class="btn-primary" style="width:auto;padding:9px 16px;" onclick="prodRevisarConteoProduccion()">🔎 Revisar y aplicar ajustes</button>
+        <button class="btn-secondary" style="padding:9px 16px;" onclick="prodRenderBody()">↺ Descartar cambios</button>
+      </div>
+    </div>
+    <div class="panel" style="margin-bottom:20px;">
+      <div class="form-section-title" style="margin-top:0;">Historial de ajustes por conteo</div>
+      <div style="overflow-x:auto;"><table class="mini-table"><thead><tr><th>Fecha</th><th>Producto</th><th>Ajuste</th><th>Stock resultante</th><th>Responsable</th></tr></thead><tbody>${histFilas}</tbody></table></div>
+    </div>`;
+}
+function prodActualizarDiferenciaConteoProd(i, stkSistema){
+  const inp = document.getElementById('pr_pc_cant_'+i);
+  const difEl = document.getElementById('pr_pc_dif_'+i);
+  if(!inp||!difEl) return;
+  if(inp.value===''){ difEl.textContent='—'; difEl.style.color=''; return; }
+  const contado = parseFloat(inp.value)||0;
+  const dif = contado - stkSistema;
+  difEl.textContent = (dif>0?'+':'') + dif;
+  difEl.style.color = dif>0?'var(--verde)':(dif<0?'var(--rojo)':'');
+}
+function prodMarcarTodoConteoProdEnCero(){
+  if(!confirm('Esto pone "0" como cantidad contada en TODOS los productos. ¿Continuar?')) return;
+  const sp = [...prodStock()].sort((a,b)=>a.prod.localeCompare(b.prod,'es'));
+  sp.forEach((s,i)=>{ const inp=document.getElementById('pr_pc_cant_'+i); if(inp){ inp.value=0; prodActualizarDiferenciaConteoProd(i, s.stk); } });
+}
+let prodConteoProdCambios = [];
+function prodRevisarConteoProduccion(){
+  const sp = [...prodStock()].sort((a,b)=>a.prod.localeCompare(b.prod,'es'));
+  const cambios = [];
+  sp.forEach((s,i)=>{
+    const inp = document.getElementById('pr_pc_cant_'+i);
+    if(!inp || inp.value==='') return;
+    const contado = parseFloat(inp.value)||0;
+    const dif = contado - s.stk;
+    if(dif!==0) cambios.push({prod:s.prod, stkSistema:s.stk, contado, dif});
+  });
+  if(!cambios.length){ alert('No hay diferencias para ajustar.'); return; }
+  prodConteoProdCambios = cambios;
+  document.getElementById('pr_ajusteModalBody').innerHTML = cambios.map(c=>`
+    <tr><td>${homeEsc(c.prod)}</td><td style="text-align:right">${c.stkSistema} → <strong>${c.contado}</strong></td>
+    <td style="text-align:right;font-weight:700;color:${c.dif>0?'var(--verde)':'var(--rojo)'}">${c.dif>0?'+':''}${c.dif}</td></tr>`).join('');
+  const respEl = document.getElementById('pr_ajusteModalResp'); if(respEl) respEl.value = SESSION.nombre||'';
+  document.getElementById('pr_ajusteModal').style.display='flex';
+}
+function prodCerrarAjusteReview(){ document.getElementById('pr_ajusteModal').style.display='none'; }
+function prodConfirmarAjusteConteo(){
+  if(!prodConteoProdCambios.length) return;
+  const resp = document.getElementById('pr_ajusteModalResp').value.trim() || SESSION.nombre;
+  const fecha = hoyStr();
+  prodConteoProdCambios.forEach(c=>{
+    DB.push('produccion_ajustes', { ts:Date.now(), prod:c.prod, delta:c.dif, f:fecha, resp, stkAntes:c.stkSistema, stkDespues:c.contado });
+  });
+  prodCerrarAjusteReview();
+  prodConteoProdCambios = [];
+  prodRenderBody();
+}
+
+function prodConteoAreaHtml(area){
+  const cat = prodCatalogo()[area==='cocina'?'catalogoCocina':'catalogoBar'];
+  const prefix = 'pr_' + area;
+  const color = area==='cocina' ? '#C4793A' : '#7d3c98';
+  const titulo = area==='cocina' ? '🍳 Conteo de cocina' : '🍹 Conteo de bar';
+  const sorted = [...cat].sort((a,b)=>a.n.localeCompare(b.n,'es'));
+  const filas = sorted.length ? sorted.map((p,i)=>`
+    <tr>
+      <td><strong>${homeEsc(p.n)}</strong></td>
+      <td style="text-align:right"><input type="number" min="0" id="${prefix}_costo_${i}" value="${p.c||0}" style="width:100px;text-align:right;" oninput="prodActualizarTotalConteo('${area}')"></td>
+      <td style="text-align:right"><input type="number" min="0" step="1" id="${prefix}_cant_${i}" placeholder="0" style="width:90px;text-align:right;" oninput="prodActualizarTotalConteo('${area}')"></td>
+      <td style="text-align:right" id="${prefix}_sub_${i}">—</td>
+      <td style="text-align:center"><button class="btn-secondary" style="padding:4px 8px;font-size:11px;color:#B7423A;" onclick="prodEliminarProductoConteo('${area}','${p.n.replace(/'/g,"\\'")}')">✕</button></td>
+    </tr>`).join('') : `<tr><td colspan="5" style="text-align:center;color:var(--text-light);padding:16px;">Sin productos. Agrega el primero abajo.</td></tr>`;
+  const histRegs = prodConteos().filter(c=>c.area===area).sort((a,b)=>(b.ts||0)-(a.ts||0));
+  const histFilas = histRegs.length ? histRegs.map(c=>`<tr><td>${c.f||'—'}</td><td>${homeEsc(c.resp||'—')}</td><td style="text-align:right"><strong>${prodFmt(c.total)}</strong></td><td style="text-align:center"><button class="btn-secondary" style="padding:4px 8px;font-size:11px;" onclick="prodVerDetalleConteo('${c.id}')">👁 Ver</button></td></tr>`).join('') : `<tr><td colspan="4" style="text-align:center;color:var(--text-light);padding:16px;">Sin conteos registrados</td></tr>`;
+  return `
+    <div class="panel" style="margin-bottom:16px;border:2px solid ${color};">
+      <div class="form-section-title" style="margin-top:0;">${titulo} <span style="font-size:11.5px;color:var(--text-light);font-weight:400;">Conteo físico mensual — cantidad y costo para Fudo</span></div>
+      <div style="overflow-x:auto;"><table class="mini-table"><thead><tr><th>Producto</th><th style="text-align:right">Costo unit.</th><th style="text-align:right">Cantidad contada</th><th style="text-align:right">Subtotal</th><th></th></tr></thead><tbody id="${prefix}_body">${filas}</tbody></table></div>
+      <div class="form-grid" style="margin-top:12px;">
+        <div class="form-field"><label>Producto nuevo</label><input type="text" id="${prefix}_nuevoNombre" placeholder="Ej: Papa criolla, Arroz..."></div>
+        <div class="form-field"><label>Costo unitario</label><input type="number" id="${prefix}_nuevoCosto" min="0" placeholder="0"></div>
+      </div>
+      <button class="btn-secondary" style="margin-top:10px;padding:8px 14px;font-size:12.5px;" onclick="prodAgregarProductoConteo('${area}')">＋ Agregar producto</button>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:14px;padding-top:14px;border-top:2px solid var(--border);">
+        <div style="font-weight:800;">Total contado: <span id="${prefix}_total" style="color:var(--verde);">$0</span></div>
+        <button class="btn-primary" style="width:auto;padding:9px 16px;" onclick="prodRevisarConteo('${area}')">🔎 Revisar y guardar conteo</button>
+      </div>
+    </div>
+    <div class="panel" style="margin-bottom:20px;">
+      <div class="form-section-title" style="margin-top:0;">Historial de conteos — ${area==='cocina'?'Cocina':'Bar'}</div>
+      <div style="overflow-x:auto;"><table class="mini-table"><thead><tr><th>Fecha</th><th>Responsable</th><th style="text-align:right">Total</th><th></th></tr></thead><tbody>${histFilas}</tbody></table></div>
+    </div>`;
+}
+function prodActualizarTotalConteo(area){
+  const cat = prodCatalogo()[area==='cocina'?'catalogoCocina':'catalogoBar'];
+  const prefix = 'pr_' + area;
+  const sorted = [...cat].sort((a,b)=>a.n.localeCompare(b.n,'es'));
+  let total = 0;
+  sorted.forEach((p,i)=>{
+    const costoEl = document.getElementById(prefix+'_costo_'+i);
+    const cantEl = document.getElementById(prefix+'_cant_'+i);
+    const subEl = document.getElementById(prefix+'_sub_'+i);
+    if(!costoEl||!cantEl||!subEl) return;
+    const costo = parseFloat(costoEl.value)||0;
+    const cant = parseFloat(cantEl.value)||0;
+    const sub = costo*cant;
+    subEl.textContent = sub>0 ? prodFmt(sub) : '—';
+    total += sub;
+  });
+  const totalEl = document.getElementById(prefix+'_total');
+  if(totalEl) totalEl.textContent = prodFmt(total);
+}
+function prodAgregarProductoConteo(area){
+  const prefix = 'pr_' + area;
+  const nombreInput = document.getElementById(prefix+'_nuevoNombre');
+  const costoInput = document.getElementById(prefix+'_nuevoCosto');
+  const nombre = prodNormalizeName(nombreInput.value);
+  const costo = parseFloat(costoInput.value)||0;
+  if(!nombre){ alert('Escribe un nombre de producto.'); return; }
+  const c = prodCatalogo();
+  const key = area==='cocina'?'catalogoCocina':'catalogoBar';
+  const norm = n=>prodStripAccents(prodNormalizeName(n)).toLowerCase();
+  if(c[key].find(p=>norm(p.n)===norm(nombre))){ alert(`"${nombre}" ya existe en el catálogo.`); return; }
+  c[key].push({n:nombre, c:costo});
+  prodGuardarCatalogo(c);
+  prodRenderBody();
+}
+function prodEliminarProductoConteo(area, nombre){
+  if(!confirm(`¿Eliminar "${nombre}" del catálogo de ${area==='cocina'?'Cocina':'Bar'}? El historial ya guardado no se borra.`)) return;
+  const c = prodCatalogo();
+  const key = area==='cocina'?'catalogoCocina':'catalogoBar';
+  c[key] = c[key].filter(p=>p.n!==nombre);
+  prodGuardarCatalogo(c);
+  prodRenderBody();
+}
+let prodConteoAreaActual = null;
+function prodRevisarConteo(area){
+  const cat = prodCatalogo()[area==='cocina'?'catalogoCocina':'catalogoBar'];
+  const prefix = 'pr_' + area;
+  const sorted = [...cat].sort((a,b)=>a.n.localeCompare(b.n,'es'));
+  const items = [];
+  sorted.forEach((p,i)=>{
+    const costoEl = document.getElementById(prefix+'_costo_'+i);
+    const cantEl = document.getElementById(prefix+'_cant_'+i);
+    const costo = parseFloat(costoEl && costoEl.value)||0;
+    const cant = parseFloat(cantEl && cantEl.value)||0;
+    if(cant>0) items.push({n:p.n, c:costo, cant, sub:costo*cant});
+  });
+  if(!items.length){ alert('Ingresa al menos una cantidad contada.'); return; }
+  prodConteoAreaActual = area;
+  const total = items.reduce((s,x)=>s+x.sub,0);
+  document.getElementById('pr_conteoModalTitulo').textContent = 'Verificar conteo — ' + (area==='cocina'?'🍳 Cocina':'🍹 Bar');
+  document.getElementById('pr_conteoModalBody').innerHTML = items.map(x=>`<tr><td>${homeEsc(x.n)}</td><td style="text-align:right">${x.cant}</td><td style="text-align:right">${prodFmt(x.c)}</td><td style="text-align:right;font-weight:700;">${prodFmt(x.sub)}</td></tr>`).join('');
+  document.getElementById('pr_conteoModalTotal').textContent = prodFmt(total);
+  document.getElementById('pr_conteoModalRespRow').style.display='';
+  document.getElementById('pr_conteoModalFooter').style.display='flex';
+  const respEl = document.getElementById('pr_conteoModalResp'); if(respEl) respEl.value = SESSION.nombre||'';
+  document.getElementById('pr_conteoModal').style.display='flex';
+}
+function prodCerrarConteoReview(){ document.getElementById('pr_conteoModal').style.display='none'; prodConteoAreaActual=null; }
+function prodConfirmarConteo(){
+  const area = prodConteoAreaActual;
+  if(!area) return;
+  const key = area==='cocina'?'catalogoCocina':'catalogoBar';
+  const catalogoObj = prodCatalogo();
+  const cat = catalogoObj[key];
+  const prefix = 'pr_' + area;
+  const sorted = [...cat].sort((a,b)=>a.n.localeCompare(b.n,'es'));
+  const items = [];
+  sorted.forEach((p,i)=>{
+    const costoEl = document.getElementById(prefix+'_costo_'+i);
+    const cantEl = document.getElementById(prefix+'_cant_'+i);
+    const costo = parseFloat(costoEl && costoEl.value)||0;
+    const cant = parseFloat(cantEl && cantEl.value)||0;
+    if(costoEl) p.c = costo; // se guarda el último costo para el próximo conteo
+    if(cant>0) items.push({n:p.n, c:costo, cant, sub:costo*cant});
+  });
+  prodGuardarCatalogo(catalogoObj);
+  const resp = document.getElementById('pr_conteoModalResp').value.trim() || SESSION.nombre;
+  const total = items.reduce((s,x)=>s+x.sub,0);
+  DB.push('produccion_conteos', { ts:Date.now(), area, f:hoyStr(), items, total, resp });
+  prodCerrarConteoReview();
+  prodRenderBody();
+}
+function prodVerDetalleConteo(id){
+  const c = prodConteos().find(x=>x.id===id);
+  if(!c) return;
+  prodConteoAreaActual = null;
+  document.getElementById('pr_conteoModalTitulo').textContent = (c.area==='cocina'?'🍳 Cocina':'🍹 Bar') + ' — ' + (c.f||'');
+  document.getElementById('pr_conteoModalBody').innerHTML = (c.items||[]).map(x=>`<tr><td>${homeEsc(x.n)}</td><td style="text-align:right">${x.cant}</td><td style="text-align:right">${prodFmt(x.c)}</td><td style="text-align:right;font-weight:700;">${prodFmt(x.sub)}</td></tr>`).join('');
+  document.getElementById('pr_conteoModalTotal').textContent = prodFmt(c.total||0);
+  document.getElementById('pr_conteoModalRespRow').style.display='none';
+  document.getElementById('pr_conteoModalFooter').style.display='none';
+  document.getElementById('pr_conteoModal').style.display='flex';
+}
+
+// ===================================================================
+// HISTORIAL
+// ===================================================================
+let prodHistFiltro = '';
+function prodHistHtml(){
+  const all = [
+    ...prodIngresos().map(x=>({id:x.id, ts:x.ts||0, f:x.f, mod:'ingreso', modLabel:'📦 Ingreso', item:x.prod, det:`${x.cant} porc. · ${prodFmt(x.valorFactura||0)} · ${x.prov||'—'} · Fac: ${x.fac||'—'}`, resp:x.resp})),
+    ...prodDespachos().map(x=>({id:x.id, ts:x.ts||0, f:x.f, mod:'desp', modLabel:'📤 Despacho', item:x.prod, det:`${x.cant} porc. → ${x.dest}`, resp:x.re}))
+  ].sort((a,b)=>b.ts-a.ts).filter(x=>!prodHistFiltro || x.mod===prodHistFiltro);
+  const filas = all.length ? all.map(x=>`
+    <tr><td>${x.f||'—'}</td><td>${x.modLabel}</td><td><strong>${homeEsc(x.item)}</strong></td><td>${homeEsc(x.det)}</td><td>${homeEsc(x.resp||'—')}</td>
+    ${prodPuedeBorrar() ? `<td><button class="btn-secondary" style="padding:4px 8px;font-size:11px;color:#B7423A;" onclick="prodEliminarHist('${x.mod}','${x.id}')">✕</button></td>` : ''}</tr>`).join('') : `<tr><td colspan="6" style="text-align:center;color:var(--text-light);padding:16px;">Sin registros</td></tr>`;
+  return `
+    <div class="panel">
+      <div class="form-section-title" style="margin-top:0;display:flex;align-items:center;">Historial de movimientos
+        <select onchange="prodSetHistFiltro(this.value)" style="margin-left:auto;padding:5px 9px;border:1.5px solid var(--border);border-radius:6px;font-size:12px;">
+          <option value="">Todo</option><option value="ingreso" ${prodHistFiltro==='ingreso'?'selected':''}>Ingreso</option><option value="desp" ${prodHistFiltro==='desp'?'selected':''}>Despacho</option>
+        </select>
+      </div>
+      <div style="overflow-x:auto;"><table class="mini-table"><thead><tr><th>Fecha</th><th>Módulo</th><th>Ítem</th><th>Detalle</th><th>Responsable</th>${prodPuedeBorrar()?'<th></th>':''}</tr></thead><tbody>${filas}</tbody></table></div>
+    </div>`;
+}
+function prodSetHistFiltro(v){ prodHistFiltro = v; prodRenderBody(); }
+function prodEliminarHist(mod, id){
+  if(!confirm('¿Eliminar este registro?')) return;
+  if(mod==='ingreso') prodGuardarIngresos(prodIngresos().filter(x=>x.id!==id));
+  else prodGuardarDespachos(prodDespachos().filter(x=>x.id!==id));
+  prodRenderBody();
+}
+function prodExportCSV(){
+  const sp = prodStock();
+  let csv = 'Producto,Ingresado,Despachado,Stock,Costo promedio\n';
+  sp.forEach(s=>csv+=`${s.prod},${s.ing},${s.desp},${s.stk},${Math.round(s.costoProm)}\n`);
+  prodDescargarArchivo(csv, `inventario_produccion_${hoyStr()}.csv`, 'text/csv;charset=utf-8;');
+}
+
+// ===================================================================
+// ESTADÍSTICAS
+// ===================================================================
+let prodStatsDesde = '', prodStatsHasta = '';
+function prodStatsHtml(){
+  const inRange = f => (!prodStatsDesde || f>=prodStatsDesde) && (!prodStatsHasta || f<=prodStatsHasta);
+  const prods = new Set();
+  prodIngresos().forEach(i=>prods.add(i.prod));
+  prodDespachos().forEach(d=>prods.add(d.prod));
+  const sp = prodStock();
+  const stats = [...prods].sort((a,b)=>a.localeCompare(b,'es')).map(prod=>{
+    const ingresos = prodIngresos().filter(i=>i.prod===prod && inRange(i.f));
+    const ing = ingresos.reduce((s,i)=>s+(i.cant||0),0);
+    const costoTotal = ingresos.reduce((s,i)=>s+(i.cant||0)*(i.costoPorc||0),0);
+    const costoProm = ing>0 ? costoTotal/ing : 0;
+    const desp = prodDespachos().filter(d=>d.prod===prod && inRange(d.f)).reduce((s,d)=>s+(d.cant||0),0);
+    const stkActual = (sp.find(x=>x.prod===prod)||{stk:0}).stk;
+    return {prod, ing, costoProm, desp, stk:stkActual};
+  }).filter(x=>x.ing>0 || x.desp>0);
+  const totIng = stats.reduce((s,x)=>s+x.ing,0);
+  const totDesp = stats.reduce((s,x)=>s+x.desp,0);
+  const totStk = stats.reduce((s,x)=>s+x.stk,0);
+  const totValor = stats.reduce((s,x)=>s+x.stk*x.costoProm,0);
+  const filas = stats.length ? stats.map(s=>{
+    const cl = s.stk<=0?'badge-rojo':(s.stk<10?'badge-dorado':'badge-verde');
+    return `<tr><td><strong>${homeEsc(s.prod)}</strong></td><td>${s.ing>0?s.ing:'—'}</td><td>${s.costoProm>0?prodFmt(s.costoProm):'—'}</td><td>${s.desp>0?s.desp:'—'}</td><td><span class="badge ${cl}">${s.stk}</span></td><td>${s.stk*s.costoProm>0?prodFmt(s.stk*s.costoProm):'—'}</td></tr>`;
+  }).join('') : `<tr><td colspan="6" style="text-align:center;color:var(--text-light);padding:16px;">Sin datos en el período seleccionado</td></tr>`;
+  return `
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:16px;">
+      <div class="stat-card2"><div class="lbl">Ingresado en el período</div><div class="val">${totIng.toLocaleString('es-CO')}</div></div>
+      <div class="stat-card2"><div class="lbl">Despachado en el período</div><div class="val">${totDesp.toLocaleString('es-CO')}</div></div>
+      <div class="stat-card2 ok"><div class="lbl">Stock actual</div><div class="val">${totStk.toLocaleString('es-CO')}</div></div>
+      <div class="stat-card2"><div class="lbl">Valor de stock actual</div><div class="val" style="font-size:14px;">${prodFmt(totValor)}</div></div>
+    </div>
+    <div class="panel">
+      <div class="form-section-title" style="margin-top:0;display:flex;align-items:center;">Reporte por producto
+        <div style="margin-left:auto;display:flex;gap:8px;align-items:center;">
+          <input type="date" value="${prodStatsDesde}" onchange="prodSetStatsRango(this.value, null)" style="padding:5px 8px;border:1.5px solid var(--border);border-radius:6px;font-size:12px;">
+          <span style="font-size:12px;color:var(--text-light);">hasta</span>
+          <input type="date" value="${prodStatsHasta}" onchange="prodSetStatsRango(null, this.value)" style="padding:5px 8px;border:1.5px solid var(--border);border-radius:6px;font-size:12px;">
+          <button class="btn-secondary" style="padding:5px 10px;font-size:11px;" onclick="prodSetStatsRango('','')">Todo</button>
+          <button class="btn-secondary" style="padding:5px 10px;font-size:11px;" onclick="prodExportStatsCSV()">⬇ CSV</button>
+        </div>
+      </div>
+      <div style="overflow-x:auto;"><table class="mini-table"><thead><tr><th>Producto</th><th>Ingresado</th><th>Costo promedio</th><th>Despachado</th><th>Stock</th><th>Valor en stock</th></tr></thead><tbody>${filas}</tbody></table></div>
+    </div>`;
+}
+function prodSetStatsRango(desde, hasta){
+  if(desde!==null) prodStatsDesde = desde;
+  if(hasta!==null) prodStatsHasta = hasta;
+  prodRenderBody();
+}
+function prodExportStatsCSV(){
+  const inRange = f => (!prodStatsDesde || f>=prodStatsDesde) && (!prodStatsHasta || f<=prodStatsHasta);
+  const prods = new Set();
+  prodIngresos().forEach(i=>prods.add(i.prod));
+  prodDespachos().forEach(d=>prods.add(d.prod));
+  const sp = prodStock();
+  let csv = 'Producto,Ingresado,Costo Promedio,Despachado,Stock,Valor Stock\n';
+  [...prods].sort((a,b)=>a.localeCompare(b,'es')).forEach(prod=>{
+    const ingresos = prodIngresos().filter(i=>i.prod===prod && inRange(i.f));
+    const ing = ingresos.reduce((s,i)=>s+(i.cant||0),0);
+    const costoTotal = ingresos.reduce((s,i)=>s+(i.cant||0)*(i.costoPorc||0),0);
+    const costoProm = ing>0 ? costoTotal/ing : 0;
+    const desp = prodDespachos().filter(d=>d.prod===prod && inRange(d.f)).reduce((s,d)=>s+(d.cant||0),0);
+    const stk = (sp.find(x=>x.prod===prod)||{stk:0}).stk;
+    csv += `${prod},${ing},${Math.round(costoProm)},${desp},${stk},${Math.round(stk*costoProm)}\n`;
+  });
+  prodDescargarArchivo(csv, `estadisticas_produccion_${hoyStr()}.csv`, 'text/csv;charset=utf-8;');
+}
+
+// ===================================================================
+// CONFIGURAR (catálogo de productos — solo administración/gerencia)
+// ===================================================================
+function prodConfigHtml(){
+  if(!prodEsAdmin()) return `<div class="panel"><p style="color:var(--text-light);">Solo administración/gerencia puede configurar el catálogo.</p></div>`;
+  const mps = prodCatalogo().productos;
+  const filas = mps.length ? mps.map((m,i)=>`<tr><td><strong>${homeEsc(m)}</strong></td><td style="text-align:center"><button class="btn-secondary" style="padding:4px 8px;font-size:11px;color:#B7423A;" onclick="prodCfgEliminar(${i})">✕</button></td></tr>`).join('') : `<tr><td colspan="2" style="text-align:center;color:var(--text-light);padding:16px;">Sin productos. Agrega el primero.</td></tr>`;
+  return `
+    <div class="panel" style="margin-bottom:16px;border:2px solid var(--bronce);">
+      <div class="form-section-title" style="margin-top:0;">Agregar producto</div>
+      <div class="form-grid"><div class="form-field"><label>Nombre del producto</label><input id="pr_cfgNombre" placeholder="Ej: Costilla BBQ, Chorizo..."></div></div>
+      <button class="btn-primary" style="width:auto;padding:9px 16px;margin-top:10px;" onclick="prodCfgAgregar()">＋ Agregar</button>
+      <div id="pr_cfg_msg"></div>
+    </div>
+    <div class="panel">
+      <div class="form-section-title" style="margin-top:0;">Productos <span style="font-size:11.5px;color:var(--text-light);font-weight:400;">Catálogo de porciones que se pueden ingresar y despachar</span></div>
+      <div style="overflow-x:auto;"><table class="mini-table"><thead><tr><th>Producto</th><th style="text-align:center">Eliminar</th></tr></thead><tbody>${filas}</tbody></table></div>
+    </div>`;
+}
+function prodCfgAgregar(){
+  const nombre = prodNormalizeName(document.getElementById('pr_cfgNombre').value);
+  if(!nombre){ showMsg('pr_cfg_msg','Escribe el nombre del producto.','rojo'); return; }
+  if(prodFindCatalogMatch(nombre)){ showMsg('pr_cfg_msg','Ese producto ya existe (revisa mayúsculas/tildes).','rojo'); return; }
+  const c = prodCatalogo();
+  c.productos.push(nombre);
+  prodGuardarCatalogo(c);
+  showMsg('pr_cfg_msg', `✅ Producto "${nombre}" agregado.`, 'verde');
+  prodRenderBody();
+}
+function prodCfgEliminar(i){
+  const c = prodCatalogo();
+  const nombre = c.productos[i];
+  if(!confirm(`¿Eliminar "${nombre}" del catálogo? El historial ya registrado con este nombre no se borra.`)) return;
+  c.productos.splice(i,1);
+  prodGuardarCatalogo(c);
+  prodRenderBody();
+}
+
+// ---- Imprimir conteo de inventario (solo administración/gerencia) ----
+function prodImprimirInventario(){
+  const sp = [...prodStock()].sort((a,b)=>a.prod.localeCompare(b.prod,'es'));
+  const fecha = new Date().toLocaleDateString('es-CO',{year:'numeric',month:'long',day:'numeric'});
+  const hora = new Date().toLocaleTimeString('es-CO',{hour:'2-digit',minute:'2-digit'});
+  const filas = sp.map(s=>{
+    const est = s.stk<=0?'AGOTADO':(s.stk<s.ing*0.15?'BAJO':'OK');
+    const color = s.stk<=0?'#c0392b':(s.stk<s.ing*0.15?'#ca6f1e':'#27ae60');
+    return `<tr><td>${s.prod}</td><td style="text-align:right">${s.ing} porc</td><td style="text-align:right">${s.desp} porc</td><td style="text-align:right;font-weight:800;color:${color}">${s.stk} porc</td><td style="text-align:center"><span style="background:${color}20;color:${color};border:1px solid ${color};padding:2px 8px;border-radius:10px;font-size:10.5px;font-weight:800;">${est}</span></td></tr>`;
+  }).join('');
+  const nombreRest = (paramsRestaurante().nombreRestaurante || 'Restaurante Córdova').toUpperCase();
+  const html = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>Conteo de inventario — Producción</title>
+  <style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:'Segoe UI',Arial,sans-serif;color:#1a202c;padding:24px;font-size:13px}
+  .hdr{display:flex;align-items:center;justify-content:space-between;border-bottom:3px solid #C4793A;padding-bottom:12px;margin-bottom:16px}
+  .hdr h1{font-size:1.2rem;font-weight:900}.hdr p{font-size:.75rem;color:#555;margin-top:2px}
+  table{width:100%;border-collapse:collapse;font-size:.82rem;margin-top:10px}
+  thead th{background:#f0f2f5;padding:7px 10px;text-align:left;font-size:.68rem;text-transform:uppercase;font-weight:800;color:#555;border-bottom:2px solid #dde1e7}
+  tbody tr{border-bottom:1px solid #eee}tbody td{padding:7px 10px}
+  .firma{margin-top:48px;display:flex;gap:60px}.firma-box{flex:1;border-top:1px solid #555;padding-top:6px;font-size:.72rem;color:#555;text-align:center}
+  @media print{body{padding:12px}.no-print{display:none!important}}</style></head><body>
+  <div class="hdr"><div><h1>${nombreRest}</h1><p>Centro de producción · Conteo de inventario</p></div><div style="font-size:.75rem;text-align:right;color:#555"><div><strong>Fecha:</strong> ${fecha}</div><div><strong>Hora:</strong> ${hora}</div></div></div>
+  <button onclick="window.print()" class="no-print" style="margin-bottom:14px;padding:8px 18px;background:#C4793A;color:#fff;border:none;border-radius:7px;font-weight:700;cursor:pointer">🖨️ Imprimir / Guardar PDF</button>
+  <table><thead><tr><th>Producto</th><th style="text-align:right">Ingresadas</th><th style="text-align:right">Despachadas</th><th style="text-align:right">Stock actual</th><th style="text-align:center">Estado</th></tr></thead><tbody>${filas || '<tr><td colspan="5" style="padding:12px;color:#aaa">Sin datos</td></tr>'}</tbody></table>
+  <div class="firma"><div class="firma-box">Elaborado por</div><div class="firma-box">Revisado por</div><div class="firma-box">Aprobado por</div></div>
+  </body></html>`;
+  const w = window.open('','_blank','width=900,height=700');
+  w.document.write(html);
+  w.document.close();
+}
+
 
 /* ---- Tab: Conteo — el dashboard de siempre, con las 8 tarjetas por
    departamento como tareas aparte para cada persona. ---- */
