@@ -3004,6 +3004,7 @@ const NAV = [
       { id:'administracion', label:'Administración', icon:'cash', matchArea:'contabilidad', items:[
         { id:'cf_caja', label:'Caja (cierre y comprobantes)', icon:'cash', roles:['empleado','administracion','gerencia'], customRender:'renderCajaModule' },
         { id:'cf_inventarios', label:'Inventarios', icon:'box', roles:['administracion','gerencia'], customRender:'renderInventarioModule' },
+        { id:'op_produccion', label:'Centro de producción', icon:'factory', roles:['administracion','gerencia'], customRender:'renderProduccionModule' },
         { id:'cf_compras', label:'Compras', icon:'truck', roles:['administracion','gerencia'], customRender:'renderComprasModule' },
         { id:'cf_propina', label:'Propina', icon:'cash', roles:['administracion','gerencia'], customRender:'renderPropinaModule' },
         { id:'cf_horarios', label:'Horarios', icon:'clock', roles:['administracion','gerencia'], customRender:'renderHorariosModule' },
@@ -3020,11 +3021,7 @@ const NAV = [
         { id:'coc_comida_personal', label:'Comida del personal', icon:'chef', roles:['empleado','administracion','gerencia'], customRender:'renderComidaPersonalModule' },
         { id:'coc_bajas', label:'Reporte de bajas', icon:'down', roles:['empleado','administracion','gerencia'], customRender:'renderBajasModule' },
         { id:'coc_mejora', label:'Prueba, desarrollo y mejora constante', icon:'target', roles:['empleado','administracion','gerencia'], customRender:'renderMejoraContinuaModule' },
-        { id:'coc_fotos_platos', label:'Fotos de platos', icon:'camera', roles:['empleado','administracion','gerencia'], customRender:'renderFotosPlatosModule' },
-        { id:'op_produccion_cocina', label:'Recibos de producción', icon:'box', roles:['empleado','administracion','gerencia'], customRender:'renderProduccionModule', tab:'recibos' }
-      ]},
-      { id:'centro_produccion', label:'Centro de producción', icon:'factory', matchArea:'centro_produccion', items:[
-        { id:'op_produccion', label:'Producción', icon:'box', roles:['empleado','administracion','gerencia'], customRender:'renderProduccionModule' }
+        { id:'coc_fotos_platos', label:'Fotos de platos', icon:'camera', roles:['empleado','administracion','gerencia'], customRender:'renderFotosPlatosModule' }
       ]},
       { id:'inspeccion', label:'Inspección', icon:'search', matchArea:'inspecciones', items:[
         { id:'coc_inspeccion', label:'Inspección de cocina', icon:'search', roles:['empleado','administracion','gerencia'], areaObjetivo:'cocina', customRender:'renderInspeccionAreaModule' },
