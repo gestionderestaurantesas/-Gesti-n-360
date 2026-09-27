@@ -15277,19 +15277,50 @@ function prodDespachos(){ return DB.get('produccion_despachos', []); }
 function prodGuardarDespachos(arr){ DB.set('produccion_despachos', arr); }
 function prodAjustes(){ return DB.get('produccion_ajustes', []); }
 
-const PRODUCCION_CATALOGO_DEFAULT = [
-  'Cerdo Infantil','Cerdo Parrilla','Cerdo Especial','Lomo de Cerdo','Sobrebarriga',
-  'Costilla BBQ','Lengua','Desmechada','Chicharrón','Especial','Punta de Anca',
-  'Tocineta','Tomahawk','Ribeye','Carne','Carne Molida','Camarón','Pechuga Infantil',
-  'Chorizo','Pechuga Filete','Pechuga Abierta','Salsa de Tocineta','Ajo Amarillo','Piña Caramelizada'
-];
+const PRODUCCION_CATEGORIAS_DEFAULT = ['Salsas','Carnes preparadas','Carnes crudas','Papas a la Francesa'];
+const PRODUCCION_CATALOGO_POR_CATEGORIA_DEFAULT = {
+  'Salsas': ['Bisque de Camarón','Chimichurri','Salsa al Vino','Salsa BBQ','Salsa de Champiñón','Salsa de Maracuyá','Salsa de Tocineta'],
+  'Carnes preparadas': ['Carne Molida','Chicharrón','Costilla BBQ','Desmechada','Lengua','Mondongo','Sobrebarriga'],
+  'Carnes crudas': ['Baby Beef','Camarón','Carne de Hamburguesa','Carnero','Cerdo Corriente','Cerdo Especial','Cerdo Parrilla','Chorizo','Gallina','Lomo Fino','Pato','Pechuga Abierta','Pechuga Filete','Pulpo','Punta de Anca','Ribeye','Róbalo','Salmón','Tender de Pollo','Tocineta','Tomahawk'],
+  'Papas a la Francesa': ['Porciones de Papas a la Francesa']
+};
+const PRODUCCION_CATALOGO_DEFAULT = Object.keys(PRODUCCION_CATALOGO_POR_CATEGORIA_DEFAULT).reduce((acc,cat)=>acc.concat(PRODUCCION_CATALOGO_POR_CATEGORIA_DEFAULT[cat]), []);
 const PRODUCCION_PROVEEDORES = ['MEGABASTOS','CHORIZOS MINGO','SURTIDELICIAS','CABEZA Y COLA','FRUVER MEGA COSECHAS','PORCICARNES','ATLANTIC','OLÍMPICA','MAKRO','D1','DISLICORES','RAÚL CASTRO','DISTRICAMPI','SETAS DE LA COSTA','SUPER CARNES JH','CLUB CÁRNICO','GRANJA MONTE VERDE'];
 const PRODUCCION_DESTINOS = ['Cocina Montería','Cocina Chinú','Eventos','Bar'];
 
+function prodStripAccentsCat(s){ return (s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,''); }
+function prodCategoriaDeProducto(c, nombre){ return (c && c.productoCategoria && c.productoCategoria[nombre]) || 'Sin categoría'; }
 function prodCatalogo(){
   let c = DB.get('produccion_catalogo', null);
-  if(!c){ c = { productos:[...PRODUCCION_CATALOGO_DEFAULT] }; DB.set('produccion_catalogo', c); }
+  if(!c){ c = { productos:[...PRODUCCION_CATALOGO_DEFAULT], categorias:[...PRODUCCION_CATEGORIAS_DEFAULT], productoCategoria:{} }; DB.set('produccion_catalogo', c); }
   if(!c.productos || !c.productos.length) c.productos = [...PRODUCCION_CATALOGO_DEFAULT];
+  if(!c.categorias) c.categorias = [];
+  if(!c.productoCategoria) c.productoCategoria = {};
+  let cambiado = false;
+  // Fusión única: garantiza que el catálogo completo (36 productos, agrupados en categorías)
+  // esté presente sin borrar productos ni categorías ya guardadas.
+  if(!c._catalogoBaseFusionado){
+    const existentesNorm = c.productos.map(p => prodStripAccentsCat(p).toLowerCase().trim());
+    PRODUCCION_CATALOGO_DEFAULT.forEach(p => {
+      const norm = prodStripAccentsCat(p).toLowerCase().trim();
+      if(!existentesNorm.includes(norm)){ c.productos.push(p); existentesNorm.push(norm); }
+    });
+    c._catalogoBaseFusionado = true;
+    cambiado = true;
+  }
+  PRODUCCION_CATEGORIAS_DEFAULT.forEach(cat => {
+    if(!c.categorias.some(x => prodStripAccentsCat(x).toLowerCase().trim() === prodStripAccentsCat(cat).toLowerCase().trim())){
+      c.categorias.push(cat); cambiado = true;
+    }
+  });
+  Object.keys(PRODUCCION_CATALOGO_POR_CATEGORIA_DEFAULT).forEach(cat => {
+    PRODUCCION_CATALOGO_POR_CATEGORIA_DEFAULT[cat].forEach(p => {
+      const normP = prodStripAccentsCat(p).toLowerCase().trim();
+      const match = c.productos.find(m => prodStripAccentsCat(m).toLowerCase().trim() === normP);
+      if(match && !c.productoCategoria[match]){ c.productoCategoria[match] = cat; cambiado = true; }
+    });
+  });
+  if(cambiado) DB.set('produccion_catalogo', c);
   return c;
 }
 function prodGuardarCatalogo(c){ DB.set('produccion_catalogo', c); }
@@ -15312,6 +15343,8 @@ function prodRegistrarProductoNuevo(nombreCrudo){
   if(existente) return existente;
   const c = prodCatalogo();
   c.productos.push(nombre);
+  if(!c.productoCategoria) c.productoCategoria = {};
+  c.productoCategoria[nombre] = 'Sin categoría';
   prodGuardarCatalogo(c);
   return nombre;
 }
@@ -15509,10 +15542,24 @@ function prodDashHtml(){
 // INGRESO
 // ===================================================================
 function prodOpcionesProducto(selectedVal){
-  const cat = prodCatalogo().productos;
+  const c = prodCatalogo();
   const usados = prodIngresos().map(i=>i.prod).filter(n=>n);
-  const todos = [...new Set([...cat, ...usados])].sort((a,b)=>a.localeCompare(b,'es'));
-  return todos.map(n=>`<option value="${homeEsc(n)}" ${n===selectedVal?'selected':''}>${homeEsc(n)}</option>`).join('');
+  const todos = [...new Set([...c.productos, ...usados])];
+  const grupos = {};
+  todos.forEach(n => {
+    const g = prodCategoriaDeProducto(c, n);
+    if(!grupos[g]) grupos[g] = [];
+    grupos[g].push(n);
+  });
+  const ordenCategorias = [...(c.categorias||[]), 'Sin categoría'];
+  const nombresGrupos = Object.keys(grupos).sort((a,b) => {
+    const ia = ordenCategorias.indexOf(a), ib = ordenCategorias.indexOf(b);
+    return (ia < 0 ? 999 : ia) - (ib < 0 ? 999 : ib);
+  });
+  return nombresGrupos.map(g => {
+    const opts = grupos[g].sort((a,b)=>a.localeCompare(b,'es')).map(n=>`<option value="${homeEsc(n)}" ${n===selectedVal?'selected':''}>${homeEsc(n)}</option>`).join('');
+    return `<optgroup label="${homeEsc(g)}">${opts}</optgroup>`;
+  }).join('');
 }
 function prodIngresoHtml(){
   const respList = personalDeSede().map(u=>`<option value="${homeEsc(u.nombre)}">`).join('');
@@ -16035,28 +16082,70 @@ function prodExportStatsCSV(){
 // ===================================================================
 function prodConfigHtml(){
   if(!prodEsAdmin()) return `<div class="panel"><p style="color:var(--text-light);">Solo administración/gerencia puede configurar el catálogo.</p></div>`;
-  const mps = prodCatalogo().productos;
-  const filas = mps.length ? mps.map((m,i)=>`<tr><td><strong>${homeEsc(m)}</strong></td><td style="text-align:center"><button class="btn-secondary" style="padding:4px 8px;font-size:11px;color:#B7423A;" onclick="prodCfgEliminar(${i})">✕</button></td></tr>`).join('') : `<tr><td colspan="2" style="text-align:center;color:var(--text-light);padding:16px;">Sin productos. Agrega el primero.</td></tr>`;
+  const c = prodCatalogo();
+  const categorias = c.categorias && c.categorias.length ? c.categorias : ['Sin categoría'];
+  const catOptions = categorias.map(cat=>`<option value="${homeEsc(cat)}">${homeEsc(cat)}</option>`).join('');
+  const porCategoria = {};
+  categorias.forEach(cat => porCategoria[cat] = []);
+  c.productos.forEach(p => {
+    const cat = prodCategoriaDeProducto(c, p);
+    if(!porCategoria[cat]) porCategoria[cat] = [];
+    porCategoria[cat].push(p);
+  });
+  const bloques = Object.keys(porCategoria).map(cat => {
+    const items = porCategoria[cat].slice().sort((a,b)=>a.localeCompare(b,'es'));
+    const filas = items.length ? items.map(m => {
+      const i = c.productos.indexOf(m);
+      return `<tr><td><strong>${homeEsc(m)}</strong></td><td style="text-align:center"><button class="btn-secondary" style="padding:4px 8px;font-size:11px;color:#B7423A;" onclick="prodCfgEliminar(${i})">✕</button></td></tr>`;
+    }).join('') : `<tr><td colspan="2" style="text-align:center;color:var(--text-light);padding:12px;">Sin productos en esta categoría.</td></tr>`;
+    return `<div class="panel" style="margin-bottom:14px;">
+      <div class="form-section-title" style="margin-top:0;">${homeEsc(cat)} <span style="font-size:11.5px;color:var(--text-light);font-weight:400;">(${items.length})</span></div>
+      <div style="overflow-x:auto;"><table class="mini-table"><thead><tr><th>Producto</th><th style="text-align:center">Eliminar</th></tr></thead><tbody>${filas}</tbody></table></div>
+    </div>`;
+  }).join('');
   return `
     <div class="panel" style="margin-bottom:16px;border:2px solid var(--bronce);">
+      <div class="form-section-title" style="margin-top:0;">Agregar categoría</div>
+      <div class="form-grid"><div class="form-field"><label>Nombre de la categoría</label><input id="pr_cfgCategoria" placeholder="Ej: Postres, Embutidos..."></div></div>
+      <button class="btn-primary" style="width:auto;padding:9px 16px;margin-top:10px;" onclick="prodCfgAgregarCategoria()">＋ Agregar categoría</button>
+      <div id="pr_cfg_cat_msg"></div>
+    </div>
+    <div class="panel" style="margin-bottom:16px;border:2px solid var(--bronce);">
       <div class="form-section-title" style="margin-top:0;">Agregar producto</div>
-      <div class="form-grid"><div class="form-field"><label>Nombre del producto</label><input id="pr_cfgNombre" placeholder="Ej: Costilla BBQ, Chorizo..."></div></div>
+      <div class="form-grid">
+        <div class="form-field"><label>Nombre del producto</label><input id="pr_cfgNombre" placeholder="Ej: Costilla BBQ, Chorizo..."></div>
+        <div class="form-field"><label>Categoría</label><select id="pr_cfgCategoriaSel">${catOptions}</select></div>
+      </div>
       <button class="btn-primary" style="width:auto;padding:9px 16px;margin-top:10px;" onclick="prodCfgAgregar()">＋ Agregar</button>
       <div id="pr_cfg_msg"></div>
     </div>
-    <div class="panel">
-      <div class="form-section-title" style="margin-top:0;">Productos <span style="font-size:11.5px;color:var(--text-light);font-weight:400;">Catálogo de porciones que se pueden ingresar y despachar</span></div>
-      <div style="overflow-x:auto;"><table class="mini-table"><thead><tr><th>Producto</th><th style="text-align:center">Eliminar</th></tr></thead><tbody>${filas}</tbody></table></div>
-    </div>`;
+    ${bloques}`;
+}
+function prodCfgAgregarCategoria(){
+  const nombre = prodNormalizeName(document.getElementById('pr_cfgCategoria').value);
+  if(!nombre){ showMsg('pr_cfg_cat_msg','Escribe el nombre de la categoría.','rojo'); return; }
+  const c = prodCatalogo();
+  if(!c.categorias) c.categorias = [];
+  if(c.categorias.some(cat => prodStripAccentsCat(cat).toLowerCase().trim() === prodStripAccentsCat(nombre).toLowerCase().trim())){
+    showMsg('pr_cfg_cat_msg','Esa categoría ya existe.','rojo'); return;
+  }
+  c.categorias.push(nombre);
+  prodGuardarCatalogo(c);
+  showMsg('pr_cfg_cat_msg', `✅ Categoría "${nombre}" agregada.`, 'verde');
+  prodRenderBody();
 }
 function prodCfgAgregar(){
   const nombre = prodNormalizeName(document.getElementById('pr_cfgNombre').value);
+  const catSel = document.getElementById('pr_cfgCategoriaSel');
+  const categoria = (catSel && catSel.value) ? catSel.value : 'Sin categoría';
   if(!nombre){ showMsg('pr_cfg_msg','Escribe el nombre del producto.','rojo'); return; }
   if(prodFindCatalogMatch(nombre)){ showMsg('pr_cfg_msg','Ese producto ya existe (revisa mayúsculas/tildes).','rojo'); return; }
   const c = prodCatalogo();
   c.productos.push(nombre);
+  if(!c.productoCategoria) c.productoCategoria = {};
+  c.productoCategoria[nombre] = categoria;
   prodGuardarCatalogo(c);
-  showMsg('pr_cfg_msg', `✅ Producto "${nombre}" agregado.`, 'verde');
+  showMsg('pr_cfg_msg', `✅ Producto "${nombre}" agregado en "${categoria}".`, 'verde');
   prodRenderBody();
 }
 function prodCfgEliminar(i){
@@ -16064,6 +16153,7 @@ function prodCfgEliminar(i){
   const nombre = c.productos[i];
   if(!confirm(`¿Eliminar "${nombre}" del catálogo? El historial ya registrado con este nombre no se borra.`)) return;
   c.productos.splice(i,1);
+  if(c.productoCategoria) delete c.productoCategoria[nombre];
   prodGuardarCatalogo(c);
   prodRenderBody();
 }
