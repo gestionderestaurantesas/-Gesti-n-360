@@ -3021,13 +3021,10 @@ const NAV = [
         { id:'coc_bajas', label:'Reporte de bajas', icon:'down', roles:['empleado','administracion','gerencia'], customRender:'renderBajasModule' },
         { id:'coc_mejora', label:'Prueba, desarrollo y mejora constante', icon:'target', roles:['empleado','administracion','gerencia'], customRender:'renderMejoraContinuaModule' },
         { id:'coc_fotos_platos', label:'Fotos de platos', icon:'camera', roles:['empleado','administracion','gerencia'], customRender:'renderFotosPlatosModule' },
-        { id:'op_produccion_cocina', label:'Recibos y conteo (Producción)', icon:'box', roles:['empleado','administracion','gerencia'], customRender:'renderProduccionModule', tab:'recibos' }
+        { id:'op_produccion_cocina', label:'Recibos de producción', icon:'box', roles:['empleado','administracion','gerencia'], customRender:'renderProduccionModule', tab:'recibos' }
       ]},
       { id:'centro_produccion', label:'Centro de producción', icon:'factory', matchArea:'centro_produccion', items:[
         { id:'op_produccion', label:'Producción', icon:'box', roles:['empleado','administracion','gerencia'], customRender:'renderProduccionModule' }
-      ]},
-      { id:'bar', label:'Bar', icon:'glass', matchArea:'bar', items:[
-        { id:'op_produccion_bar', label:'Conteo de bar (Producción)', icon:'box', roles:['empleado','administracion','gerencia'], customRender:'renderProduccionModule', tab:'conteo' }
       ]},
       { id:'inspeccion', label:'Inspección', icon:'search', matchArea:'inspecciones', items:[
         { id:'coc_inspeccion', label:'Inspección de cocina', icon:'search', roles:['empleado','administracion','gerencia'], areaObjetivo:'cocina', customRender:'renderInspeccionAreaModule' },
@@ -15281,7 +15278,6 @@ function prodIngresos(){ return DB.get('produccion_ingresos', []); }
 function prodGuardarIngresos(arr){ DB.set('produccion_ingresos', arr); }
 function prodDespachos(){ return DB.get('produccion_despachos', []); }
 function prodGuardarDespachos(arr){ DB.set('produccion_despachos', arr); }
-function prodConteos(){ return DB.get('produccion_conteos', []); }
 function prodAjustes(){ return DB.get('produccion_ajustes', []); }
 
 const PRODUCCION_CATALOGO_DEFAULT = [
@@ -15295,10 +15291,8 @@ const PRODUCCION_DESTINOS = ['Cocina Montería','Cocina Chinú','Eventos','Bar']
 
 function prodCatalogo(){
   let c = DB.get('produccion_catalogo', null);
-  if(!c){ c = { productos:[...PRODUCCION_CATALOGO_DEFAULT], catalogoCocina:[], catalogoBar:[] }; DB.set('produccion_catalogo', c); }
+  if(!c){ c = { productos:[...PRODUCCION_CATALOGO_DEFAULT] }; DB.set('produccion_catalogo', c); }
   if(!c.productos || !c.productos.length) c.productos = [...PRODUCCION_CATALOGO_DEFAULT];
-  if(!c.catalogoCocina) c.catalogoCocina = [];
-  if(!c.catalogoBar) c.catalogoBar = [];
   return c;
 }
 function prodGuardarCatalogo(c){ DB.set('produccion_catalogo', c); }
@@ -15357,16 +15351,13 @@ function prodEsAdmin(){ return SESSION.rol==='administracion' || SESSION.rol==='
 function prodTabsPermitidos(){
   if(prodEsAdmin()) return ['dash','ingreso','desp','recibos','conteo','hist','stats','config'];
   if(SESSION.area==='centro_produccion') return ['ingreso','desp','conteo'];
-  if(SESSION.area==='cocina') return ['recibos','conteo'];
-  if(SESSION.area==='bar') return ['conteo'];
+  if(SESSION.area==='cocina') return ['recibos'];
   return ['dash'];
 }
-function prodConteoAreasPermitidas(){
-  if(prodEsAdmin()) return ['produccion','cocina','bar'];
-  if(SESSION.area==='centro_produccion') return ['produccion'];
-  if(SESSION.area==='cocina') return ['cocina'];
-  if(SESSION.area==='bar') return ['bar'];
-  return [];
+// El conteo físico es exclusivo del Centro de producción — no incluye
+// catálogos de Cocina ni de Bar (eso vive aparte, en Inventarios).
+function prodPuedeVerConteoProduccion(){
+  return prodEsAdmin() || SESSION.area==='centro_produccion';
 }
 function prodPuedeConfirmarRecibo(){ return prodEsAdmin() || SESSION.area==='cocina'; }
 function prodPuedeBorrar(){ return prodEsAdmin(); }
@@ -15433,18 +15424,7 @@ function prodModalesHtml(){
       <div class="hm-modal-foot"><div class="hm-modal-acciones"><button class="btn-primary" style="width:auto;padding:8px 16px;" onclick="window.print()">Imprimir</button></div></div>
     </div>
   </div>
-  <div id="pr_conteoModal" class="hm-modal-overlay no-print" style="display:none;" onclick="if(event.target===this) prodCerrarConteoReview()">
-    <div class="hm-modal sm">
-      <div class="hm-modal-head"><h2 id="pr_conteoModalTitulo">Verificar conteo</h2><button class="btn-secondary" style="padding:5px 10px;" onclick="prodCerrarConteoReview()">✕</button></div>
-      <div class="hm-modal-body">
-        <table class="mini-table"><thead><tr><th>Producto</th><th style="text-align:right">Cant.</th><th style="text-align:right">Costo</th><th style="text-align:right">Subtotal</th></tr></thead><tbody id="pr_conteoModalBody"></tbody></table>
-        <div style="display:flex;justify-content:space-between;margin-top:10px;padding-top:10px;border-top:2px solid var(--verde);"><strong>Total</strong><strong id="pr_conteoModalTotal" style="color:var(--verde);"></strong></div>
-        <div class="form-field" style="margin-top:12px;" id="pr_conteoModalRespRow"><label>Responsable del conteo</label><input id="pr_conteoModalResp" list="pr_conteoRespList"></div>
-        <datalist id="pr_conteoRespList">${respOpciones}</datalist>
-      </div>
-      <div class="hm-modal-foot" id="pr_conteoModalFooter"><div class="hm-modal-acciones"><button class="btn-primary" style="width:auto;padding:8px 16px;" onclick="prodConfirmarConteo()">✅ Confirmar y guardar</button></div></div>
-    </div>
-  </div>
+  <datalist id="pr_conteoRespList">${respOpciones}</datalist>
   <div id="pr_ajusteModal" class="hm-modal-overlay no-print" style="display:none;" onclick="if(event.target===this) prodCerrarAjusteReview()">
     <div class="hm-modal sm">
       <div class="hm-modal-head"><h2>📦 Verificar ajustes de conteo — Producción</h2><button class="btn-secondary" style="padding:5px 10px;" onclick="prodCerrarAjusteReview()">✕</button></div>
@@ -15498,12 +15478,6 @@ function prodDashHtml(){
     return `<tr><td>${homeEsc(s.prod)}</td><td style="text-align:right">${s.stk}</td><td style="text-align:right">${s.costoProm>0?prodFmt(s.costoProm):'—'}</td><td style="text-align:right">${valor>0?'<strong style="color:var(--verde)">'+prodFmt(valor)+'</strong>':'—'}</td></tr>`;
   }).join('');
 
-  const ultimoCocina = prodConteos().filter(c=>c.area==='cocina').sort((a,b)=>(b.ts||0)-(a.ts||0))[0];
-  const ultimoBar = prodConteos().filter(c=>c.area==='bar').sort((a,b)=>(b.ts||0)-(a.ts||0))[0];
-  const valCocina = ultimoCocina ? ultimoCocina.total : 0;
-  const valBar = ultimoBar ? ultimoBar.total : 0;
-  const totalCentralizado = valorTotal + valCocina + valBar;
-
   const movimientos = [
     ...prodIngresos().map(x=>({ts:x.ts||0, f:x.f, mod:'📦 Ingreso', item:x.prod, det:`${x.cant} porc. · ${x.prov||'—'}`, resp:x.resp})),
     ...prodDespachos().map(x=>({ts:x.ts||0, f:x.f, mod:'📤 Despacho', item:x.prod, det:`${x.cant} porc. → ${x.dest}`, resp:x.re})),
@@ -15526,15 +15500,6 @@ function prodDashHtml(){
     <div class="panel" style="margin-bottom:16px;border:2px solid var(--verde);">
       <div class="form-section-title" style="margin-top:0;display:flex;align-items:center;">Valor total del inventario <span style="margin-left:auto;font-size:18px;font-weight:800;color:var(--verde);">${prodFmt(valorTotal)}</span></div>
       <div style="overflow-x:auto;"><table class="mini-table"><thead><tr><th>Producto</th><th style="text-align:right">Stock</th><th style="text-align:right">Costo/porc</th><th style="text-align:right">Valor</th></tr></thead><tbody>${valorRows || '<tr><td colspan="4" style="text-align:center;color:var(--text-light);padding:16px;">Sin stock</td></tr>'}</tbody></table></div>
-    </div>
-    <div class="panel" style="margin-bottom:16px;">
-      <div class="form-section-title" style="margin-top:0;">🏢 Inventario centralizado <span style="font-size:11px;color:var(--text-light);font-weight:400;">Producción + Cocina + Bar</span></div>
-      <table class="mini-table">
-        <tr><td>📦 Producción</td><td style="text-align:right"><strong>${prodFmt(valorTotal)}</strong></td><td style="text-align:right;color:var(--text-light);font-size:11.5px;">Stock actual</td></tr>
-        <tr><td>🍳 Cocina</td><td style="text-align:right"><strong>${prodFmt(valCocina)}</strong></td><td style="text-align:right;color:var(--text-light);font-size:11.5px;">${ultimoCocina?'Conteo '+ultimoCocina.f:'Sin conteo aún'}</td></tr>
-        <tr><td>🍹 Bar</td><td style="text-align:right"><strong>${prodFmt(valBar)}</strong></td><td style="text-align:right;color:var(--text-light);font-size:11.5px;">${ultimoBar?'Conteo '+ultimoBar.f:'Sin conteo aún'}</td></tr>
-        <tr style="background:var(--tint-verde);"><td style="font-weight:800;">TOTAL CENTRALIZADO</td><td style="text-align:right;font-weight:800;color:var(--verde);">${prodFmt(totalCentralizado)}</td><td></td></tr>
-      </table>
     </div>
     <div class="panel">
       <div class="form-section-title" style="margin-top:0;display:flex;align-items:center;">Últimos movimientos ${prodEsAdmin() ? `<button class="btn-secondary" style="margin-left:auto;padding:5px 10px;font-size:11px;" onclick="prodExportCSV()">⬇ CSV</button>` : ''}</div>
@@ -15882,13 +15847,8 @@ function prodExportRecibosCSV(){
 // CONTEO (producción con ajuste de stock + catálogos propios cocina/bar)
 // ===================================================================
 function prodConteoHtml(){
-  const areas = prodConteoAreasPermitidas();
-  let html = '';
-  if(areas.includes('produccion')) html += prodConteoProduccionHtml();
-  if(areas.includes('cocina')) html += prodConteoAreaHtml('cocina');
-  if(areas.includes('bar')) html += prodConteoAreaHtml('bar');
-  if(!areas.length) html = `<div class="panel"><p style="color:var(--text-light);">No tienes un área de conteo asignada.</p></div>`;
-  return html;
+  if(!prodPuedeVerConteoProduccion()) return `<div class="panel"><p style="color:var(--text-light);">El conteo es exclusivo del Centro de producción.</p></div>`;
+  return prodConteoProduccionHtml();
 }
 function prodConteoProduccionHtml(){
   const sp = [...prodStock()].sort((a,b)=>a.prod.localeCompare(b.prod,'es'));
@@ -15964,144 +15924,6 @@ function prodConfirmarAjusteConteo(){
   prodCerrarAjusteReview();
   prodConteoProdCambios = [];
   prodRenderBody();
-}
-
-function prodConteoAreaHtml(area){
-  const cat = prodCatalogo()[area==='cocina'?'catalogoCocina':'catalogoBar'];
-  const prefix = 'pr_' + area;
-  const color = area==='cocina' ? '#C4793A' : '#7d3c98';
-  const titulo = area==='cocina' ? '🍳 Conteo de cocina' : '🍹 Conteo de bar';
-  const sorted = [...cat].sort((a,b)=>a.n.localeCompare(b.n,'es'));
-  const filas = sorted.length ? sorted.map((p,i)=>`
-    <tr>
-      <td><strong>${homeEsc(p.n)}</strong></td>
-      <td style="text-align:right"><input type="number" min="0" id="${prefix}_costo_${i}" value="${p.c||0}" style="width:100px;text-align:right;" oninput="prodActualizarTotalConteo('${area}')"></td>
-      <td style="text-align:right"><input type="number" min="0" step="1" id="${prefix}_cant_${i}" placeholder="0" style="width:90px;text-align:right;" oninput="prodActualizarTotalConteo('${area}')"></td>
-      <td style="text-align:right" id="${prefix}_sub_${i}">—</td>
-      <td style="text-align:center"><button class="btn-secondary" style="padding:4px 8px;font-size:11px;color:#B7423A;" onclick="prodEliminarProductoConteo('${area}','${p.n.replace(/'/g,"\\'")}')">✕</button></td>
-    </tr>`).join('') : `<tr><td colspan="5" style="text-align:center;color:var(--text-light);padding:16px;">Sin productos. Agrega el primero abajo.</td></tr>`;
-  const histRegs = prodConteos().filter(c=>c.area===area).sort((a,b)=>(b.ts||0)-(a.ts||0));
-  const histFilas = histRegs.length ? histRegs.map(c=>`<tr><td>${c.f||'—'}</td><td>${homeEsc(c.resp||'—')}</td><td style="text-align:right"><strong>${prodFmt(c.total)}</strong></td><td style="text-align:center"><button class="btn-secondary" style="padding:4px 8px;font-size:11px;" onclick="prodVerDetalleConteo('${c.id}')">👁 Ver</button></td></tr>`).join('') : `<tr><td colspan="4" style="text-align:center;color:var(--text-light);padding:16px;">Sin conteos registrados</td></tr>`;
-  return `
-    <div class="panel" style="margin-bottom:16px;border:2px solid ${color};">
-      <div class="form-section-title" style="margin-top:0;">${titulo} <span style="font-size:11.5px;color:var(--text-light);font-weight:400;">Conteo físico mensual — cantidad y costo para Fudo</span></div>
-      <div style="overflow-x:auto;"><table class="mini-table"><thead><tr><th>Producto</th><th style="text-align:right">Costo unit.</th><th style="text-align:right">Cantidad contada</th><th style="text-align:right">Subtotal</th><th></th></tr></thead><tbody id="${prefix}_body">${filas}</tbody></table></div>
-      <div class="form-grid" style="margin-top:12px;">
-        <div class="form-field"><label>Producto nuevo</label><input type="text" id="${prefix}_nuevoNombre" placeholder="Ej: Papa criolla, Arroz..."></div>
-        <div class="form-field"><label>Costo unitario</label><input type="number" id="${prefix}_nuevoCosto" min="0" placeholder="0"></div>
-      </div>
-      <button class="btn-secondary" style="margin-top:10px;padding:8px 14px;font-size:12.5px;" onclick="prodAgregarProductoConteo('${area}')">＋ Agregar producto</button>
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:14px;padding-top:14px;border-top:2px solid var(--border);">
-        <div style="font-weight:800;">Total contado: <span id="${prefix}_total" style="color:var(--verde);">$0</span></div>
-        <button class="btn-primary" style="width:auto;padding:9px 16px;" onclick="prodRevisarConteo('${area}')">🔎 Revisar y guardar conteo</button>
-      </div>
-    </div>
-    <div class="panel" style="margin-bottom:20px;">
-      <div class="form-section-title" style="margin-top:0;">Historial de conteos — ${area==='cocina'?'Cocina':'Bar'}</div>
-      <div style="overflow-x:auto;"><table class="mini-table"><thead><tr><th>Fecha</th><th>Responsable</th><th style="text-align:right">Total</th><th></th></tr></thead><tbody>${histFilas}</tbody></table></div>
-    </div>`;
-}
-function prodActualizarTotalConteo(area){
-  const cat = prodCatalogo()[area==='cocina'?'catalogoCocina':'catalogoBar'];
-  const prefix = 'pr_' + area;
-  const sorted = [...cat].sort((a,b)=>a.n.localeCompare(b.n,'es'));
-  let total = 0;
-  sorted.forEach((p,i)=>{
-    const costoEl = document.getElementById(prefix+'_costo_'+i);
-    const cantEl = document.getElementById(prefix+'_cant_'+i);
-    const subEl = document.getElementById(prefix+'_sub_'+i);
-    if(!costoEl||!cantEl||!subEl) return;
-    const costo = parseFloat(costoEl.value)||0;
-    const cant = parseFloat(cantEl.value)||0;
-    const sub = costo*cant;
-    subEl.textContent = sub>0 ? prodFmt(sub) : '—';
-    total += sub;
-  });
-  const totalEl = document.getElementById(prefix+'_total');
-  if(totalEl) totalEl.textContent = prodFmt(total);
-}
-function prodAgregarProductoConteo(area){
-  const prefix = 'pr_' + area;
-  const nombreInput = document.getElementById(prefix+'_nuevoNombre');
-  const costoInput = document.getElementById(prefix+'_nuevoCosto');
-  const nombre = prodNormalizeName(nombreInput.value);
-  const costo = parseFloat(costoInput.value)||0;
-  if(!nombre){ alert('Escribe un nombre de producto.'); return; }
-  const c = prodCatalogo();
-  const key = area==='cocina'?'catalogoCocina':'catalogoBar';
-  const norm = n=>prodStripAccents(prodNormalizeName(n)).toLowerCase();
-  if(c[key].find(p=>norm(p.n)===norm(nombre))){ alert(`"${nombre}" ya existe en el catálogo.`); return; }
-  c[key].push({n:nombre, c:costo});
-  prodGuardarCatalogo(c);
-  prodRenderBody();
-}
-function prodEliminarProductoConteo(area, nombre){
-  if(!confirm(`¿Eliminar "${nombre}" del catálogo de ${area==='cocina'?'Cocina':'Bar'}? El historial ya guardado no se borra.`)) return;
-  const c = prodCatalogo();
-  const key = area==='cocina'?'catalogoCocina':'catalogoBar';
-  c[key] = c[key].filter(p=>p.n!==nombre);
-  prodGuardarCatalogo(c);
-  prodRenderBody();
-}
-let prodConteoAreaActual = null;
-function prodRevisarConteo(area){
-  const cat = prodCatalogo()[area==='cocina'?'catalogoCocina':'catalogoBar'];
-  const prefix = 'pr_' + area;
-  const sorted = [...cat].sort((a,b)=>a.n.localeCompare(b.n,'es'));
-  const items = [];
-  sorted.forEach((p,i)=>{
-    const costoEl = document.getElementById(prefix+'_costo_'+i);
-    const cantEl = document.getElementById(prefix+'_cant_'+i);
-    const costo = parseFloat(costoEl && costoEl.value)||0;
-    const cant = parseFloat(cantEl && cantEl.value)||0;
-    if(cant>0) items.push({n:p.n, c:costo, cant, sub:costo*cant});
-  });
-  if(!items.length){ alert('Ingresa al menos una cantidad contada.'); return; }
-  prodConteoAreaActual = area;
-  const total = items.reduce((s,x)=>s+x.sub,0);
-  document.getElementById('pr_conteoModalTitulo').textContent = 'Verificar conteo — ' + (area==='cocina'?'🍳 Cocina':'🍹 Bar');
-  document.getElementById('pr_conteoModalBody').innerHTML = items.map(x=>`<tr><td>${homeEsc(x.n)}</td><td style="text-align:right">${x.cant}</td><td style="text-align:right">${prodFmt(x.c)}</td><td style="text-align:right;font-weight:700;">${prodFmt(x.sub)}</td></tr>`).join('');
-  document.getElementById('pr_conteoModalTotal').textContent = prodFmt(total);
-  document.getElementById('pr_conteoModalRespRow').style.display='';
-  document.getElementById('pr_conteoModalFooter').style.display='flex';
-  const respEl = document.getElementById('pr_conteoModalResp'); if(respEl) respEl.value = SESSION.nombre||'';
-  document.getElementById('pr_conteoModal').style.display='flex';
-}
-function prodCerrarConteoReview(){ document.getElementById('pr_conteoModal').style.display='none'; prodConteoAreaActual=null; }
-function prodConfirmarConteo(){
-  const area = prodConteoAreaActual;
-  if(!area) return;
-  const key = area==='cocina'?'catalogoCocina':'catalogoBar';
-  const catalogoObj = prodCatalogo();
-  const cat = catalogoObj[key];
-  const prefix = 'pr_' + area;
-  const sorted = [...cat].sort((a,b)=>a.n.localeCompare(b.n,'es'));
-  const items = [];
-  sorted.forEach((p,i)=>{
-    const costoEl = document.getElementById(prefix+'_costo_'+i);
-    const cantEl = document.getElementById(prefix+'_cant_'+i);
-    const costo = parseFloat(costoEl && costoEl.value)||0;
-    const cant = parseFloat(cantEl && cantEl.value)||0;
-    if(costoEl) p.c = costo; // se guarda el último costo para el próximo conteo
-    if(cant>0) items.push({n:p.n, c:costo, cant, sub:costo*cant});
-  });
-  prodGuardarCatalogo(catalogoObj);
-  const resp = document.getElementById('pr_conteoModalResp').value.trim() || SESSION.nombre;
-  const total = items.reduce((s,x)=>s+x.sub,0);
-  DB.push('produccion_conteos', { ts:Date.now(), area, f:hoyStr(), items, total, resp });
-  prodCerrarConteoReview();
-  prodRenderBody();
-}
-function prodVerDetalleConteo(id){
-  const c = prodConteos().find(x=>x.id===id);
-  if(!c) return;
-  prodConteoAreaActual = null;
-  document.getElementById('pr_conteoModalTitulo').textContent = (c.area==='cocina'?'🍳 Cocina':'🍹 Bar') + ' — ' + (c.f||'');
-  document.getElementById('pr_conteoModalBody').innerHTML = (c.items||[]).map(x=>`<tr><td>${homeEsc(x.n)}</td><td style="text-align:right">${x.cant}</td><td style="text-align:right">${prodFmt(x.c)}</td><td style="text-align:right;font-weight:700;">${prodFmt(x.sub)}</td></tr>`).join('');
-  document.getElementById('pr_conteoModalTotal').textContent = prodFmt(c.total||0);
-  document.getElementById('pr_conteoModalRespRow').style.display='none';
-  document.getElementById('pr_conteoModalFooter').style.display='none';
-  document.getElementById('pr_conteoModal').style.display='flex';
 }
 
 // ===================================================================
