@@ -5121,10 +5121,87 @@ function renderCajaTabs(sec, activeId){
       </div>
       <div class="tab-bar">${tabsHtml}</div>
       <div id="cajaTabBody">${bodyHtml}</div>
-    </div>`;
+    </div>
+    ${cajaModalesHtml()}`;
   document.getElementById('content').innerHTML = html;
   if(activeId==='cierre') renderLiveDiff();
   if(window.innerWidth <= 820) document.getElementById('sidebar').classList.remove('open');
+}
+
+// ---- Modales compartidos de Caja (foto ampliada, eliminar comprobante con motivo, editar cierre) ----
+function cajaModalesHtml(){
+  return `
+  <div id="caja_imgModal" class="hm-modal-overlay no-print" style="display:none;" onclick="if(event.target===this) cajaCerrarImagen()">
+    <div class="hm-modal sm" style="text-align:center;">
+      <div class="hm-modal-head"><h2>Comprobante</h2><button class="btn-secondary" style="padding:5px 10px;" onclick="cajaCerrarImagen()">✕</button></div>
+      <div class="hm-modal-body" style="text-align:center;">
+        <img id="caja_imgModalPic" src="" style="max-width:100%;max-height:70vh;border-radius:10px;display:block;margin:0 auto;">
+      </div>
+    </div>
+  </div>
+
+  <div id="caja_motivoEliminarModal" class="hm-modal-overlay no-print" style="display:none;" onclick="if(event.target===this) cajaCerrarMotivoEliminar()">
+    <div class="hm-modal sm">
+      <div class="hm-modal-head"><h2>🗑 Eliminar comprobante</h2><button class="btn-secondary" style="padding:5px 10px;" onclick="cajaCerrarMotivoEliminar()">✕</button></div>
+      <div class="hm-modal-body">
+        <p style="font-size:12.5px;color:var(--text-light);margin-top:0;">Explica brevemente por qué se elimina (ej: foto de prueba, transferencia duplicada, cliente se arrepintió). Queda guardado como registro de auditoría.</p>
+        <div class="form-field"><label>Motivo <span class="req-star">*</span></label><textarea id="caja_motivoEliminarTexto" rows="3" placeholder="Motivo de la eliminación..."></textarea></div>
+        <div id="caja_motivoEliminarMsg"></div>
+      </div>
+      <div class="hm-modal-foot"><div class="hm-modal-acciones">
+        <button class="btn-secondary" style="width:auto;padding:8px 16px;" onclick="cajaCerrarMotivoEliminar()">Cancelar</button>
+        <button class="btn-primary" style="width:auto;padding:8px 16px;background:var(--rojo);" onclick="cajaConfirmarEliminarComprobante()">Eliminar comprobante</button>
+      </div></div>
+    </div>
+  </div>
+
+  <div id="caja_editarCierreModal" class="hm-modal-overlay no-print" style="display:none;" onclick="if(event.target===this) cajaCerrarEditarCierre()">
+    <div class="hm-modal">
+      <div class="hm-modal-head"><h2>✏ Editar cierre de caja</h2><button class="btn-secondary" style="padding:5px 10px;" onclick="cajaCerrarEditarCierre()">✕</button></div>
+      <div class="hm-modal-body">
+        <p class="muted" id="caja_editarCierreSub" style="font-size:12.5px;color:var(--text-light);margin-top:0;">Solo Gerencia puede corregir un cierre ya guardado.</p>
+        <div class="form-grid">
+          <div class="form-field"><label>Monto inicial (base)</label><input type="number" step="0.01" id="ec_montoInicial"></div>
+          <div class="form-field"><label>Efectivo sistema</label><input type="number" step="0.01" id="ec_efectivoSistema"></div>
+          <div class="form-field"><label>Efectivo contado</label><input type="number" step="0.01" id="ec_efectivoContado"></div>
+        </div>
+        <div class="form-grid">
+          <div class="form-field"><label>Transferencias sistema</label><input type="number" step="0.01" id="ec_transfSistema"></div>
+          <div class="form-field"><label>Transferencias contadas</label><input type="number" step="0.01" id="ec_transfContadas"></div>
+        </div>
+        <div class="form-grid">
+          <div class="form-field"><label>Tarjetas sistema</label><input type="number" step="0.01" id="ec_tarjetasSistema"></div>
+          <div class="form-field"><label>Tarjetas contadas</label><input type="number" step="0.01" id="ec_tarjetasContadas"></div>
+        </div>
+        <div class="form-grid">
+          <div class="form-field"><label>Anticipos (sistema)</label><input type="number" step="0.01" id="ec_anticiposSistema"></div>
+          <div class="form-field"><label>Bonos de regalo (sistema)</label><input type="number" step="0.01" id="ec_bonosSistema"></div>
+          <div class="form-field"><label>Cortesía (sistema)</label><input type="number" step="0.01" id="ec_cortesiaSistema"></div>
+          <div class="form-field"><label>Crédito (sistema)</label><input type="number" step="0.01" id="ec_creditoSistema"></div>
+        </div>
+        <div class="form-grid">
+          <div class="form-field"><label>Gastos de caja</label><input type="number" step="0.01" id="ec_gastosCaja"></div>
+          <div class="form-field"><label>Bolsa de seguridad</label><input type="number" step="0.01" id="ec_bolsaSeguridad"></div>
+        </div>
+        <div class="form-field"><label>Observaciones</label><textarea id="ec_observaciones" rows="2"></textarea></div>
+        <div id="caja_editarCierreMsg"></div>
+      </div>
+      <div class="hm-modal-foot"><div class="hm-modal-acciones">
+        <button class="btn-secondary" style="width:auto;padding:8px 16px;" onclick="cajaCerrarEditarCierre()">Cancelar</button>
+        <button class="btn-primary" style="width:auto;padding:8px 16px;" onclick="cajaGuardarEdicionCierre()">Guardar cambios</button>
+      </div></div>
+    </div>
+  </div>`;
+}
+function cajaMostrarImagen(src){
+  const modal = document.getElementById('caja_imgModal');
+  const img = document.getElementById('caja_imgModalPic');
+  if(img) img.src = src || '';
+  if(modal) modal.style.display = 'flex';
+}
+function cajaCerrarImagen(){
+  const modal = document.getElementById('caja_imgModal');
+  if(modal) modal.style.display = 'none';
 }
 
 // ---- Tab: Alistamiento inicial (apertura) — 18 ítems + listo p/servicio, fiel al original ----
@@ -5615,10 +5692,17 @@ function cierreFormHtml(){
 
   const datafonoTxt = h => [h.datafonos&&h.datafonos.p1?'P1':null,h.datafonos&&h.datafonos.p2?'P2':null,h.datafonos&&h.datafonos.alt?'Alt':null].filter(Boolean).join(', ')||'-';
   const diffBadge = v => v===0 ? '<span class="badge badge-verde">$0</span>' : '<span class="badge badge-rojo">'+fmtMoney(v)+'</span>';
+  const puedeAdminCierres = SESSION.rol !== 'empleado';
+  const bolsaTxt = h => {
+    if(!h.bolsaSeguridad) return '-';
+    if(h.bolsaEstado === 'recibida') return `${fmtMoney(h.bolsaSeguridad)} <span class="badge badge-verde">Recibida${h.bolsaRecibidaPor ? ' · '+homeEsc(h.bolsaRecibidaPor) : ''}</span>`;
+    const btn = puedeAdminCierres ? `<button class="btn-secondary" style="padding:3px 8px;font-size:10.5px;margin-left:4px;" onclick="cajaMarcarBolsaRecibida('${h.id}')">Marcar recibida</button>` : '';
+    return `${fmtMoney(h.bolsaSeguridad)} <span class="badge badge-dorado">Pendiente</span>${btn}`;
+  };
   const historial = filtrarPorSede(DB.get('caja_cierre', [])).slice(-8).reverse();
   const historialHtml = historial.length ? `
     <table class="mini-table">
-      <thead><tr><th>Fecha</th><th>Sede</th><th>Responsable</th><th>Datáfono</th><th>Verif. facturación</th><th>Efvo (dif)</th><th>Transf (dif)</th><th>Tarj (dif)</th><th>Gastos</th><th>Bolsa seg.</th></tr></thead>
+      <thead><tr><th>Fecha</th><th>Sede</th><th>Responsable</th><th>Datáfono</th><th>Verif. facturación</th><th>Efvo (dif)</th><th>Transf (dif)</th><th>Tarj (dif)</th><th>Gastos</th><th>Bolsa seg.</th><th></th></tr></thead>
       <tbody>${historial.map(h => `<tr>
         <td>${h.fecha} ${h.hora}</td><td>${sedeLabelGlobal(h.sede)}</td><td>${h.responsable}</td>
         <td>${datafonoTxt(h)}</td>
@@ -5627,7 +5711,8 @@ function cierreFormHtml(){
         <td>${diffBadge(h.dTransf||0)}</td>
         <td>${diffBadge(h.dTarjetas||0)}</td>
         <td>${fmtMoney(h.gastosCaja)}</td>
-        <td>${fmtMoney(h.bolsaSeguridad)}</td>
+        <td>${bolsaTxt(h)}</td>
+        <td>${SESSION.rol==='gerencia' ? `<button class="btn-secondary" style="padding:4px 8px;font-size:11px;" onclick="cajaAbrirEditarCierre('${h.id}')">✏</button>` : ''}</td>
       </tr>`).join('')}</tbody>
     </table>` : `<p style="color:var(--text-light);font-size:13px;">Todavía no hay cierres registrados.</p>`;
 
@@ -5826,6 +5911,8 @@ function guardarCierre(){
     creditoSistema: Number(document.getElementById('ci_creditoSistema').value||0),
     gastosCaja: Number(document.getElementById('ci_gastosCaja').value||0),
     bolsaSeguridad: Number(bolsaSeguridad)||0,
+    bolsaEstado: (Number(bolsaSeguridad)||0) > 0 ? 'pendiente' : null,
+    bolsaRecibidaPor: null, bolsaRecibidaEn: null,
     dEfectivo: d.dEfectivo, dTransf: d.dTransf, dTarjetas: d.dTarjetas,
     diferenciaTotal: d.dEfectivo + d.dTransf + d.dTarjetas,
     observaciones: document.getElementById('ci_observaciones').value.trim()
@@ -5843,6 +5930,88 @@ function guardarCierre(){
 
   renderCajaTabs(NAV.find(s=>s.id==='operacion'), 'cierre');
   showMsg('ci_msg','Cierre guardado correctamente.','verde');
+}
+
+function cajaMarcarBolsaRecibida(id){
+  const arr = DB.get('caja_cierre', []);
+  const idx = arr.findIndex(r=>r.id===id);
+  if(idx<0) return;
+  if(!confirm('¿Confirmas que ya recibiste la bolsa de seguridad de este cierre?')) return;
+  const quien = prompt('¿Quién la recibió?', SESSION.nombre);
+  if(quien===null) return;
+  arr[idx].bolsaEstado = 'recibida';
+  arr[idx].bolsaRecibidaPor = quien.trim() || SESSION.nombre;
+  arr[idx].bolsaRecibidaEn = hoyStr() + ' ' + horaStr();
+  DB.set('caja_cierre', arr);
+  renderCajaTabs(NAV.find(s=>s.id==='operacion'), 'cierre');
+}
+
+let cajaEditarCierreId = null;
+function cajaAbrirEditarCierre(id){
+  if(SESSION.rol !== 'gerencia'){ return; }
+  const r = DB.get('caja_cierre', []).find(x=>x.id===id);
+  if(!r) return;
+  cajaEditarCierreId = id;
+  const setVal = (elId, val) => { const el = document.getElementById(elId); if(el) el.value = (val==null ? '' : val); };
+  setVal('ec_montoInicial', r.montoInicial);
+  setVal('ec_efectivoSistema', r.efectivoSistema);
+  setVal('ec_efectivoContado', r.efectivoContado);
+  setVal('ec_transfSistema', r.transfSistema);
+  setVal('ec_transfContadas', r.transfContadas);
+  setVal('ec_tarjetasSistema', r.tarjetasSistema);
+  setVal('ec_tarjetasContadas', r.tarjetasContadas);
+  setVal('ec_anticiposSistema', r.anticiposSistema);
+  setVal('ec_bonosSistema', r.bonosSistema);
+  setVal('ec_cortesiaSistema', r.cortesiaSistema);
+  setVal('ec_creditoSistema', r.creditoSistema);
+  setVal('ec_gastosCaja', r.gastosCaja);
+  setVal('ec_bolsaSeguridad', r.bolsaSeguridad);
+  setVal('ec_observaciones', r.observaciones);
+  const sub = document.getElementById('caja_editarCierreSub');
+  if(sub) sub.textContent = (r.fecha||'-') + ' · ' + sedeLabelGlobal(r.sede) + ' · ' + (r.responsable||'-') + ' — Solo Gerencia puede corregir un cierre ya guardado.';
+  const msg = document.getElementById('caja_editarCierreMsg');
+  if(msg) msg.innerHTML = '';
+  const modal = document.getElementById('caja_editarCierreModal');
+  if(modal) modal.style.display = 'flex';
+}
+function cajaCerrarEditarCierre(){
+  cajaEditarCierreId = null;
+  const modal = document.getElementById('caja_editarCierreModal');
+  if(modal) modal.style.display = 'none';
+}
+function cajaGuardarEdicionCierre(){
+  const id = cajaEditarCierreId;
+  if(!id) return;
+  const arr = DB.get('caja_cierre', []);
+  const idx = arr.findIndex(x=>x.id===id);
+  if(idx<0){ cajaCerrarEditarCierre(); return; }
+  const num = elId => { const el = document.getElementById(elId); return el ? (Number(el.value)||0) : 0; };
+  const r = arr[idx];
+  r.montoInicial = num('ec_montoInicial');
+  r.efectivoSistema = num('ec_efectivoSistema');
+  r.efectivoContado = num('ec_efectivoContado');
+  r.transfSistema = num('ec_transfSistema');
+  r.transfContadas = num('ec_transfContadas');
+  r.tarjetasSistema = num('ec_tarjetasSistema');
+  r.tarjetasContadas = num('ec_tarjetasContadas');
+  r.anticiposSistema = num('ec_anticiposSistema');
+  r.bonosSistema = num('ec_bonosSistema');
+  r.cortesiaSistema = num('ec_cortesiaSistema');
+  r.creditoSistema = num('ec_creditoSistema');
+  r.gastosCaja = num('ec_gastosCaja');
+  r.bolsaSeguridad = num('ec_bolsaSeguridad');
+  r.observaciones = (document.getElementById('ec_observaciones')||{}).value || '';
+  // Recalcular diferencias con los valores corregidos (misma fórmula que computeDiffs())
+  const efectivoEsperado = r.montoInicial + r.efectivoSistema - r.gastosCaja;
+  r.dEfectivo = r.efectivoContado - efectivoEsperado;
+  r.dTransf = r.transfContadas - r.transfSistema;
+  r.dTarjetas = r.tarjetasContadas - r.tarjetasSistema;
+  r.diferenciaTotal = r.dEfectivo + r.dTransf + r.dTarjetas;
+  r.editadoPorUsuario = SESSION.usuario; r.editadoPorNombre = SESSION.nombre;
+  r.editadoEn = hoyStr() + ' ' + horaStr();
+  DB.set('caja_cierre', arr);
+  cajaCerrarEditarCierre();
+  renderCajaTabs(NAV.find(s=>s.id==='operacion'), 'cierre');
 }
 
 // ---- Tab 3 / módulo mesero: Comprobantes de transferencias — Mesa, Nombre, Foto ----
@@ -5881,15 +6050,27 @@ function comprobantesFormHtml(){
   const todos = filtrarPorSede(DB.get('caja_comprobantes', [])).filter(c => c.fecha === hoy).reverse();
   const listaHtml = todos.length ? `
     <table class="mini-table">
-      <thead><tr><th>Hora</th><th>Sede</th><th>Mesa</th><th>Nombre</th><th>Monto</th><th>Lectura IA</th><th>Nota</th><th>Foto</th></tr></thead>
+      <thead><tr><th>Hora</th><th>Sede</th><th>Mesa</th><th>Nombre</th><th>Monto</th><th>Lectura IA</th><th>Nota</th><th>Foto</th><th></th></tr></thead>
       <tbody>${todos.map(c => `<tr>
         <td>${c.hora}</td><td>${sedeLabelGlobal(c.sede)}</td><td>${c.mesa||'-'}</td><td>${c.nombreRecibe||c.nombre}</td>
         <td>${c.monto ? fmtMoney(c.monto) : '-'}</td>
         <td><span class="badge badge-gris">Manual</span></td>
         <td>${c.nota||'-'}</td>
-        <td>${c.foto ? `<a href="${c.foto}" target="_blank" rel="noopener">Ver</a>` : '-'}</td>
+        <td>${c.foto ? `<button class="btn-secondary" style="padding:4px 8px;font-size:11px;" onclick="cajaVerFotoComprobante('${c.id}')">👁 Ver</button>` : '-'}</td>
+        <td>${puedeVerLog ? `<button class="btn-secondary" style="padding:4px 8px;font-size:11px;color:#B7423A;" onclick="cajaAbrirMotivoEliminar('${c.id}')">✕</button>` : ''}</td>
       </tr>`).join('')}</tbody>
     </table>` : `<p style="color:var(--text-light);font-size:13px;">Todavía no hay comprobantes registrados hoy.</p>`;
+
+  const eliminados = filtrarPorSede(DB.get('caja_comprobantes_eliminados', [])).slice(-8).reverse();
+  const eliminadosHtml = eliminados.length ? `
+    <table class="mini-table">
+      <thead><tr><th>Fecha</th><th>Mesa</th><th>Nombre</th><th>Monto</th><th>Motivo</th><th>Eliminado por</th><th>Cuándo</th></tr></thead>
+      <tbody>${eliminados.map(e => `<tr>
+        <td>${e.fecha||'-'}</td><td>${e.mesa||'-'}</td><td>${e.nombreRecibe||e.nombre||'-'}</td>
+        <td>${e.monto ? fmtMoney(e.monto) : '-'}</td><td>${homeEsc(e.motivo||'-')}</td>
+        <td>${e.eliminadoPorNombre||'-'}</td><td>${e.eliminadoEn||'-'}</td>
+      </tr>`).join('')}</tbody>
+    </table>` : `<p style="color:var(--text-light);font-size:13px;">No hay comprobantes eliminados.</p>`;
 
   comprobanteFotoData = null;
 
@@ -5913,7 +6094,55 @@ function comprobantesFormHtml(){
     <button class="btn-primary" style="width:auto;padding:11px 22px;margin-top:14px;" onclick="guardarComprobante()">Registrar comprobante</button>
     <div id="co_msg"></div>
     ${puedeVerLog ? `<h3 style="margin:24px 0 10px;font-size:15px;">Comprobantes de hoy</h3>${listaHtml}` : ''}
+    ${puedeVerLog ? `<h3 style="margin:24px 0 10px;font-size:15px;">Comprobantes eliminados (auditoría)</h3>${eliminadosHtml}` : ''}
   `;
+}
+function cajaVerFotoComprobante(id){
+  const c = DB.get('caja_comprobantes', []).find(x=>x.id===id);
+  if(c && c.foto) cajaMostrarImagen(c.foto);
+}
+let cajaEliminarComprobantePendienteId = null;
+function cajaAbrirMotivoEliminar(id){
+  cajaEliminarComprobantePendienteId = id;
+  const ta = document.getElementById('caja_motivoEliminarTexto');
+  if(ta) ta.value = '';
+  const msg = document.getElementById('caja_motivoEliminarMsg');
+  if(msg) msg.innerHTML = '';
+  const modal = document.getElementById('caja_motivoEliminarModal');
+  if(modal) modal.style.display = 'flex';
+}
+function cajaCerrarMotivoEliminar(){
+  cajaEliminarComprobantePendienteId = null;
+  const modal = document.getElementById('caja_motivoEliminarModal');
+  if(modal) modal.style.display = 'none';
+}
+function cajaConfirmarEliminarComprobante(){
+  const id = cajaEliminarComprobantePendienteId;
+  if(!id) return;
+  const motivo = (document.getElementById('caja_motivoEliminarTexto').value || '').trim();
+  if(!motivo){ showMsg('caja_motivoEliminarMsg','Escribe el motivo antes de continuar.','rojo'); return; }
+  const arr = DB.get('caja_comprobantes', []);
+  const idx = arr.findIndex(x=>x.id===id);
+  if(idx<0){ cajaCerrarMotivoEliminar(); return; }
+  const c = arr[idx];
+  arr.splice(idx,1);
+  DB.set('caja_comprobantes', arr);
+  DB.push('caja_comprobantes_eliminados', {
+    sede: c.sede, comprobanteIdOriginal: c.id,
+    fecha: c.fecha, hora: c.hora, mesa: c.mesa, nombreRecibe: c.nombreRecibe || c.nombre, monto: c.monto, foto: c.foto, nota: c.nota,
+    motivo,
+    eliminadoPorUsuario: SESSION.usuario, eliminadoPorNombre: SESSION.nombre,
+    eliminadoEn: hoyStr() + ' ' + horaStr()
+  });
+  cajaCerrarMotivoEliminar();
+  if(document.querySelector('.tab-bar')){
+    renderCajaTabs(NAV.find(s=>s.id==='operacion'), 'comprobantes');
+  } else {
+    const sec = NAV.find(s=>s.id==='operacion');
+    const grp = sec.groups.find(g=>g.id==='servicio_cliente');
+    const item = grp.items.find(i=>i.id==='sc_comprobantes');
+    renderComprobantesStandalone(sec, grp, item, comprobantesLastRuta);
+  }
 }
 function guardarComprobante(){
   const mesa = document.getElementById('co_mesa').value;
@@ -5957,7 +6186,8 @@ function renderComprobantesStandalone(sec, group, item, ruta){
         <div><h2>Comprobantes de transferencias</h2><div class="path">${ruta || comprobantesLastRuta}</div></div>
       </div>
       <div id="cajaTabBody">${comprobantesFormHtml()}</div>
-    </div>`;
+    </div>
+    ${cajaModalesHtml()}`;
   document.getElementById('content').innerHTML = html;
   if(window.innerWidth <= 820) document.getElementById('sidebar').classList.remove('open');
 }
