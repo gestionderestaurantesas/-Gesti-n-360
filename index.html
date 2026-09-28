@@ -2170,6 +2170,70 @@ const USUARIOS_SEED = [
 {"usuario": "chinu", "pass": "", "nombre": "Sede Chinú (pruebas)", "cargo": "Cuenta de pruebas de sede", "sede": "chinu", "area": "todas", "rol": "gerencia", "activo": true, "rolPuesto": "", "itemsExtra": []}
 ];
 if(!DB.get('usuarios')){ DB.set('usuarios', USUARIOS_SEED); }
+// Nómina de Montería (nómina de julio 2026 + prestación de servicio/SENA
+// de julio 2026 — la lista correcta; una lista de "septiembre" que se usó
+// por error antes quedó descartada, ver limpieza abajo) — 27 empleados
+// que todavía no estaban en el sistema. Se agregan de forma no
+// destructiva (solo si su "usuario" no existe ya) a la colección
+// "usuarios" que ya existía en la cuenta, para no pisar cambios que Harol
+// ya haya hecho a mano en Usuarios y permisos. La cuenta REAL de acceso
+// (Firebase Auth) de cada quien se crea aparte, corriendo
+// firebase-fase2/crear-usuarios-monteria.js.
+const USUARIOS_MONTERIA_JUL2026 = [
+  {"usuario":"adrian.velez","pass":"","nombre":"Adrian Jose Machado Velez","cargo":"Aux. Cocina","sede":"monteria","area":"cocina","rol":"empleado","activo":true,"rolPuesto":"cocina","itemsExtra":[]},
+  {"usuario":"andy.ruiz","pass":"","nombre":"Andy Yesid Hernandez Ruiz","cargo":"Servicio Cliente","sede":"monteria","area":"servicio_cliente","rol":"empleado","activo":true,"rolPuesto":"mesero","itemsExtra":[]},
+  {"usuario":"angelica.oliva","pass":"","nombre":"Angelica Maria Rodriguez Oliva","cargo":"Sup. Serv. Cliente","sede":"monteria","area":"servicio_cliente","rol":"administracion","activo":true,"rolPuesto":"lider_servicio_reservas","itemsExtra":[]},
+  {"usuario":"dagleisis.rojas","pass":"","nombre":"Dagleisis Guerrero Rojas","cargo":"Steward","sede":"monteria","area":"steward","rol":"empleado","activo":true,"rolPuesto":"steward","itemsExtra":[]},
+  {"usuario":"daniel.argumedo","pass":"","nombre":"Daniel Dario Negrete Argumedo","cargo":"Aux. Cocina","sede":"monteria","area":"cocina","rol":"empleado","activo":true,"rolPuesto":"cocina","itemsExtra":[]},
+  {"usuario":"david.cassab","pass":"","nombre":"David Camilo Durango Cassab","cargo":"Lider Compras","sede":"monteria","area":"contabilidad","rol":"administracion","activo":true,"rolPuesto":"aux_compras","itemsExtra":[]},
+  {"usuario":"eduar.suarez","pass":"","nombre":"Eduar Enrique Buelvas Suarez","cargo":"Aux. Cocina","sede":"monteria","area":"cocina","rol":"empleado","activo":true,"rolPuesto":"cocina","itemsExtra":[]},
+  {"usuario":"elizabeth.correa","pass":"","nombre":"Elizabeth Florez Correa","cargo":"Aux. Bar","sede":"monteria","area":"bar","rol":"empleado","activo":true,"rolPuesto":"bar","itemsExtra":[]},
+  {"usuario":"hernando.padilla","pass":"","nombre":"Hernando Jose Arrieta Padilla","cargo":"Aux. Cocina","sede":"monteria","area":"cocina","rol":"empleado","activo":true,"rolPuesto":"cocina","itemsExtra":[]},
+  {"usuario":"ivan.oquendo","pass":"","nombre":"Ivan Alberto Oyola Oquendo","cargo":"Aux. Cocina","sede":"monteria","area":"cocina","rol":"empleado","activo":true,"rolPuesto":"cocina","itemsExtra":[]},
+  {"usuario":"ivana.hernandez","pass":"","nombre":"Ivana Medina Hernandez","cargo":"Aux. Música / Ambiente","sede":"monteria","area":"servicio_cliente","rol":"empleado","activo":true,"rolPuesto":"mesero","itemsExtra":[]},
+  {"usuario":"jose.diaz","pass":"","nombre":"Jose Armando Gonzalez Diaz","cargo":"Aux. Administrativo","sede":"monteria","area":"contabilidad","rol":"administracion","activo":true,"rolPuesto":"","itemsExtra":[]},
+  {"usuario":"juan.rosa","pass":"","nombre":"Juan Manuel Urango De La Rosa","cargo":"Vigilante","sede":"monteria","area":"inspecciones","rol":"empleado","activo":true,"rolPuesto":"inspector","itemsExtra":[]},
+  {"usuario":"lina.montoya","pass":"","nombre":"Lina Marcela Alvarez Montoya","cargo":"Aux. contable y admon","sede":"monteria","area":"contabilidad","rol":"administracion","activo":true,"rolPuesto":"","itemsExtra":[]},
+  {"usuario":"lina.diaz","pass":"","nombre":"Lina Marcela Padilla Diaz","cargo":"Aux. serv. Cliente","sede":"monteria","area":"servicio_cliente","rol":"empleado","activo":true,"rolPuesto":"mesero","itemsExtra":[]},
+  {"usuario":"maira.villamil","pass":"","nombre":"Maira Alejandra Villalobos Villamil","cargo":"Lider Cocina","sede":"monteria","area":"cocina","rol":"administracion","activo":true,"rolPuesto":"lider_cocina","itemsExtra":[]},
+  {"usuario":"mairon.pantoja","pass":"","nombre":"Mairon Dario Osorio Pantoja","cargo":"Servicio Cliente","sede":"monteria","area":"servicio_cliente","rol":"empleado","activo":true,"rolPuesto":"mesero","itemsExtra":[]},
+  {"usuario":"maria.galeano","pass":"","nombre":"Maria Carmela Soto Galeano","cargo":"Subgerente","sede":"monteria","area":"todas","rol":"gerencia","activo":true,"rolPuesto":"","itemsExtra":[]},
+  {"usuario":"marielena.martinez","pass":"","nombre":"Marielena Nieto Martinez","cargo":"Servicio Cliente","sede":"monteria","area":"servicio_cliente","rol":"empleado","activo":true,"rolPuesto":"mesero","itemsExtra":[]},
+  {"usuario":"michael.cordoba","pass":"","nombre":"Michael Castillo Cordoba","cargo":"Lider Cocina","sede":"monteria","area":"cocina","rol":"administracion","activo":true,"rolPuesto":"lider_cocina","itemsExtra":[]},
+  {"usuario":"miguel.guerrero","pass":"","nombre":"Miguel Alberto Suarez Guerrero","cargo":"Aux. Cocina","sede":"monteria","area":"cocina","rol":"empleado","activo":true,"rolPuesto":"cocina","itemsExtra":[]},
+  {"usuario":"pedro.cantillo","pass":"","nombre":"Pedro Luis Lopez Cantillo","cargo":"Aux. serv. Cliente","sede":"monteria","area":"servicio_cliente","rol":"empleado","activo":true,"rolPuesto":"mesero","itemsExtra":[]},
+  {"usuario":"reinaldo.jimenez","pass":"","nombre":"Reinaldo Jose Tapia Jimenez","cargo":"Servicio Cliente","sede":"monteria","area":"servicio_cliente","rol":"empleado","activo":true,"rolPuesto":"mesero","itemsExtra":[]},
+  {"usuario":"ysidoro.romero","pass":"","nombre":"Ysidoro Alberto Prieto Romero","cargo":"Aux. Cocina","sede":"monteria","area":"cocina","rol":"empleado","activo":true,"rolPuesto":"cocina","itemsExtra":[]},
+  {"usuario":"yudis.galeano","pass":"","nombre":"Yudis Maria Soto Galeano","cargo":"Lider Administrativo","sede":"monteria","area":"todas","rol":"administracion","activo":true,"rolPuesto":"","itemsExtra":[]},
+  {"usuario":"kiara.espitia","pass":"","nombre":"Kiara Marcela Arias Espitia","cargo":"Aux. Admon","sede":"monteria","area":"contabilidad","rol":"administracion","activo":true,"rolPuesto":"","itemsExtra":[]},
+  {"usuario":"misael.nunez","pass":"","nombre":"Misael Alfonso Martinez Nuñez","cargo":"Aux. Bar","sede":"monteria","area":"bar","rol":"empleado","activo":true,"rolPuesto":"bar","itemsExtra":[]}
+];
+// Limpieza: si la lista incorrecta ("septiembre", con nombres que no
+// correspondían a Montería) ya alcanzó a sincronizarse antes de que se
+// detectara el error, se retira aquí — ANTES de agregar la lista
+// correcta de abajo, porque varios nombres reales aparecen en las dos
+// listas (la misma persona) y si la limpieza corriera después, borraría
+// también sus entradas correctas.
+if(!DB.get('usuarios_monteria_sept2026_limpiado')){
+  const _codigosIncorrectos = ['hernando.sanchez', 'yudis.galeano', 'david.cassab', 'rafael.bohorquez', 'luis.negrette', 'said.tovas', 'leandra.silva', 'cleider.miranda', 'jose.dominguez', 'miguel.castellano', 'eduar.suarez', 'daniel.argumedo', 'saibeth.durango', 'alvaro.salgado', 'maira.villamil', 'juan.guzman', 'michael.cordoba', 'sandy.soto2', 'francisco.aguilera', 'ana.humanez', 'jose.cogollo', 'jose.diaz', 'miguel.petro', 'leonel.bohoquez', 'luisa.alvarez', 'wilendy.avilez', 'william.ahumada', 'jhon.tuiran', 'mairon.pantoja', 'omar.rojas', 'alber.buelvas', 'omar.luna', 'juan.rosa'];
+  const _usLimpios = (DB.get('usuarios', USUARIOS_SEED) || []).filter(u => !_codigosIncorrectos.includes(u.usuario));
+  DB.set('usuarios', _usLimpios);
+  DB.set('usuarios_monteria_sept2026_limpiado', true);
+}
+if(!DB.get('usuarios_monteria_jul2026_cargado')){
+  const _usActuales2 = DB.get('usuarios', USUARIOS_SEED) || [];
+  const _usExistentes2 = new Set(_usActuales2.map(u => u.usuario));
+  let _usCambio2 = false;
+  USUARIOS_MONTERIA_JUL2026.forEach(function(nuevo){
+    if(!_usExistentes2.has(nuevo.usuario)){
+      _usActuales2.push(nuevo);
+      _usExistentes2.add(nuevo.usuario);
+      _usCambio2 = true;
+    }
+  });
+  if(_usCambio2) DB.set('usuarios', _usActuales2);
+  DB.set('usuarios_monteria_jul2026_cargado', true);
+}
 
 // Cuenta de pruebas "chinu" (sede fija, no "todas") para que Harol pueda
 // probar el comportamiento con sede bloqueada sin usar su propio usuario
