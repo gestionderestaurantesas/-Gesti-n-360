@@ -5084,7 +5084,7 @@ let cajaLastRuta = 'Operación → Administración → Caja (cierre y comprobant
 function renderCajaModule(sec, group, item, ruta){
   if(ruta) cajaLastRuta = ruta;
   const puedeTodo = SESSION.rol !== 'empleado' || SESSION.area === 'contabilidad';
-  const disponibles = puedeTodo ? ['alistamiento_inicial','cierre','checklist_cierre','comprobantes','recibidos_prod'] : ['comprobantes'];
+  const disponibles = puedeTodo ? ['alistamiento_inicial','cierre','comprobantes','checklist_cierre','recibidos_prod'] : ['comprobantes'];
   if(!disponibles.includes(cajaActiveTab)) cajaActiveTab = disponibles[0];
   renderCajaTabs(sec, cajaActiveTab);
 }
@@ -5094,8 +5094,8 @@ function renderCajaTabs(sec, activeId){
   const TODAS = [
     {id:'alistamiento_inicial', label:'Alistamiento inicial (apertura)', icon:'checklist'},
     {id:'cierre', label:'Cierre de caja', icon:'cash'},
-    {id:'checklist_cierre', label:'Checklist de cierre', icon:'checklist'},
     {id:'comprobantes', label:'Comprobantes', icon:'camera'},
+    {id:'checklist_cierre', label:'Checklist de cierre', icon:'checklist'},
     {id:'recibidos_prod', label:'Recibidos de producción' + (pendientesRecibo>0 ? ` (${pendientesRecibo})` : ''), icon:'box'}
   ];
   const tabs = puedeTodo ? TODAS : TODAS.filter(t=>t.id==='comprobantes');
