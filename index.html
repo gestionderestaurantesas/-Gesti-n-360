@@ -5745,13 +5745,7 @@ function cierreFormHtml(){
             <div class="form-field"><label>Nombre del responsable <span class="req-star">*</span></label><input id="ci_responsable" list="ci_personalList" value="${SESSION.nombre}"></div>
             <div class="form-field"><label>Fecha de cierre <span class="req-star">*</span></label><input id="ci_fecha" type="date" value="${hoy}"></div>
           </div>
-          <div class="form-field" style="max-width:220px;margin-top:8px;"><label>Turno del cierre</label>
-            <select id="ci_turnoFudo">
-              <option value="tarde">Turno tarde (hasta 4:00pm)</option>
-              <option value="noche">Turno noche (4:00pm en adelante)</option>
-            </select>
-          </div>
-          <button type="button" class="btn-secondary" style="width:auto;padding:8px 16px;margin:4px 0 0;" onclick="traerDatosFudo()">Traer datos de Fudo</button>
+          <button type="button" class="btn-secondary" style="width:auto;padding:8px 16px;margin:8px 0 0;" onclick="traerDatosFudo()">Traer datos de Fudo</button>
           <div id="ci_fudoMsg" style="font-size:12px;margin-top:6px;"></div>
         </div>
 
