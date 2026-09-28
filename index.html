@@ -2368,6 +2368,21 @@ const NAV_ITEMS_DESACTIVADOS_SEED = [
 ];
 if(!DB.get('nav_grupos_desactivados')){ DB.set('nav_grupos_desactivados', NAV_GRUPOS_DESACTIVADOS_SEED); }
 if(!DB.get('nav_items_desactivados')){ DB.set('nav_items_desactivados', NAV_ITEMS_DESACTIVADOS_SEED); }
+// Inventarios (Operación → Administración) estaba oculto por defecto por el
+// alcance de "primera edición" de arriba. Como nav_items_desactivados solo
+// se siembra una vez, si la cuenta ya tenía ese documento guardado desde
+// antes, el ocultamiento quedó atascado incluso después de haber construido
+// el módulo completo. Se activa una sola vez, sin tocar el resto de la lista
+// (Compras, Propina, etc. siguen como estaban).
+if(!DB.get('inv_activado_manual_202609')){
+  const navItemsDesactInv = DB.get('nav_items_desactivados', []);
+  const idxInv = navItemsDesactInv.indexOf('operacion::administracion::cf_inventarios');
+  if(idxInv > -1){
+    navItemsDesactInv.splice(idxInv, 1);
+    DB.set('nav_items_desactivados', navItemsDesactInv);
+  }
+  DB.set('inv_activado_manual_202609', true);
+}
 
 /* ==================================================================
    ROLES DE PUESTO — nivel de permiso fino, adicional a los 3 niveles
@@ -3368,7 +3383,6 @@ const NAV = [
         { id:'cf_compras', label:'Compras', icon:'truck', roles:['administracion','gerencia'], customRender:'renderComprasModule' },
         { id:'cf_propina', label:'Propina', icon:'cash', roles:['administracion','gerencia'], customRender:'renderPropinaModule' },
         { id:'cf_horarios', label:'Horarios', icon:'clock', roles:['administracion','gerencia'], customRender:'renderHorariosModule' },
-        { id:'cf_parametros', label:'Parámetros del restaurante', icon:'gear', roles:['gerencia'], customRender:'renderParametrosModule' },
         { id:'cf_prevision', label:'Previsión y planificación', icon:'target', roles:['administracion','gerencia'], customRender:'renderPrevisionModule' },
         { id:'cf_pagos', label:'Pagos a proveedores', icon:'upload', roles:['administracion','gerencia'], customRender:'renderPagosModule' },
         { id:'cf_planificacion_tareas', label:'Planificación y asignación de tareas', icon:'checklist', roles:['administracion','gerencia'], customRender:'renderPlanificacionTareasModule' }
@@ -3404,6 +3418,7 @@ const NAV = [
         { id:'ger_info_pos', label:'Información POS', icon:'box', roles:['gerencia'], customRender:'renderInfoPosModule' }
       ]},
       { id:'configuracion', label:'Configuración', matchArea:null, items:[
+        { id:'cf_parametros', label:'Parámetros del restaurante', icon:'gear', roles:['gerencia'], customRender:'renderParametrosModule' },
         { id:'cfg_usuarios', label:'Usuarios y permisos', icon:'users', roles:['gerencia'], customRender:'renderUsuariosPermisosModule' },
         { id:'cfg_roles', label:'Roles y tareas', icon:'shield', roles:['gerencia'], customRender:'renderRolesPermisosModule' },
         { id:'cfg_sedes', label:'Sedes', icon:'pin', roles:['gerencia'], customRender:'renderSedesModule' },
