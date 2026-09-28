@@ -2428,6 +2428,15 @@ const ROLES_PERMISOS_SEED = {
   otros: []
 };
 if(!DB.get('roles_permisos')){ DB.set('roles_permisos', ROLES_PERMISOS_SEED); }
+else {
+  // Migración no destructiva: asegura que mesero conserve acceso a Comprobantes
+  // aunque el documento ya existiera antes de que este permiso se agregara al seed.
+  const _rpActual = DB.get('roles_permisos', ROLES_PERMISOS_SEED);
+  if(_rpActual && Array.isArray(_rpActual.mesero) && !_rpActual.mesero.includes('sc_comprobantes')){
+    _rpActual.mesero.push('sc_comprobantes');
+    DB.set('roles_permisos', _rpActual);
+  }
+}
 function rolesPermisosGet(){ return DB.get('roles_permisos', ROLES_PERMISOS_SEED); }
 
 /* ==================================================================
@@ -5745,8 +5754,6 @@ function cierreFormHtml(){
             <div class="form-field"><label>Nombre del responsable <span class="req-star">*</span></label><input id="ci_responsable" list="ci_personalList" value="${SESSION.nombre}"></div>
             <div class="form-field"><label>Fecha de cierre <span class="req-star">*</span></label><input id="ci_fecha" type="date" value="${hoy}"></div>
           </div>
-          <button type="button" class="btn-secondary" style="width:auto;padding:8px 16px;margin:8px 0 0;" onclick="traerDatosFudo()">Traer datos de Fudo</button>
-          <div id="ci_fudoMsg" style="font-size:12px;margin-top:6px;"></div>
         </div>
 
         <div class="panel">
@@ -5800,7 +5807,12 @@ function cierreFormHtml(){
             <div class="form-field"><label>Bolsa de seguridad <span class="req-star">*</span></label><input id="ci_bolsaSeguridad" type="number" step="0.01"></div>
           </div>
           <label class="datafono-check"><input type="checkbox" id="ci_sinGastosHoy" onchange="recomputeGastos()"> No hubo gastos hoy</label>
-          <p style="font-size:10.5px;color:var(--text-light);margin-top:4px;">Nota: en la app aprobada este campo se llenaba leyendo el reporte de gastos de Fudo (.xlsx) automáticamente. Mientras no haya esa integración aquí, el valor se escribe manualmente.</p>
+          <div class="form-field" style="margin-top:8px;max-width:320px;">
+            <label>Subir reporte de gastos (.xlsx) para llenar el campo</label>
+            <input type="file" id="ci_gastosArchivo" accept=".xlsx,.xls" onchange="cajaLeerGastosArchivo(this)">
+          </div>
+          <div id="ci_gastosArchivoMsg" style="font-size:11.5px;margin-top:4px;"></div>
+          <p style="font-size:10.5px;color:var(--text-light);margin-top:4px;">Si el archivo no tiene una columna reconocible (valor/monto/total/gasto), revisa y digita el total manualmente.</p>
         </div>
       </div>
 
@@ -5828,63 +5840,39 @@ function cierreFormHtml(){
     ${historialHtml}
   `;
 }
-// Trae el resumen del día (ventas por medio de pago, propinas y gastos)
-// que la sincronización automática con Fudo ya dejó en Firestore, y
-// llena los campos del cierre de caja para que el responsable solo
-// tenga que verificar, no digitar todo a mano.
-async function traerDatosFudo(){
-  const msgBox = document.getElementById('ci_fudoMsg');
-  const fecha = document.getElementById('ci_fecha').value || hoyStr();
-  const sede = sedeParaGuardar();
-  if(!window.FS || !window.FS.leerResumenFudo){
-    if(msgBox){ msgBox.style.color = 'var(--rojo)'; msgBox.textContent = 'La conexión con Firestore no está lista todavía. Intenta de nuevo en un momento.'; }
-    return;
+// Lee un reporte de gastos (.xlsx) elegido por el usuario y suma la columna
+// de valores para llenar "Gastos de caja" — todo se procesa en el navegador,
+// no se consulta ningún sistema externo (Fudo ni ningún otro).
+function cajaStripAccentsGastos(s){ return String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,''); }
+async function cajaLeerGastosArchivo(input){
+  const msgBox = document.getElementById('ci_gastosArchivoMsg');
+  const file = input.files && input.files[0];
+  if(!file) return;
+  if(msgBox){ msgBox.style.color = 'var(--text-light)'; msgBox.textContent = 'Leyendo archivo...'; }
+  try{
+    const buf = await file.arrayBuffer();
+    const wb = XLSX.read(buf, { type:'array' });
+    const hoja = wb.Sheets[wb.SheetNames[0]];
+    const filas = XLSX.utils.sheet_to_json(hoja, { defval:'' });
+    if(!filas.length){ if(msgBox){ msgBox.style.color = 'var(--rojo)'; msgBox.textContent = 'El archivo no tiene filas de datos.'; } return; }
+    const columnas = Object.keys(filas[0]);
+    const colValor = columnas.find(c => /valor|monto|total|gasto/i.test(cajaStripAccentsGastos(c)));
+    if(!colValor){
+      if(msgBox){ msgBox.style.color = 'var(--rojo)'; msgBox.textContent = 'No se encontró una columna de valor/monto/total/gasto en el archivo. Verifica y digita el total manualmente.'; }
+      return;
+    }
+    let total = 0, filasConValor = 0;
+    filas.forEach(f => {
+      const n = Number(String(f[colValor]).replace(/[^0-9.-]/g,''));
+      if(!isNaN(n) && n !== 0){ total += n; filasConValor++; }
+    });
+    document.getElementById('ci_gastosCaja').value = total.toFixed(2);
+    if(typeof renderLiveDiff === 'function') renderLiveDiff();
+    if(msgBox){ msgBox.style.color = 'var(--verde,#2e7d32)'; msgBox.textContent = `Se leyeron ${filasConValor} fila(s) de la columna "${colValor}". Total: ${fmtMoney(total)} — verifica antes de guardar.`; }
+  } catch(err){
+    console.error(err);
+    if(msgBox){ msgBox.style.color = 'var(--rojo)'; msgBox.textContent = 'No se pudo leer el archivo. Verifica que sea un .xlsx válido.'; }
   }
-  if(msgBox){ msgBox.style.color = 'var(--text-light)'; msgBox.textContent = 'Buscando datos de Fudo para ' + fecha + '...'; }
-
-  const docFudo = await window.FS.leerResumenFudo(sede, fecha);
-  if(!docFudo){
-    if(msgBox){ msgBox.style.color = 'var(--rojo)'; msgBox.textContent = 'Todavía no hay datos de Fudo para esta sede/fecha. Puede que el proceso automático aún no corra para ese día, o que falten las credenciales de Fudo de esta sede.'; }
-    return;
-  }
-
-  // Chinú hace dos arqueos al día (turno tarde hasta 4:00pm, turno noche de
-  // 4:00pm en adelante). El documento de Fudo trae "turnos.tarde"/"turnos.noche"
-  // por separado; si por alguna razón es un documento viejo sin turnos, se
-  // usa "totalDia" (o el documento completo) como respaldo.
-  const turnoSel = (document.getElementById('ci_turnoFudo') || {}).value || 'tarde';
-  const resumen = docFudo.turnos ? (docFudo.turnos[turnoSel] || docFudo.totalDia || docFudo) : (docFudo.totalDia || docFudo);
-  if(!resumen){
-    if(msgBox){ msgBox.style.color = 'var(--rojo)'; msgBox.textContent = 'No se encontraron datos de Fudo para el turno seleccionado.'; }
-    return;
-  }
-
-  // Los medios de pago vienen de Fudo con su nombre propio (ej: "Efectivo",
-  // "Transferencia", "Tarjeta Débito"). Los agrupamos por palabras clave
-  // porque no controlamos cómo los llama cada cajero en Fudo.
-  const porMedioPago = resumen.porMedioPago || {};
-  let efectivo = 0, transferencias = 0, tarjetas = 0, otros = 0;
-  Object.keys(porMedioPago).forEach(function(nombre){
-    const monto = Number(porMedioPago[nombre]) || 0;
-    const n = nombre.toLowerCase();
-    if(n.includes('efectivo') || n.includes('cash')) efectivo += monto;
-    else if(n.includes('transf') || n.includes('nequi') || n.includes('daviplata')) transferencias += monto;
-    else if(n.includes('tarjet') || n.includes('datafono') || n.includes('datáfono') || n.includes('credito') || n.includes('crédito') || n.includes('debito') || n.includes('débito')) tarjetas += monto;
-    else otros += monto;
-  });
-
-  const setVal = (id, val) => { const el = document.getElementById(id); if(el) el.value = val; };
-  setVal('ci_efectivoSistema', efectivo.toFixed(2));
-  setVal('ci_transfSistema', transferencias.toFixed(2));
-  setVal('ci_tarjetasSistema', tarjetas.toFixed(2));
-  setVal('ci_gastosCaja', Number(resumen.gastosCajaTotal || 0).toFixed(2));
-
-  if(typeof renderLiveDiff === 'function') renderLiveDiff();
-
-  let nota = 'Datos de Fudo cargados (turno ' + turnoSel + '): ' + (resumen.ventasCantidad || 0) + ' ventas cerradas.';
-  if(otros > 0) nota += ' Nota: $' + otros.toFixed(0) + ' quedó en "otros medios de pago" (revísalo manualmente, por ejemplo anticipos o bonos).';
-  if(!resumen.gastosCajaTotal){ nota += ' Los gastos de caja de Fudo aún no están disponibles automáticamente — verifícalos a mano por ahora.'; }
-  if(msgBox){ msgBox.style.color = 'var(--verde,#2e7d32)'; msgBox.textContent = nota; }
 }
 function guardarCierre(){
   const responsable = document.getElementById('ci_responsable').value.trim();
@@ -5937,6 +5925,19 @@ function guardarCierre(){
     diferenciaTotal: d.dEfectivo + d.dTransf + d.dTarjetas,
     observaciones: document.getElementById('ci_observaciones').value.trim()
   };
+
+  const totalDif = registro.dEfectivo + registro.dTransf + registro.dTarjetas;
+  const resumenConfirm = `Vas a guardar este cierre de caja:\n\n`
+    + `Responsable: ${registro.responsable}\n`
+    + `Fecha: ${registro.fecha}\n`
+    + `Efectivo contado: ${fmtMoney(registro.efectivoContado)} (dif. ${fmtMoney(registro.dEfectivo)})\n`
+    + `Transferencias contadas: ${fmtMoney(registro.transfContadas)} (dif. ${fmtMoney(registro.dTransf)})\n`
+    + `Tarjetas contadas: ${fmtMoney(registro.tarjetasContadas)} (dif. ${fmtMoney(registro.dTarjetas)})\n`
+    + `Diferencia total: ${fmtMoney(totalDif)}\n`
+    + `Bolsa de seguridad: ${fmtMoney(registro.bolsaSeguridad)}\n\n`
+    + `¿Confirmas que los datos son correctos y quieres guardar?`;
+  if(!confirm(resumenConfirm)) return;
+
   DB.push('caja_cierre', registro);
 
   if(transferenciasUsadas.length){
@@ -6023,9 +6024,15 @@ function cajaGuardarEdicionCierre(){
   r.observaciones = (document.getElementById('ec_observaciones')||{}).value || '';
   // Recalcular diferencias con los valores corregidos (misma fórmula que computeDiffs())
   const efectivoEsperado = r.montoInicial + r.efectivoSistema - r.gastosCaja;
-  r.dEfectivo = r.efectivoContado - efectivoEsperado;
-  r.dTransf = r.transfContadas - r.transfSistema;
-  r.dTarjetas = r.tarjetasContadas - r.tarjetasSistema;
+  const dEfectivoNuevo = r.efectivoContado - efectivoEsperado;
+  const dTransfNuevo = r.transfContadas - r.transfSistema;
+  const dTarjetasNuevo = r.tarjetasContadas - r.tarjetasSistema;
+
+  if(!confirm(`Vas a corregir el cierre de ${r.fecha} (${r.responsable||'-'}).\n\nNueva diferencia total: ${fmtMoney(dEfectivoNuevo+dTransfNuevo+dTarjetasNuevo)}\n\n¿Confirmas guardar esta corrección?`)) return;
+
+  r.dEfectivo = dEfectivoNuevo;
+  r.dTransf = dTransfNuevo;
+  r.dTarjetas = dTarjetasNuevo;
   r.diferenciaTotal = r.dEfectivo + r.dTransf + r.dTarjetas;
   r.editadoPorUsuario = SESSION.usuario; r.editadoPorNombre = SESSION.nombre;
   r.editadoEn = hoyStr() + ' ' + horaStr();
@@ -6184,6 +6191,13 @@ function guardarComprobante(){
     nota,
     usadoEnCierre: false
   };
+  const resumenComprobante = `Vas a registrar este comprobante:\n\n`
+    + `Mesa: ${mesa}\n`
+    + `Recibe: ${nombreRecibe}\n`
+    + `Monto: ${registro.monto===null ? 'No especificado' : fmtMoney(registro.monto)}\n`
+    + (nota ? `Nota: ${nota}\n` : '')
+    + `\n¿Confirmas que los datos son correctos y quieres guardar?`;
+  if(!confirm(resumenComprobante)) return;
   DB.push('caja_comprobantes', registro);
   comprobanteFotoData = null;
   showMsg('co_msg','Comprobante registrado.','verde');
