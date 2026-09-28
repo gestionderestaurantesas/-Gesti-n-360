@@ -2414,7 +2414,7 @@ function rolPuestoLabel(id){ const r = ROLES_PUESTO.find(x=>x.id===id); return r
 // ajustar libremente desde Configuración → Roles y tareas. Se seeden
 // solo una vez (si ya existen en DB, se respetan los cambios guardados).
 const ROLES_PERMISOS_SEED = {
-  caja: ['chk_alistamiento','chk_cierre_caja','cf_caja','sc_comprobantes','ast_chat'],
+  caja: ['chk_cierre_caja','cf_caja','sc_comprobantes','ast_chat'],
   mesero: ['chk_briefing','chk_mise_servicio','chk_aseo_salon','chk_cierre_servicio','sc_comprobantes','ast_chat'],
   cocina: ['chk_briefing_cocina','chk_mise_cocina_parrilla','chk_mise_cocina_fritos','chk_mise_cocina_armado','chk_mise_cocina_corrientes','chk_mise_cocina_pastas','chk_higiene','chk_prueba_prep','chk_cierre_cocina','coc_comida_personal','coc_bajas','coc_mejora','coc_fotos_platos','ast_chat'],
   steward: ['chk_alistamiento_steward','chk_cierre_steward','ast_chat'],
@@ -2423,9 +2423,9 @@ const ROLES_PERMISOS_SEED = {
   lider_servicio_reservas: ['chk_briefing','chk_mise_servicio','chk_aseo_salon','chk_cierre_servicio','sc_comprobantes','sc_encuesta','ast_chat'],
   lider_cocina: ['chk_briefing_cocina','chk_mise_cocina_parrilla','chk_mise_cocina_fritos','chk_mise_cocina_armado','chk_mise_cocina_corrientes','chk_mise_cocina_pastas','chk_higiene','chk_prueba_prep','chk_alistamiento_steward','chk_cierre_cocina','chk_cierre_steward','coc_comida_personal','coc_bajas','coc_mejora','coc_fotos_platos','ast_chat'],
   aux_compras: ['cf_compras','cf_pagos','mant_proveedores','ast_chat'],
-  inspector: ['chk_alistamiento','chk_cierre_caja','chk_briefing','chk_mise_servicio','chk_aseo_salon','chk_cierre_servicio','chk_briefing_cocina','chk_mise_cocina_parrilla','chk_mise_cocina_fritos','chk_mise_cocina_armado','chk_mise_cocina_corrientes','chk_mise_cocina_pastas','chk_higiene','chk_prueba_prep','chk_alistamiento_steward','chk_cierre_cocina','chk_cierre_steward','chk_mise_bar','chk_aseo_bar','chk_cierre_bar','chk_aseo_cp','chk_aseo_periferica','chk_aseo_banos_internos','chk_aseo_banos_publicos','chk_aseo_traperos','coc_inspeccion','sc_inspeccion','bar_inspeccion','cf_inspeccion_caja','ast_chat'],
-  gerente_operativa: ['chk_alistamiento','chk_cierre_caja','chk_briefing','chk_mise_servicio','chk_aseo_salon','chk_cierre_servicio','chk_briefing_cocina','chk_mise_cocina_parrilla','chk_mise_cocina_fritos','chk_mise_cocina_armado','chk_mise_cocina_corrientes','chk_mise_cocina_pastas','chk_higiene','chk_prueba_prep','chk_alistamiento_steward','chk_cierre_cocina','chk_cierre_steward','chk_mise_bar','chk_aseo_bar','chk_cierre_bar','chk_aseo_cp','chk_aseo_periferica','chk_aseo_banos_internos','chk_aseo_banos_publicos','chk_aseo_traperos','cf_caja','cf_inventarios','cf_inspeccion_caja','cf_planificacion_tareas','sc_comprobantes','sc_encuesta','sc_inspeccion','coc_comida_personal','coc_bajas','coc_mejora','coc_fotos_platos','coc_inspeccion','bar_inspeccion','mant_equipos','mant_preventivo','mant_solicitudes','mant_proveedores','ger_reporte_general360','ast_chat'],
-  gerente_financiera: ['chk_alistamiento','chk_cierre_caja','cf_caja','cf_inventarios','cf_compras','cf_propina','cf_horarios','cf_prevision','cf_pagos','cf_planificacion_tareas','ger_reporte_general360','ast_chat'],
+  inspector: ['chk_cierre_caja','chk_briefing','chk_mise_servicio','chk_aseo_salon','chk_cierre_servicio','chk_briefing_cocina','chk_mise_cocina_parrilla','chk_mise_cocina_fritos','chk_mise_cocina_armado','chk_mise_cocina_corrientes','chk_mise_cocina_pastas','chk_higiene','chk_prueba_prep','chk_alistamiento_steward','chk_cierre_cocina','chk_cierre_steward','chk_mise_bar','chk_aseo_bar','chk_cierre_bar','chk_aseo_cp','chk_aseo_periferica','chk_aseo_banos_internos','chk_aseo_banos_publicos','chk_aseo_traperos','coc_inspeccion','sc_inspeccion','bar_inspeccion','cf_caja','ast_chat'],
+  gerente_operativa: ['chk_cierre_caja','chk_briefing','chk_mise_servicio','chk_aseo_salon','chk_cierre_servicio','chk_briefing_cocina','chk_mise_cocina_parrilla','chk_mise_cocina_fritos','chk_mise_cocina_armado','chk_mise_cocina_corrientes','chk_mise_cocina_pastas','chk_higiene','chk_prueba_prep','chk_alistamiento_steward','chk_cierre_cocina','chk_cierre_steward','chk_mise_bar','chk_aseo_bar','chk_cierre_bar','chk_aseo_cp','chk_aseo_periferica','chk_aseo_banos_internos','chk_aseo_banos_publicos','chk_aseo_traperos','cf_caja','cf_inventarios','cf_planificacion_tareas','sc_comprobantes','sc_encuesta','sc_inspeccion','coc_comida_personal','coc_bajas','coc_mejora','coc_fotos_platos','coc_inspeccion','bar_inspeccion','mant_equipos','mant_preventivo','mant_solicitudes','mant_proveedores','ger_reporte_general360','ast_chat'],
+  gerente_financiera: ['chk_cierre_caja','cf_caja','cf_inventarios','cf_compras','cf_propina','cf_horarios','cf_prevision','cf_pagos','cf_planificacion_tareas','ger_reporte_general360','ast_chat'],
   otros: []
 };
 if(!DB.get('roles_permisos')){ DB.set('roles_permisos', ROLES_PERMISOS_SEED); }
@@ -2936,7 +2936,6 @@ const NAV = [
     // siguen existiendo para permisos y para el interruptor de subáreas.
     groups:[
       { id:'administracion', label:'Administración', icon:'cash', matchArea:'contabilidad', items:[
-        { id:'chk_alistamiento', label:'Alistamiento inicial de caja', icon:'checklist', area:'contabilidad', categoria:'alistamiento', roles:['empleado','administracion','gerencia'], customRender:'renderAlistamientoCajaStandalone' },
         { id:'chk_cierre_caja', label:'Cierre de caja', icon:'checklist', area:'contabilidad', categoria:'cierre', roles:['empleado','administracion','gerencia'], customRender:'renderCierreAreaModule' }
       ]},
       { id:'servicio_cliente', label:'Servicio al cliente', icon:'user', matchArea:'servicio_cliente', items:[
@@ -3026,8 +3025,7 @@ const NAV = [
       { id:'inspeccion', label:'Inspección', icon:'search', matchArea:'inspecciones', items:[
         { id:'coc_inspeccion', label:'Inspección de cocina', icon:'search', roles:['empleado','administracion','gerencia'], areaObjetivo:'cocina', customRender:'renderInspeccionAreaModule' },
         { id:'sc_inspeccion', label:'Inspección de servicio al cliente', icon:'search', roles:['empleado','administracion','gerencia'], areaObjetivo:'servicio_cliente', customRender:'renderInspeccionAreaModule' },
-        { id:'bar_inspeccion', label:'Inspección de bar', icon:'search', roles:['empleado','administracion','gerencia'], areaObjetivo:'bar', customRender:'renderInspeccionAreaModule' },
-        { id:'cf_inspeccion_caja', label:'Inspección de caja', icon:'search', roles:['empleado','administracion','gerencia'], areaObjetivo:'contabilidad', customRender:'renderInspeccionAreaModule' }
+        { id:'bar_inspeccion', label:'Inspección de bar', icon:'search', roles:['empleado','administracion','gerencia'], areaObjetivo:'bar', customRender:'renderInspeccionAreaModule' }
       ]},
       { id:'mantenimiento', label:'Mantenimiento', icon:'wrench', matchArea:'mantenimiento', items:[
         { id:'mant_equipos', label:'Equipos (factura, hoja de vida e historial)', icon:'wrench', roles:['empleado','administracion','gerencia'], customRender:'renderMantenimientoModule', tab:'equipos' },
@@ -4459,7 +4457,6 @@ document.addEventListener('click', function(e){
    ================================================================== */
 const TIPS_ITEM = {
   // — Checklists —
-  chk_alistamiento: { emoji:'💰', titulo:'Alistamiento inicial de caja', texto:'Revisa la base de caja, el datáfono y el cambio antes de abrir. Marca cada punto a medida que lo verificas en persona.' },
   chk_cierre_caja: { emoji:'💰', titulo:'Cierre de caja', texto:'Al terminar el turno, verifica el cuadre de caja y los comprobantes. Lo que no cumpla queda registrado como incumplimiento para Gerencia.' },
   chk_briefing: { emoji:'📣', titulo:'Briefing de servicio', texto:'Antes de abrir, alinea al equipo de salón: promociones del día, mesas reservadas, novedades. Toma un par de minutos.' },
   chk_mise_servicio: { emoji:'🍽️', titulo:'Mise en place de servicio', texto:'Deja el salón listo para recibir: mesas montadas, menús a mano, estación de meseros surtida. Revísalo antes de abrir.' },
@@ -4503,7 +4500,6 @@ const TIPS_ITEM = {
   coc_inspeccion: { emoji:'🔍', titulo:'Inspección de cocina', texto:'Inspección cruzada de cocina, aparte del checklist diario del equipo — un segundo par de ojos.' },
   sc_inspeccion: { emoji:'🔍', titulo:'Inspección de servicio al cliente', texto:'Inspección cruzada del salón, aparte del checklist diario del equipo.' },
   bar_inspeccion: { emoji:'🔍', titulo:'Inspección de bar', texto:'Inspección cruzada de la barra, aparte del checklist diario del equipo.' },
-  cf_inspeccion_caja: { emoji:'🔍', titulo:'Inspección de caja', texto:'Inspección cruzada de caja, aparte del checklist diario del equipo.' },
   mant_equipos: { emoji:'🔧', titulo:'Equipos', texto:'Hoja de vida de cada equipo: factura, historial de reparaciones y fotos.' },
   mant_preventivo: { emoji:'📅', titulo:'Mantenimiento preventivo', texto:'Calendario para saber cuándo toca revisar cada equipo antes de que falle.' },
   mant_solicitudes: { emoji:'🔔', titulo:'Reporte de daños y solicitudes', texto:'Repórtalo aquí en cuanto un equipo se dañe, para darle seguimiento.' },
@@ -5092,26 +5088,33 @@ let cajaLastRuta = 'Operación → Administración → Caja (cierre y comprobant
 function renderCajaModule(sec, group, item, ruta){
   if(ruta) cajaLastRuta = ruta;
   const puedeTodo = SESSION.rol !== 'empleado' || SESSION.area === 'contabilidad';
-  const disponibles = puedeTodo ? ['cierre','comprobantes'] : ['comprobantes'];
+  const disponibles = puedeTodo ? ['alistamiento_inicial','cierre','alistamiento_final','comprobantes','recibidos_prod'] : ['comprobantes'];
   if(!disponibles.includes(cajaActiveTab)) cajaActiveTab = disponibles[0];
   renderCajaTabs(sec, cajaActiveTab);
 }
 function renderCajaTabs(sec, activeId){
   const puedeTodo = SESSION.rol !== 'empleado' || SESSION.area === 'contabilidad';
+  const pendientesRecibo = prodDespachos().filter(d=>!d.recibido).length;
   const TODAS = [
+    {id:'alistamiento_inicial', label:'Alistamiento inicial (apertura)', icon:'checklist'},
     {id:'cierre', label:'Cierre de caja', icon:'cash'},
-    {id:'comprobantes', label:'Comprobantes', icon:'camera'}
+    {id:'alistamiento_final', label:'Alistamiento de área (final de jornada)', icon:'checklist'},
+    {id:'comprobantes', label:'Comprobantes', icon:'camera'},
+    {id:'recibidos_prod', label:'Recibidos de producción' + (pendientesRecibo>0 ? ` (${pendientesRecibo})` : ''), icon:'box'}
   ];
   const tabs = puedeTodo ? TODAS : TODAS.filter(t=>t.id==='comprobantes');
   if(!tabs.find(t=>t.id===activeId)) activeId = tabs[0].id;
   cajaActiveTab = activeId;
 
   const tabsHtml = tabs.map(t=>
-    `<button class="tab-btn ${t.id===activeId?'active':''}" onclick="renderCajaTabs(NAV.find(s=>s.id==='operacion'), '${t.id}')">${ic(t.icon,14)}${t.label}</button>`
+    `<button class="tab-btn ${t.id===activeId?'active':''}" onclick="renderCajaTabs(NAV.find(s=>s.id==='operacion'), '${t.id}')">${ic(t.icon,14)}${t.label}${t.id==='recibidos_prod' && pendientesRecibo>0 ? ' <span class=\"badge badge-dorado\" style=\"margin-left:4px;\">Nuevo</span>' : ''}</button>`
   ).join('');
 
   let bodyHtml = '';
-  if(activeId==='cierre') bodyHtml = cierreFormHtml();
+  if(activeId==='alistamiento_inicial') bodyHtml = aperturaFormHtml();
+  else if(activeId==='cierre') bodyHtml = cierreFormHtml();
+  else if(activeId==='alistamiento_final') bodyHtml = cajaAlistamientoFinalHtml();
+  else if(activeId==='recibidos_prod') bodyHtml = cajaRecibidosProdHtml();
   else bodyHtml = comprobantesFormHtml();
 
   const html = `
@@ -5128,7 +5131,7 @@ function renderCajaTabs(sec, activeId){
   if(window.innerWidth <= 820) document.getElementById('sidebar').classList.remove('open');
 }
 
-// ---- Tab 1: Alistamiento inicial (apertura) — 18 ítems + listo p/servicio, fiel al original ----
+// ---- Tab: Alistamiento inicial (apertura) — 18 ítems + listo p/servicio, fiel al original ----
 function aperturaFormHtml(){
   checkValues = {};
 
@@ -5227,26 +5230,220 @@ function guardarApertura(){
     observaciones
   };
   DB.push('caja_apertura', registro);
-  const sec = NAV.find(s=>s.id==='checklists');
-  const grp = sec.groups.find(g=>g.id==='administracion');
-  const it = grp.items.find(i=>i.id==='chk_alistamiento');
-  renderAlistamientoCajaStandalone(sec, grp, it, 'Checklists → Administración → Alistamiento inicial de caja');
   showMsg('ap_msg','Apertura guardada correctamente.','verde');
-}
-function renderAlistamientoCajaStandalone(sec, group, item, ruta){
-  const html = `
-    <div class="panel">
-      <div class="panel-header">
-        <div class="icon-circle" style="background:${hexToRgba(sec.color,0.14)}; color:${sec.color};">${ic('checklist',21)}</div>
-        <div><h2>Alistamiento inicial de caja</h2><div class="path">${ruta}</div></div>
-      </div>
-      <div id="cajaTabBody">${aperturaFormHtml()}</div>
-    </div>`;
-  document.getElementById('content').innerHTML = html;
-  if(window.innerWidth <= 820) document.getElementById('sidebar').classList.remove('open');
+  renderCajaTabs(NAV.find(s=>s.id==='operacion'), 'alistamiento_inicial');
 }
 
-// ---- Tab 2: Cierre de caja — conciliación completa, fiel al original ----
+// ---- Tab: Alistamiento de área (final de jornada) — checklist paralelo de cierre físico de caja + hallazgos ----
+// (antes vivía como "Inspección de caja" en Operación → Inspección; se trasladó aquí porque
+// es Caja quien lo diligencia al final de la jornada. Usa las mismas colecciones
+// 'inspecciones_checklist' / 'inspecciones_hallazgos' con area:'contabilidad', así que el
+// historial previo se conserva.)
+let cajaAlistFinalSubTab = 'checklist';
+let cajaAlistFinalValues = {};
+let cajaAlistFinalFoto = null;
+
+function cajaAlistamientoFinalHtml(){
+  const subtabsHtml = [
+    {id:'checklist', label:'Checklist paralelo'},
+    {id:'hallazgos', label:'Hallazgos sueltos'}
+  ].map(t => `<button class="tab-btn ${t.id===cajaAlistFinalSubTab?'active':''}" onclick="cajaAlistFinalSetSubTab('${t.id}')">${t.label}</button>`).join('');
+  const body = cajaAlistFinalSubTab==='checklist' ? cajaAlistFinalChecklistHtml() : cajaAlistFinalHallazgosHtml();
+  return `<div class="tab-bar" style="margin-bottom:12px;">${subtabsHtml}</div>${body}`;
+}
+function cajaAlistFinalSetSubTab(tabId){
+  cajaAlistFinalSubTab = tabId;
+  renderCajaTabs(NAV.find(s=>s.id==='operacion'), 'alistamiento_final');
+}
+function cajaAlistFinalChecklistHtml(){
+  const items = CIERRE_AREA_ITEMS['contabilidad'] || [];
+  const checksHtml = items.length ? items.map(it => `
+    <div class="check-row3">
+      <span>${it.label}</span>
+      <div class="toggle-yn" id="cajf_${it.id}">
+        <button type="button" class="yn-btn yes" onclick="cajaAlistFinalSetCheck('${it.id}','Cumple',this)">Sí</button>
+        <button type="button" class="yn-btn no" onclick="cajaAlistFinalSetCheck('${it.id}','No cumple',this)">No</button>
+        <button type="button" class="yn-btn na" onclick="cajaAlistFinalSetCheck('${it.id}','N/A',this)">N/A</button>
+      </div>
+    </div>`).join('') : `<p style="color:var(--text-light);font-size:13px;">Esta área todavía no tiene un checklist de referencia configurado.</p>`;
+
+  const historial = inspeccionesChecklistDeArea('contabilidad').slice(-8).reverse();
+  const historialHtml = historial.length ? `
+    <table class="mini-table">
+      <thead><tr><th>Fecha</th><th>Sede</th><th>Responsable</th><th>Ítems ok</th><th>Área conforme</th></tr></thead>
+      <tbody>${historial.map(h => `<tr>
+        <td>${h.fecha} ${h.hora}</td><td>${sedeLabelGlobal(h.sede)}</td><td>${h.nombre}</td>
+        <td>${h.itemsOk}/${h.itemsTotal}</td>
+        <td>${h.conforme ? '<span class="badge badge-verde">Sí</span>' : '<span class="badge badge-rojo">Con hallazgos</span>'}</td>
+      </tr>`).join('')}</tbody>
+    </table>` : `<p style="color:var(--text-light);font-size:13px;">Todavía no hay alistamientos finales registrados.</p>`;
+
+  return `
+    <p style="color:var(--text-light);font-size:12.5px;margin-bottom:14px;">Verifica al final de la jornada que el área de caja quede completamente lista para el cierre.</p>
+    <div class="form-field"><label>Responsable <span class="req-star">*</span></label><input id="cajf_responsable" value="${SESSION.nombre}"></div>
+    <div class="toggle-list" style="margin-top:12px;">${checksHtml}</div>
+    <div class="form-field" style="margin-top:10px;"><label>Observaciones generales</label><textarea id="cajf_observaciones" rows="2" maxlength="500" placeholder="Opcional"></textarea></div>
+    <button class="btn-primary" style="width:auto;padding:11px 22px;margin-top:14px;" onclick="cajaGuardarAlistamientoFinalChecklist()">Guardar alistamiento final</button>
+    <div id="cajf_msg"></div>
+    <h3 style="margin:24px 0 10px;font-size:15px;">Historial</h3>
+    ${historialHtml}
+  `;
+}
+function cajaAlistFinalSetCheck(id, val, btnEl){
+  cajaAlistFinalValues[id] = val;
+  const wrap = document.getElementById('cajf_' + id);
+  if(wrap){
+    wrap.querySelectorAll('.yn-btn').forEach(b => b.classList.remove('active'));
+    if(btnEl) btnEl.classList.add('active');
+  }
+}
+function cajaGuardarAlistamientoFinalChecklist(){
+  const responsable = (document.getElementById('cajf_responsable')||{}).value ? document.getElementById('cajf_responsable').value.trim() : '';
+  const observaciones = (document.getElementById('cajf_observaciones')||{}).value ? document.getElementById('cajf_observaciones').value.trim() : '';
+  const items = CIERRE_AREA_ITEMS['contabilidad'] || [];
+  if(!responsable){ showMsg('cajf_msg','Escribe el nombre del responsable.','rojo'); return; }
+  if(!items.length){ showMsg('cajf_msg','Esta área no tiene checklist de referencia configurado.','rojo'); return; }
+
+  const itemsGuardados = items.map(it => ({ id:it.id, label:it.label, val: cajaAlistFinalValues[it.id] || 'N/A' }));
+  const itemsOk = itemsGuardados.filter(i=>i.val==='Cumple').length;
+  const noCumple = itemsGuardados.filter(i=>i.val==='No cumple').length;
+  DB.push('inspecciones_checklist', {
+    area: 'contabilidad', sede: sedeParaGuardar(), usuario: SESSION.usuario, nombre: SESSION.nombre,
+    fecha: hoyStr(), hora: horaStr(),
+    responsable, items: itemsGuardados, itemsOk, itemsTotal: items.length,
+    conforme: noCumple === 0, observaciones
+  });
+  cajaAlistFinalValues = {};
+  showMsg('cajf_msg','Alistamiento final guardado.','verde');
+  cajaAlistFinalSetSubTab('checklist');
+}
+function cajaOnFotoAlistFinalChange(input){
+  cajaAlistFinalFoto = null;
+  const preview = document.getElementById('cajh_fotoPreview');
+  const file = input.files && input.files[0];
+  if(!file){ if(preview) preview.innerHTML=''; return; }
+  if(preview) preview.innerHTML = '<span style="font-size:11px;color:var(--text-light);">Procesando foto...</span>';
+  const reader = new FileReader();
+  reader.onload = e => {
+    const img = new Image();
+    img.onload = () => {
+      const maxW = 480;
+      const scale = Math.min(1, maxW / img.width);
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.max(1, Math.round(img.width * scale));
+      canvas.height = Math.max(1, Math.round(img.height * scale));
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      cajaAlistFinalFoto = canvas.toDataURL('image/jpeg', 0.6);
+      if(preview) preview.innerHTML = '<img src="'+cajaAlistFinalFoto+'" style="max-width:110px;border-radius:6px;border:1px solid var(--border);display:block;">';
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+function cajaAlistFinalHallazgosHtml(){
+  cajaAlistFinalFoto = null;
+  const todos = inspeccionesHallazgosDeArea('contabilidad').slice().reverse();
+  const gravedadOptions = INCIDENTE_GRAVEDADES.map(g=>`<option value="${g.id}">${g.label}</option>`).join('');
+
+  const listaHtml = todos.length ? `
+    <table class="mini-table">
+      <thead><tr><th>Fecha</th><th>Situación</th><th>Gravedad</th><th>Descripción</th><th>Responsable</th><th>Estado</th><th>Foto</th></tr></thead>
+      <tbody>${todos.map(r => {
+        const g = incGravedadMeta(r.gravedad);
+        return `<tr>
+          <td>${r.fecha} ${r.hora}</td><td>${r.situacion}</td>
+          <td><span class="badge badge-${g.color}">${g.label}</span></td>
+          <td style="max-width:260px;">${r.descripcion}</td>
+          <td>${r.nombre}</td>
+          <td>
+            <select onchange="cambiarEstadoHallazgo('${r.id}', this.value)" style="font-size:11.5px;padding:4px 6px;border-radius:6px;border:1px solid var(--border);background:var(--white);color:var(--text);">
+              ${INCIDENTE_ESTADOS.map(es=>`<option value="${es.id}" ${es.id===r.estado?'selected':''}>${es.label}</option>`).join('')}
+            </select>
+          </td>
+          <td>${r.foto ? `<a href="${r.foto}" target="_blank" rel="noopener">Ver</a>` : '-'}</td>
+        </tr>`;
+      }).join('')}</tbody>
+    </table>` : `<p style="color:var(--text-light);font-size:13px;">Todavía no hay hallazgos registrados en esta área.</p>`;
+
+  return `
+    <p style="color:var(--text-light);font-size:12.5px;margin-bottom:14px;">Usa esta sección para reportar cualquier situación que observes en caja al final de la jornada, sin necesidad de que esté en el checklist.</p>
+    <div class="form-field"><label>¿Qué situación encontraste? <span class="req-star">*</span></label><input id="cajh_situacion" placeholder="Ej: Faltante en caja menor"></div>
+    <div class="form-grid" style="margin-top:10px;">
+      <div class="form-field"><label>Gravedad <span class="req-star">*</span></label>
+        <select id="cajh_gravedad"><option value="">Seleccionar...</option>${gravedadOptions}</select>
+      </div>
+    </div>
+    <div class="form-field" style="margin-top:10px;"><label>Descripción <span class="req-star">*</span></label>
+      <textarea id="cajh_descripcion" rows="3" maxlength="600" placeholder="Detalla qué encontraste, cuándo y dónde"></textarea>
+    </div>
+    <div class="form-field" style="margin-top:10px;"><label>Foto o evidencia</label>
+      <input type="file" id="cajh_foto" accept="image/*" onchange="cajaOnFotoAlistFinalChange(this)">
+      <div id="cajh_fotoPreview" style="margin-top:6px;"></div>
+    </div>
+    <button class="btn-primary" style="width:auto;padding:11px 22px;margin-top:14px;" onclick="cajaGuardarAlistamientoFinalHallazgo()">Registrar hallazgo</button>
+    <div id="cajh_msg"></div>
+    <h3 style="margin:24px 0 10px;font-size:15px;">Historial de hallazgos</h3>
+    ${listaHtml}
+  `;
+}
+function cajaGuardarAlistamientoFinalHallazgo(){
+  const situacion = (document.getElementById('cajh_situacion')||{}).value ? document.getElementById('cajh_situacion').value.trim() : '';
+  const gravedad = (document.getElementById('cajh_gravedad')||{}).value || '';
+  const descripcion = (document.getElementById('cajh_descripcion')||{}).value ? document.getElementById('cajh_descripcion').value.trim() : '';
+  if(!situacion){ showMsg('cajh_msg','Escribe qué situación encontraste.','rojo'); return; }
+  if(!gravedad){ showMsg('cajh_msg','Selecciona la gravedad.','rojo'); return; }
+  if(!descripcion){ showMsg('cajh_msg','Describe el hallazgo.','rojo'); return; }
+  DB.push('inspecciones_hallazgos', {
+    id: 'insh_'+Date.now(),
+    area: 'contabilidad', sede: sedeParaGuardar(), usuario: SESSION.usuario, nombre: SESSION.nombre,
+    fecha: hoyStr(), hora: horaStr(),
+    situacion, gravedad, descripcion, foto: cajaAlistFinalFoto,
+    estado: 'abierto'
+  });
+  cajaAlistFinalFoto = null;
+  showMsg('cajh_msg','Hallazgo registrado.','verde');
+  cajaAlistFinalSetSubTab('hallazgos');
+}
+
+// ---- Tab: Recibidos de producción — Caja confirma lo que llega del Centro de producción ----
+function cajaRecibidosProdHtml(){
+  const despachos = [...prodDespachos()].sort((a,b)=>(b.ts||0)-(a.ts||0));
+  const destColor = {'Cocina Montería':'badge-azul','Cocina Chinú':'badge-dorado','Eventos':'badge-gris','Bar':'badge-verde'};
+  const pendientes = despachos.filter(d=>!d.recibido).length;
+  const alerta = pendientes>0 ? `<div class="badge badge-dorado" style="margin-bottom:12px;display:inline-block;">⏳ Tienes ${pendientes} despacho${pendientes===1?'':'s'} del centro de producción pendiente${pendientes===1?'':'s'} de confirmar</div><br>` : '';
+  const filas = despachos.length ? despachos.map(d=>{
+    const recibido = !!d.recibido;
+    const estado = recibido ? `<span class="badge badge-verde">✅ Recibido${d.recibidoF?' · '+d.recibidoF:''}</span>` : `<span class="badge badge-dorado">⏳ Pendiente</span>`;
+    const btn = !recibido ? `<button class="btn-primary" style="width:auto;padding:5px 12px;font-size:11.5px;" onclick="cajaConfirmarRecibidoProd('${d.id}')">✅ Confirmar</button>` : '';
+    const costoU = prodGetCostoProm(d.prod);
+    const costoT = costoU * (d.cant||0);
+    return `<tr>
+      <td><strong style="color:var(--azul)">${d.ticket||'—'}</strong></td><td>${d.f||'—'}</td><td><strong>${homeEsc(d.prod)}</strong></td><td><strong>${d.cant}</strong></td>
+      <td><span class="badge ${destColor[d.dest]||'badge-gris'}">${homeEsc(d.dest)}</span></td>
+      <td>${costoU>0?prodFmt(costoU):'—'}</td><td>${costoT>0?'<strong>'+prodFmt(costoT)+'</strong>':'—'}</td><td>${estado}</td><td>${btn}</td>
+    </tr>`;
+  }).join('') : `<tr><td colspan="9" style="text-align:center;color:var(--text-light);padding:16px;">Sin despachos todavía</td></tr>`;
+
+  return `
+    ${alerta}
+    <div class="panel">
+      <div class="form-section-title" style="margin-top:0;display:flex;align-items:center;">Despachos del centro de producción
+        <span style="font-size:11.5px;color:var(--text-light);font-weight:400;margin-left:8px;">Confirma aquí lo que llegó para que quede disponible en el sistema — el costo es para digitar en Fudo</span>
+        <button class="btn-secondary" style="margin-left:auto;padding:5px 10px;font-size:11px;" onclick="prodExportRecibosCSV()">⬇ CSV para Fudo</button>
+      </div>
+      <div style="overflow-x:auto;"><table class="mini-table"><thead><tr><th>Ticket</th><th>Fecha</th><th>Producto</th><th>Cant.</th><th>Destino</th><th>Costo/porc</th><th>Costo total</th><th>Estado</th><th></th></tr></thead><tbody>${filas}</tbody></table></div>
+    </div>`;
+}
+function cajaConfirmarRecibidoProd(id){
+  const d = prodDespachos().find(x=>x.id===id);
+  if(!d) return;
+  d.recibido = true; d.recibidoF = hoyStr();
+  prodGuardarDespachos(prodDespachos());
+  renderCajaTabs(NAV.find(s=>s.id==='operacion'), 'recibidos_prod');
+}
+
+// ---- Tab: Cierre de caja — conciliación completa, fiel al original ----
 function comprobantesTransferenciaHoyDisponibles(){
   const hoy = hoyStr();
   return filtrarPorSede(DB.get('caja_comprobantes', [])).filter(c => c.fecha===hoy && !c.usadoEnCierre && Number(c.monto)>0);
@@ -13896,8 +14093,7 @@ function planifCatalogoTareasFijo(){
   [
     { id:'coc_inspeccion', label:'Inspección de cocina' },
     { id:'sc_inspeccion', label:'Inspección de servicio al cliente' },
-    { id:'bar_inspeccion', label:'Inspección de bar' },
-    { id:'cf_inspeccion_caja', label:'Inspección de caja' }
+    { id:'bar_inspeccion', label:'Inspección de bar' }
   ].forEach(i => items.push({ id:i.id, label:i.label, categoria:'inspeccion' }));
   return items;
 }
@@ -15389,7 +15585,7 @@ function prodTabsPermitidos(){
 function prodPuedeVerConteoProduccion(){
   return prodEsAdmin() || SESSION.area==='centro_produccion';
 }
-function prodPuedeConfirmarRecibo(){ return prodEsAdmin() || SESSION.area==='cocina'; }
+function prodPuedeConfirmarRecibo(){ return prodEsAdmin() || SESSION.area==='contabilidad'; }
 function prodPuedeBorrar(){ return prodEsAdmin(); }
 
 // ---- Módulo: entrada + pestañas ----
