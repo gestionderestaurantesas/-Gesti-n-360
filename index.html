@@ -15501,11 +15501,14 @@ function faqSoniaGuardarRespuesta(key, idx){
 
 /* ==================================================================
    REPORTE GENERAL 360 — un solo ítem de menú en Gerencia que centraliza
-   los 9 reportes que antes vivían sueltos, con una pestaña "Dashboard"
+   los reportes que antes vivían sueltos, con una pestaña "Dashboard"
    (resumen del día, con tarjetas que llevan directo a la pestaña de esa
-   área) y una pestaña por reporte. No se reescribe la lógica de cada
-   reporte: se deja que su función original (renderVentas360Module,
-   renderReporteCajaGerencia, etc.) dibuje normalmente sobre #content —
+   área) y una pestaña por reporte. "Ventas y Caja" fusiona lo que antes
+   eran 3 pestañas sueltas (Ventas, Caja, Caja-Ventas): renderVentas360Module
+   trae sus propias sub-pestañas de siempre (Resumen, Briefing, etc.) y le
+   agregamos una más, "Cierres de caja" (cvBodyHtml), con los cierres y
+   comprobantes que registra el módulo de Caja. No se reescribe la lógica de
+   cada reporte: se deja que su función original dibuje normalmente sobre #content —
    como siempre hace — y luego se captura ese resultado y se reinyecta
    adentro de nuestra propia pestaña, así que cada reporte se sigue
    comportando exactamente igual (filtros, rangos de fecha, botones)
@@ -15515,10 +15518,8 @@ let reporteGeneral360ActiveTab = 'dashboard';
 let reporteGeneral360LastRuta = '';
 const REPORTE_GENERAL_360_TABS = [
   { id:'dashboard', label:'Dashboard', icon:'chart' },
-  { id:'ventas', label:'Ventas', icon:'trend', fn:'renderVentas360Module' },
+  { id:'ventas', label:'Ventas y Caja', icon:'trend', fn:'renderVentas360Module' },
   { id:'inventario', label:'Inventario', icon:'box', fn:'renderReporteInventarioGerencia' },
-  { id:'caja', label:'Caja', icon:'cash', fn:'renderReporteCajaGerencia' },
-  { id:'caja_ventas', label:'Caja - Ventas', icon:'trend', fn:'renderReporteCajaVentasGerencia' },
   { id:'bajas', label:'Bajas', icon:'down', fn:'renderReporteBajasGerencia' },
   { id:'sucesos', label:'Sucesos por área', icon:'bell', fn:'renderReporteSucesosAreaGerencia' },
   { id:'hallazgos', label:'Hallazgos de inspección', icon:'search', fn:'renderReporteHallazgosGerencia' },
@@ -15611,7 +15612,7 @@ function reporteGeneral360DashboardHtml(){
       ${kpi(incumplimientosHoy>0?'#C0392B':'#2E7D32', 'shield', incumplimientosHoy, 'Incumplimientos de hoy', "reporteGeneral360SetTab('incumplimientos')")}
       ${kpi('#B87333', 'trend', ultimoDiaVentas ? fmtMoney(ultimoDiaVentas.totalVentas) : '-', ultimoDiaVentas ? 'Venta del ' + ultimoDiaVentas.fecha : 'Sin ventas cargadas', "reporteGeneral360SetTab('ventas')")}
       ${kpi('#6B4E9E', 'box', sesionInv ? 'Activa' : 'Cerrada', 'Sesión de inventario', "reporteGeneral360SetTab('inventario')")}
-      ${kpi(conDiferencia>0?'#C0392B':'#2E7D32', 'cash', conDiferencia, 'Cierres de caja con diferencia', "reporteGeneral360SetTab('caja')")}
+      ${kpi(conDiferencia>0?'#C0392B':'#2E7D32', 'cash', conDiferencia, 'Cierres de caja con diferencia', "reporteGeneral360SetTab('ventas'); setTimeout(function(){ v360SetTab(NAV.find(s=>s.id==='gerencia'),'cierres_caja'); }, 60);")}
       ${kpi(bajasHoy.length>0?'#1E5A70':'#2E7D32', 'down', bajasHoy.length + (bajasValorHoy ? ' ('+fmtMoney(bajasValorHoy)+')' : ''), 'Bajas de hoy', "reporteGeneral360SetTab('bajas')")}
       ${kpi(incidentesAbiertos>0?'#C0392B':'#2E7D32', 'bell', incidentesAbiertos, 'Sucesos abiertos', "reporteGeneral360SetTab('sucesos')")}
       ${kpi('#3B6EA8', 'search', hallazgosTotal, 'Hallazgos de inspección', "reporteGeneral360SetTab('hallazgos')")}
@@ -15621,78 +15622,15 @@ function reporteGeneral360DashboardHtml(){
   `;
 }
 
-// ---- Gerencia: Reporte de caja (consolidado, columnas fieles al original) ----
-function renderReporteCajaGerencia(sec, group, item, ruta){
-  const cierres = filtrarPorSede(DB.get('caja_cierre', [])).slice().reverse();
-  const comprobantes = filtrarPorSede(DB.get('caja_comprobantes', [])).slice().reverse();
-  const conDiferencia = cierres.filter(c => (c.diferenciaTotal||0) !== 0);
-  const sumaDiferencias = cierres.reduce((a,c) => a + (c.diferenciaTotal||0), 0);
-
-  const kpi = (color, iconName, valor, label) => `
-    <div class="module-card" style="cursor:default;">
-      <div class="icon-circle" style="background:${hexToRgba(color,0.14)}; color:${color};">${ic(iconName,24)}</div>
-      <h3>${valor}</h3><p>${label}</p>
-    </div>`;
-
-  const kpisHtml = `<div class="module-grid" style="margin-bottom:22px;">
-    ${kpi('#2E7D32','cash', cierres.length, 'Cierres registrados')}
-    ${kpi('#C0392B','bell', conDiferencia.length, 'Cierres con diferencia')}
-    ${kpi('#3B6EA8','chart', fmtMoney(sumaDiferencias), 'Suma de diferencias')}
-    ${kpi('#1E5A70','camera', comprobantes.length, 'Comprobantes registrados')}
-  </div>`;
-
-  const tabla = (rows, cols) => rows.length ? `
-    <table class="mini-table">
-      <thead><tr>${cols.map(c=>`<th>${c.h}</th>`).join('')}</tr></thead>
-      <tbody>${rows.map(r => `<tr>${cols.map(c=>`<td>${c.v(r)}</td>`).join('')}</tr>`).join('')}</tbody>
-    </table>` : `<p style="color:var(--text-light);font-size:13px;">Sin datos todavía.</p>`;
-
-  const diffBadge = v => v===0 ? '<span class="badge badge-verde">$0</span>' : '<span class="badge badge-rojo">'+fmtMoney(v)+'</span>';
-  const datafonoTxt = r => [r.datafonos&&r.datafonos.p1?'P1':null, r.datafonos&&r.datafonos.p2?'P2':null, r.datafonos&&r.datafonos.alt?'Alt':null].filter(Boolean).join(', ') || '-';
-
-  const colsCierre = [
-    {h:'Fecha', v:r=>r.fecha+' '+r.hora}, {h:'Sede', v:r=>sedeLabelGlobal(r.sede)}, {h:'Responsable', v:r=>r.responsable||r.nombre},
-    {h:'Datáfono', v:datafonoTxt},
-    {h:'Verif. facturación', v:r=> r.verifPrincipales==null ? '-' : (r.verifPrincipales===0 ? '<span class="badge badge-verde">Coincide</span>' : '<span class="badge badge-rojo">'+fmtMoney(r.verifPrincipales)+'</span>')},
-    {h:'Efectivo (dif)', v:r=>diffBadge(r.dEfectivo||0)},
-    {h:'Transf. (dif)', v:r=>diffBadge(r.dTransf||0)},
-    {h:'Tarjetas (dif)', v:r=>diffBadge(r.dTarjetas||0)},
-    {h:'Gastos', v:r=>fmtMoney(r.gastosCaja)},
-    {h:'Bolsa seguridad', v:r=>fmtMoney(r.bolsaSeguridad)}
-  ];
-  const colsComp = [
-    {h:'Fecha', v:r=>r.fecha+' '+r.hora}, {h:'Sede', v:r=>sedeLabelGlobal(r.sede)}, {h:'Mesa', v:r=>r.mesa||'-'},
-    {h:'Nombre', v:r=>r.nombreRecibe||r.nombre}, {h:'Monto', v:r=> r.monto ? fmtMoney(r.monto) : '-'},
-    {h:'Lectura IA', v:r=>'<span class="badge badge-gris">Manual</span>'},
-    {h:'Usado en cierre', v:r=> r.usadoEnCierre ? '<span class="badge badge-verde">Sí</span>' : '<span class="badge badge-gris">No</span>'}
-  ];
-
-  const html = `
-    <div class="panel">
-      <div class="panel-header">
-        <div class="icon-circle" style="background:${hexToRgba(sec.color,0.14)}; color:${sec.color};">${ic('cash',21)}</div>
-        <div><h2>Reporte de caja 360</h2><div class="path">${ruta}</div></div>
-      </div>
-      ${kpisHtml}
-      <h3 style="font-size:15px;margin-bottom:10px;">Cierres con diferencias o novedades</h3>
-      ${tabla(conDiferencia, colsCierre)}
-      <h3 style="font-size:15px;margin:24px 0 10px;">Histórico de cierres de caja</h3>
-      ${tabla(cierres.slice(0,30), colsCierre)}
-      <h3 style="font-size:15px;margin:24px 0 10px;">Histórico de comprobantes de transferencia</h3>
-      ${tabla(comprobantes.slice(0,30), colsComp)}
-    </div>`;
-  document.getElementById('content').innerHTML = html;
-}
-
-// ---- Gerencia: Caja - Ventas (panel gerencial consolidado, inspirado en la
-// app de referencia de Caja: KPIs de ventas por medio de pago, descuadres,
-// cumplimiento de datáfono/facturación y ranking de responsables, con
-// filtro de rango de fechas) ----
+// ---- Gerencia: Cierres de caja (KPIs de ventas por medio de pago,
+// descuadres, cumplimiento de datáfono y ranking de responsables, con
+// filtro de rango de fechas) — embebido como sub-pestaña dentro de
+// "Ventas y Caja" (ver v360Render). ----
 let cvRangoDesde = null, cvRangoHasta = null;
 function cvSetRango(desde, hasta){
   cvRangoDesde = desde || null;
   cvRangoHasta = hasta || null;
-  reporteGeneral360SetTab('caja_ventas');
+  v360SetTab(NAV.find(s=>s.id==='gerencia'), 'cierres_caja');
 }
 function cvEnRango(fecha){
   if(!fecha) return false;
@@ -15700,7 +15638,7 @@ function cvEnRango(fecha){
   if(cvRangoHasta && fecha > cvRangoHasta) return false;
   return true;
 }
-function renderReporteCajaVentasGerencia(sec, group, item, ruta){
+function cvBodyHtml(){
   const todosCierres = filtrarPorSede(DB.get('caja_cierre', []));
   const todosComp = filtrarPorSede(DB.get('caja_comprobantes', []));
   const hayRango = !!(cvRangoDesde || cvRangoHasta);
@@ -15787,24 +15725,18 @@ function renderReporteCajaVentasGerencia(sec, group, item, ruta){
       ${hayRango ? `<div class="form-field" style="align-self:end;"><button class="btn-secondary" onclick="cvSetRango(null,null)">Ver todo</button></div>` : ''}
     </div>`;
 
-  const html = `
-    <div class="panel">
-      <div class="panel-header">
-        <div class="icon-circle" style="background:${hexToRgba(sec.color,0.14)}; color:${sec.color};">${ic('trend',21)}</div>
-        <div><h2>Caja - Ventas</h2><div class="path">${ruta}</div></div>
-      </div>
-      ${rangoHtml}
-      ${kpisHtml}
-      <h3 style="font-size:15px;margin:24px 0 10px;">Ranking de responsables (por descuadre acumulado)</h3>
-      ${rankingHtml}
-      <h3 style="font-size:15px;margin:24px 0 10px;">Cierres con diferencias o novedades</h3>
-      ${tabla(conDescuadre, colsCierre)}
-      <h3 style="font-size:15px;margin:24px 0 10px;">Histórico de cierres de caja</h3>
-      ${tabla(cierres.slice(0,50), colsCierre)}
-      <h3 style="font-size:15px;margin:24px 0 10px;">Histórico de comprobantes de transferencia</h3>
-      ${tabla(comprobantes.slice(0,50), colsComp)}
-    </div>`;
-  document.getElementById('content').innerHTML = html;
+  return `
+    ${rangoHtml}
+    ${kpisHtml}
+    <h3 style="font-size:15px;margin:24px 0 10px;">Ranking de responsables (por descuadre acumulado)</h3>
+    ${rankingHtml}
+    <h3 style="font-size:15px;margin:24px 0 10px;">Cierres con diferencias o novedades</h3>
+    ${tabla(conDescuadre, colsCierre)}
+    <h3 style="font-size:15px;margin:24px 0 10px;">Histórico de cierres de caja</h3>
+    ${tabla(cierres.slice(0,50), colsCierre)}
+    <h3 style="font-size:15px;margin:24px 0 10px;">Histórico de comprobantes de transferencia</h3>
+    ${tabla(comprobantes.slice(0,50), colsComp)}
+  `;
 }
 
 /* ==================================================================
@@ -18462,6 +18394,7 @@ function v360Render(sec){
     {id:'operacion', label:'Cancelaciones y errores', icon:'flag'},
     {id:'detalle', label:'Detalle pormenorizado', icon:'search'},
     {id:'caja', label:'Caja, costos y servicio', icon:'cash'},
+    {id:'cierres_caja', label:'Cierres de caja', icon:'cash'},
     {id:'tendencias', label:'Tendencias y proyección', icon:'trend'},
     {id:'cargar', label:'Cargar cierre', icon:'upload'},
   ];
@@ -18473,7 +18406,7 @@ function v360Render(sec){
     </select>` : '';
 
   let bodyHtml;
-  const necesitaDia = !['cargar','tendencias'].includes(v360ActiveTab);
+  const necesitaDia = !['cargar','tendencias','cierres_caja'].includes(v360ActiveTab);
   if(!day && necesitaDia){
     bodyHtml = `<div class="v360-empty" style="padding:40px 20px;">
       <p style="margin-bottom:12px;">Todavía no hay ningún cierre cargado.</p>
@@ -18484,6 +18417,7 @@ function v360Render(sec){
   else if(v360ActiveTab==='operacion') bodyHtml = v360OperacionHtml(day, detalle);
   else if(v360ActiveTab==='detalle') bodyHtml = v360DetalleHtml(day, detalle);
   else if(v360ActiveTab==='caja') bodyHtml = v360CajaHtml(day, detalle);
+  else if(v360ActiveTab==='cierres_caja') bodyHtml = cvBodyHtml();
   else if(v360ActiveTab==='tendencias') bodyHtml = v360TendenciasHtml(hist);
   else if(v360ActiveTab==='cargar') bodyHtml = v360CargarHtml(hist);
 
@@ -18491,7 +18425,7 @@ function v360Render(sec){
     <div class="panel">
       <div class="panel-header">
         <div class="icon-circle" style="background:${hexToRgba(sec.color,0.14)}; color:${sec.color};">${ic('trend',21)}</div>
-        <div style="flex:1;"><h2>Reporte de ventas 360</h2><div class="path">${v360LastRuta}</div></div>
+        <div style="flex:1;"><h2>Ventas y Caja</h2><div class="path">${v360LastRuta}</div></div>
         ${daySelectHtml}
       </div>
       <div class="v360-hint"><b>Cómo usarlo:</b> revisa <b>Resumen del día</b> (ahí saltan las alertas) → lee <b>Briefing de mañana</b> en la reunión del equipo → si necesitas profundizar, entra a Cancelaciones, Detalle, Caja o Tendencias. Cada noche, sube el cierre en <b>Cargar cierre</b>.</div>
