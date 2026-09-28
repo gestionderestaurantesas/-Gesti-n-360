@@ -579,10 +579,9 @@
 
   .denom-input{ width:78px; padding:5px 7px; border:1px solid var(--border); border-radius:6px; font-size:12.5px; text-align:right; }
 
-  .cierre-layout{ display:grid; grid-template-columns:1fr 300px; gap:20px; align-items:start; }
-  .cierre-right{ position:sticky; top:10px; background:var(--marfil); border:1px solid var(--border); border-radius:12px; padding:14px; }
+  .cierre-layout{ display:grid; grid-template-columns:1.3fr 1fr; gap:20px; align-items:start; }
   .cierre-right .mini-table td, .cierre-right .mini-table th{ padding:6px 7px; }
-  @media(max-width:900px){ .cierre-layout{ grid-template-columns:1fr; } .cierre-right{ position:static; } }
+  @media(max-width:900px){ .cierre-layout{ grid-template-columns:1fr; } }
 
   .compact-form .form-section-title{ margin:16px 0 8px; font-size:11px; }
   .compact-form .form-grid{ gap:8px; }
@@ -5662,17 +5661,35 @@ function computeDiffs(){
   };
 }
 function renderLiveDiff(){
-  const box = document.getElementById('ci_liveDiff');
-  if(!box) return;
   const d = computeDiffs();
   const total = d.dEfectivo + d.dTransf + d.dTarjetas;
   const card = (lbl,val) => `<div class="stat-card2 ${val===0?'ok':'bad'}"><div class="lbl">${lbl}</div><div class="val">${fmtMoney(val)}</div></div>`;
-  box.innerHTML = `<div class="stat-grid2">
-    ${card('Diferencia efectivo', d.dEfectivo)}
-    ${card('Diferencia transferencias', d.dTransf)}
-    ${card('Diferencia tarjetas', d.dTarjetas)}
-    ${card('Diferencia total', total)}
-  </div>`;
+
+  const box = document.getElementById('ci_liveDiff');
+  if(box){
+    box.innerHTML = `<div class="stat-grid2">
+      ${card('Efectivo esperado', d.efectivoEsperado)}
+      ${card('Diferencia efectivo', d.dEfectivo)}
+      ${card('Diferencia transferencias', d.dTransf)}
+      ${card('Diferencia tarjetas', d.dTarjetas)}
+    </div>`;
+  }
+
+  const statRow = document.getElementById('ci_statRow');
+  if(statRow){
+    const num = id => { const el = document.getElementById(id); return el ? (Number(el.value)||0) : 0; };
+    const activos = [];
+    if(document.getElementById('ci_datafonoP1_activo') && document.getElementById('ci_datafonoP1_activo').checked) activos.push('P1');
+    if(document.getElementById('ci_datafonoP2_activo') && document.getElementById('ci_datafonoP2_activo').checked) activos.push('P2');
+    if(document.getElementById('ci_datafonoAlterno_activo') && document.getElementById('ci_datafonoAlterno_activo').checked) activos.push('Alt');
+    const dfTxt = activos.length ? activos.join(' + ') : 'Sin elegir';
+    const stat = (lbl,val,sub,cls) => `<div class="stat-card2 ${cls||''}"><div class="lbl">${lbl}</div><div class="val">${val}</div><div class="sub">${sub}</div></div>`;
+    statRow.innerHTML =
+      stat('Efectivo contado', fmtMoney(num('ci_efectivoContado')), num('ci_efectivoContado')===0 ? 'Pendiente de conteo' : 'Conteo registrado') +
+      stat('Transferencias', fmtMoney(num('ci_transfContadas')), 'Diferencia: ' + fmtMoney(d.dTransf)) +
+      stat('Tarjetas / Datáfono', fmtMoney(num('ci_tarjetasContadas')), 'Datáfono: ' + dfTxt) +
+      stat('Diferencia total', fmtMoney(total), total===0 ? 'Cuadrado' : 'Por conciliar', total===0?'ok':'bad');
+  }
 }
 function cierreFormHtml(){
   const hoy = hoyStr();
@@ -5719,88 +5736,97 @@ function cierreFormHtml(){
   return `
     <datalist id="ci_personalList">${datalistHtml}</datalist>
     <div class="compact-form">
+    <div id="ci_statRow" class="stat-grid2" style="margin-bottom:16px;"></div>
     <div class="cierre-layout">
       <div class="cierre-left">
-        <div class="form-section-title" style="margin-top:0;">Datos del cierre</div>
-        <div class="form-grid">
-          <div class="form-field"><label>Nombre del responsable <span class="req-star">*</span></label><input id="ci_responsable" list="ci_personalList" value="${SESSION.nombre}"></div>
-          <div class="form-field"><label>Fecha de cierre <span class="req-star">*</span></label><input id="ci_fecha" type="date" value="${hoy}"></div>
-        </div>
-        <div class="form-field" style="max-width:220px;"><label>Turno del cierre</label>
-          <select id="ci_turnoFudo">
-            <option value="tarde">Turno tarde (hasta 4:00pm)</option>
-            <option value="noche">Turno noche (4:00pm en adelante)</option>
-          </select>
-        </div>
-        <button type="button" class="btn-secondary" style="width:auto;padding:8px 16px;margin:4px 0 10px;" onclick="traerDatosFudo()">Traer datos de Fudo</button>
-        <div id="ci_fudoMsg" style="font-size:12px;margin-bottom:8px;"></div>
-
-        <div class="form-section-title">Conciliación de efectivo, transferencias y tarjetas</div>
-        <div class="form-grid">
-          <div class="form-field"><label>Monto inicial (base) <span class="req-star">*</span></label><input id="ci_montoInicial" type="number" step="0.01" value="${aperturaHoy ? aperturaHoy.base : ''}" oninput="renderLiveDiff()"></div>
-          <div class="form-field"><label>Efectivo sistema <span class="req-star">*</span></label><input id="ci_efectivoSistema" type="number" step="0.01" oninput="renderLiveDiff()"></div>
-          <div class="form-field"><label>Efectivo contado (auto)</label><input id="ci_efectivoContado" type="number" step="0.01" readonly value="0"></div>
-        </div>
-        ${aperturaHoy ? `<small>Base tomada del alistamiento de hoy registrado por ${aperturaHoy.responsable}.</small>` : ''}
-        <div class="form-grid">
-          <div class="form-field"><label>Transferencias sistema <span class="req-star">*</span></label><input id="ci_transfSistema" type="number" step="0.01" oninput="renderLiveDiff()"></div>
-          <div class="form-field"><label>Transferencias contadas (auto)</label><input id="ci_transfContadas" type="number" step="0.01" readonly value="${transfContadasInicial}"></div>
-        </div>
-        <small>Suma automática de comprobantes con monto de hoy, aún no usados en otro cierre (${transferenciasDisponibles.length} comprobante${transferenciasDisponibles.length===1?'':'s'}).</small>
-
-        <div class="form-grid">
-          <div class="form-field"><label>Tarjetas sistema <span class="req-star">*</span></label><input id="ci_tarjetasSistema" type="number" step="0.01" oninput="renderLiveDiff()"></div>
-          <div class="form-field"><label>Tarjetas contadas (auto)</label><input id="ci_tarjetasContadas" type="number" step="0.01" readonly value="0"></div>
-        </div>
-        <div class="datafono-check-row">
-          <label class="datafono-check"><input type="checkbox" id="ci_datafonoP1_activo" onchange="toggleDatafonoCierre('P1')"> Datáfono 1 Principal</label>
-          <label class="datafono-check"><input type="checkbox" id="ci_datafonoP2_activo" onchange="toggleDatafonoCierre('P2')"> Datáfono 2 Principal</label>
-          <label class="datafono-check"><input type="checkbox" id="ci_datafonoAlterno_activo" onchange="toggleDatafonoCierre('Alterno')"> Datáfono 3 Alterno</label>
-        </div>
-        <div class="form-grid">
-          <div class="form-field"><label>Datáfono 1 Principal</label><input id="ci_datafonoP1" type="number" step="0.01" disabled oninput="recomputeTarjetasContadas()"></div>
-          <div class="form-field"><label>Datáfono 2 Principal</label><input id="ci_datafonoP2" type="number" step="0.01" disabled oninput="recomputeTarjetasContadas()"></div>
-          <div class="form-field"><label>Datáfono 3 Alterno</label><input id="ci_datafonoAlterno" type="number" step="0.01" disabled oninput="recomputeTarjetasContadas()"></div>
-        </div>
-
-        <div id="ci_verifPrincipalesBlock" style="display:none;">
+        <div class="panel" style="margin-bottom:14px;">
+          <div class="form-section-title" style="margin-top:0;">Datos generales</div>
           <div class="form-grid">
-            <div class="form-field"><label>Total datáfono(s) principal(es) (auto)</label><input id="ci_sumaPrincipales" type="number" readonly value="0"></div>
-            <div class="form-field"><label>Total facturado electrónicamente <span class="req-star">*</span></label><input id="ci_facturadoPrincipales" type="number" step="0.01" oninput="recomputeVerifPrincipales()"></div>
+            <div class="form-field"><label>Nombre del responsable <span class="req-star">*</span></label><input id="ci_responsable" list="ci_personalList" value="${SESSION.nombre}"></div>
+            <div class="form-field"><label>Fecha de cierre <span class="req-star">*</span></label><input id="ci_fecha" type="date" value="${hoy}"></div>
           </div>
-          <div id="ci_diffPrincipalesBox"></div>
+          <div class="form-field" style="max-width:220px;margin-top:8px;"><label>Turno del cierre</label>
+            <select id="ci_turnoFudo">
+              <option value="tarde">Turno tarde (hasta 4:00pm)</option>
+              <option value="noche">Turno noche (4:00pm en adelante)</option>
+            </select>
+          </div>
+          <button type="button" class="btn-secondary" style="width:auto;padding:8px 16px;margin:4px 0 0;" onclick="traerDatosFudo()">Traer datos de Fudo</button>
+          <div id="ci_fudoMsg" style="font-size:12px;margin-top:6px;"></div>
         </div>
 
-        <div class="form-section-title">Otros pagos según sistema (referencia)</div>
-        <div class="form-grid">
-          <div class="form-field"><label>Anticipos (sistema)</label><input id="ci_anticiposSistema" type="number" step="0.01"></div>
-          <div class="form-field"><label>Bonos de regalo (sistema)</label><input id="ci_bonosSistema" type="number" step="0.01"></div>
-          <div class="form-field"><label>Cortesía (sistema)</label><input id="ci_cortesiaSistema" type="number" step="0.01"></div>
-          <div class="form-field"><label>Crédito (sistema)</label><input id="ci_creditoSistema" type="number" step="0.01"></div>
-        </div>
+        <div class="panel">
+          <div class="form-section-title" style="margin-top:0;">Conciliación</div>
+          <div class="form-grid">
+            <div class="form-field"><label>Monto inicial (base) <span class="req-star">*</span></label><input id="ci_montoInicial" type="number" step="0.01" value="${aperturaHoy ? aperturaHoy.base : ''}" oninput="renderLiveDiff()"></div>
+            <div class="form-field"><label>Efectivo sistema <span class="req-star">*</span></label><input id="ci_efectivoSistema" type="number" step="0.01" oninput="renderLiveDiff()"></div>
+            <div class="form-field"><label>Efectivo contado (auto)</label><input id="ci_efectivoContado" type="number" step="0.01" readonly value="0"></div>
+          </div>
+          ${aperturaHoy ? `<small>Base tomada del alistamiento de hoy registrado por ${aperturaHoy.responsable}.</small>` : ''}
+          <div class="form-grid">
+            <div class="form-field"><label>Transferencias sistema <span class="req-star">*</span></label><input id="ci_transfSistema" type="number" step="0.01" oninput="renderLiveDiff()"></div>
+            <div class="form-field"><label>Transferencias contadas (auto)</label><input id="ci_transfContadas" type="number" step="0.01" readonly value="${transfContadasInicial}"></div>
+          </div>
+          <small>Suma automática de comprobantes con monto de hoy, aún no usados en otro cierre (${transferenciasDisponibles.length} comprobante${transferenciasDisponibles.length===1?'':'s'}).</small>
 
-        <div class="form-section-title">Gastos y seguridad</div>
-        <div class="form-grid">
-          <div class="form-field"><label>Gastos de caja</label><input id="ci_gastosCaja" type="number" step="0.01" placeholder="0" oninput="renderLiveDiff()"></div>
-          <div class="form-field"><label>Bolsa de seguridad <span class="req-star">*</span></label><input id="ci_bolsaSeguridad" type="number" step="0.01"></div>
+          <div class="form-grid">
+            <div class="form-field"><label>Tarjetas sistema <span class="req-star">*</span></label><input id="ci_tarjetasSistema" type="number" step="0.01" oninput="renderLiveDiff()"></div>
+            <div class="form-field"><label>Tarjetas contadas (auto)</label><input id="ci_tarjetasContadas" type="number" step="0.01" readonly value="0"></div>
+          </div>
+          <div class="datafono-check-row">
+            <label class="datafono-check"><input type="checkbox" id="ci_datafonoP1_activo" onchange="toggleDatafonoCierre('P1')"> Datáfono 1 Principal</label>
+            <label class="datafono-check"><input type="checkbox" id="ci_datafonoP2_activo" onchange="toggleDatafonoCierre('P2')"> Datáfono 2 Principal</label>
+            <label class="datafono-check"><input type="checkbox" id="ci_datafonoAlterno_activo" onchange="toggleDatafonoCierre('Alterno')"> Datáfono 3 Alterno</label>
+          </div>
+          <div class="form-grid">
+            <div class="form-field"><label>Datáfono 1 Principal</label><input id="ci_datafonoP1" type="number" step="0.01" disabled oninput="recomputeTarjetasContadas()"></div>
+            <div class="form-field"><label>Datáfono 2 Principal</label><input id="ci_datafonoP2" type="number" step="0.01" disabled oninput="recomputeTarjetasContadas()"></div>
+            <div class="form-field"><label>Datáfono 3 Alterno</label><input id="ci_datafonoAlterno" type="number" step="0.01" disabled oninput="recomputeTarjetasContadas()"></div>
+          </div>
+
+          <div id="ci_verifPrincipalesBlock" style="display:none;">
+            <div class="form-grid">
+              <div class="form-field"><label>Total datáfono(s) principal(es) (auto)</label><input id="ci_sumaPrincipales" type="number" readonly value="0"></div>
+              <div class="form-field"><label>Total facturado electrónicamente <span class="req-star">*</span></label><input id="ci_facturadoPrincipales" type="number" step="0.01" oninput="recomputeVerifPrincipales()"></div>
+            </div>
+            <div id="ci_diffPrincipalesBox"></div>
+          </div>
+
+          <div class="form-section-title">Otros pagos según sistema (referencia)</div>
+          <div class="form-grid">
+            <div class="form-field"><label>Anticipos (sistema)</label><input id="ci_anticiposSistema" type="number" step="0.01"></div>
+            <div class="form-field"><label>Bonos de regalo (sistema)</label><input id="ci_bonosSistema" type="number" step="0.01"></div>
+            <div class="form-field"><label>Cortesía (sistema)</label><input id="ci_cortesiaSistema" type="number" step="0.01"></div>
+            <div class="form-field"><label>Crédito (sistema)</label><input id="ci_creditoSistema" type="number" step="0.01"></div>
+          </div>
+
+          <div class="form-section-title">Gastos y seguridad</div>
+          <div class="form-grid">
+            <div class="form-field"><label>Gastos de caja</label><input id="ci_gastosCaja" type="number" step="0.01" placeholder="0" oninput="renderLiveDiff()"></div>
+            <div class="form-field"><label>Bolsa de seguridad <span class="req-star">*</span></label><input id="ci_bolsaSeguridad" type="number" step="0.01"></div>
+          </div>
+          <label class="datafono-check"><input type="checkbox" id="ci_sinGastosHoy" onchange="recomputeGastos()"> No hubo gastos hoy</label>
+          <p style="font-size:10.5px;color:var(--text-light);margin-top:4px;">Nota: en la app aprobada este campo se llenaba leyendo el reporte de gastos de Fudo (.xlsx) automáticamente. Mientras no haya esa integración aquí, el valor se escribe manualmente.</p>
         </div>
-        <label class="datafono-check"><input type="checkbox" id="ci_sinGastosHoy" onchange="recomputeGastos()"> No hubo gastos hoy</label>
-        <p style="font-size:10.5px;color:var(--text-light);margin-top:4px;">Nota: en la app aprobada este campo se llenaba leyendo el reporte de gastos de Fudo (.xlsx) automáticamente. Mientras no haya esa integración aquí, el valor se escribe manualmente.</p>
       </div>
 
       <div class="cierre-right">
-        <div class="form-section-title" style="margin-top:0;">Conteo de efectivo por denominación</div>
-        <table class="mini-table">
-          <thead><tr><th>Denom.</th><th>Cant.</th><th>Subtotal</th></tr></thead>
-          <tbody>${denomRows}</tbody>
-          <tfoot><tr><td colspan="2" style="text-align:right;font-weight:700;">Total</td><td id="denomTotal" style="font-weight:700;">$0</td></tr></tfoot>
-        </table>
-        <div class="form-section-title">Diferencias en vivo</div>
-        <div id="ci_liveDiff"></div>
+        <div class="panel" style="margin-bottom:14px;">
+          <div class="form-section-title" style="margin-top:0;">Efectivo — conteo de monedas y billetes</div>
+          <table class="mini-table">
+            <thead><tr><th>Denom.</th><th>Cant.</th><th>Subtotal</th></tr></thead>
+            <tbody>${denomRows}</tbody>
+            <tfoot><tr><td colspan="2" style="text-align:right;font-weight:700;">Total</td><td id="denomTotal" style="font-weight:700;">$0</td></tr></tfoot>
+          </table>
+        </div>
+        <div class="panel">
+          <div class="form-section-title" style="margin-top:0;">Diferencias (sistema vs. contado)</div>
+          <div id="ci_liveDiff"></div>
+        </div>
       </div>
     </div>
 
-    <div class="form-field" style="margin-top:12px;"><label>Observaciones</label><textarea id="ci_observaciones" rows="2" maxlength="500" placeholder="Novedades del cierre (opcional)"></textarea></div>
+    <div class="panel" style="margin-top:14px;"><div class="form-field"><label>Observaciones</label><textarea id="ci_observaciones" rows="2" maxlength="500" placeholder="Novedades del cierre (opcional)"></textarea></div></div>
     </div>
     <button class="btn-primary" style="width:auto;padding:11px 22px;margin-top:14px;" onclick="guardarCierre()">Guardar cierre de caja</button>
     <div id="ci_msg"></div>
