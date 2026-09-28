@@ -4241,6 +4241,16 @@ function homeAccesosEditorGuardar(){
 /* ==================================================================
    INICIO
    ================================================================== */
+function homeBriefingHtml(){
+  if(!(SESSION && SESSION.rol==='gerencia')) return '';
+  const hist = (typeof v360Historico==='function') ? v360Historico() : [];
+  if(!hist.length) return '';
+  const day = hist[hist.length-1];
+  const detalles = (typeof v360Detalles==='function') ? v360Detalles() : {};
+  const detalleReal = detalles[day.fecha];
+  if(!detalleReal || typeof detalleReal !== 'object' || !Array.isArray(detalleReal.ordenes)) return '';
+  return `<section class="hm-panel">${v360BriefingHtml(day, detalleReal, hist)}</section>`;
+}
 function goHome(){
   navEmpujarHash('#');
   setActiveNav(null);
@@ -4262,6 +4272,7 @@ function goHome(){
     // necesita ver: qué le toca hoy y empezarlo.
     html += homeAgendaHtml();
   } else {
+    html += homeBriefingHtml();
     html += homeAccesosHtml();
     html += homeAgendaHtml();
     html += homeColumnasHtml();
@@ -18280,8 +18291,8 @@ function v360DrawTendenciasCharts(hist){
 function v360CargarHtml(hist){
   const detalles = v360Detalles();
   const diasTabla = hist.length ? `<table class="mini-table">
-    <thead><tr><th>Fecha</th><th>Día</th><th>Venta total</th><th>Personas</th><th>Detalle guardado</th></tr></thead>
-    <tbody>${[...hist].sort((a,b)=>b.fecha.localeCompare(a.fecha)).map(d=>`<tr><td>${d.fecha}</td><td>${d.diaSemana}</td><td>${fmtMoney(d.totalVentas)}</td><td>${v360FmtNum(d.personas)}</td><td>${detalles[d.fecha]?'<span class="badge badge-verde">Sí</span>':'<span class="badge badge-dorado">Solo resumen</span>'}</td></tr>`).join('')}</tbody>
+    <thead><tr><th>Fecha</th><th>Día</th><th>Venta total</th><th>Personas</th><th>Detalle guardado</th><th></th></tr></thead>
+    <tbody>${[...hist].sort((a,b)=>b.fecha.localeCompare(a.fecha)).map(d=>`<tr><td>${d.fecha}</td><td>${d.diaSemana}</td><td>${fmtMoney(d.totalVentas)}</td><td>${v360FmtNum(d.personas)}</td><td>${detalles[d.fecha]?'<span class="badge badge-verde">Sí</span>':'<span class="badge badge-dorado">Solo resumen</span>'}</td><td><button type="button" class="btn-secondary" style="padding:4px 8px;font-size:11px;" onclick="v360EliminarDia('${d.fecha}')">🗑 Eliminar</button></td></tr>`).join('')}</tbody>
   </table>` : `<div class="v360-empty">Todavía no hay ningún día cargado</div>`;
 
   return `
@@ -18301,9 +18312,40 @@ function v360CargarHtml(hist){
       <div id="v360_fudoAutoStatus" style="margin-top:12px;font-size:13px;"></div>
     </div>
     <div class="v360-card">
-      <h4>Días cargados</h4><div class="sub">Histórico actualmente guardado en este navegador</div>
+      <h4>Días cargados</h4><div class="sub">Histórico actualmente guardado en este navegador. Si son datos de prueba, elimínalos aquí para empezar de cero.</div>
       ${diasTabla}
+      ${hist.length ? `<div style="margin-top:14px;"><button type="button" class="btn-secondary" style="padding:6px 12px;font-size:12px;" onclick="v360BorrarTodoElHistorico()">🗑 Borrar todo el histórico de ventas (empezar de cero)</button></div>` : ''}
     </div>`;
+}
+// Elimina un día cargado (resumen + su detalle pormenorizado) para poder
+// corregir datos de prueba o errores de carga sin dejar residuos en el
+// Resumen del día, el Briefing de Inicio ni en Tendencias.
+function v360EliminarDia(fecha){
+  if(!confirm(`¿Eliminar el día ${fecha} del histórico de ventas? Esta acción no se puede deshacer.`)) return;
+  const miSede = sedeParaGuardar();
+  const dias = DB.get('v360_dias', []).filter(d => !(d.fecha===fecha && (d.sede||miSede)===miSede));
+  DB.set('v360_dias', dias);
+  const detallesTodo = DB.get('v360_detalle', {});
+  if(detallesTodo[miSede] && detallesTodo[miSede][fecha]){
+    delete detallesTodo[miSede][fecha];
+    DB.set('v360_detalle', detallesTodo);
+  }
+  if(v360ActiveFecha === fecha) v360ActiveFecha = null;
+  renderVentas360Module(NAV.find(s=>s.id==='gerencia'), null, null, v360LastRuta);
+}
+// Borra TODO el histórico de ventas de la sede actual — para arrancar de
+// cero cuando lo cargado hasta ahora era solo prueba.
+function v360BorrarTodoElHistorico(){
+  if(!confirm('¿Borrar TODO el histórico de ventas cargado hasta ahora? Esto elimina todos los días y su detalle. Esta acción no se puede deshacer.')) return;
+  if(!confirm('Confirma una vez más: se perderán todos los resúmenes y detalles de ventas guardados. ¿Continuar?')) return;
+  const miSede = sedeParaGuardar();
+  const dias = DB.get('v360_dias', []).filter(d => (d.sede||miSede)!==miSede);
+  DB.set('v360_dias', dias);
+  const detallesTodo = DB.get('v360_detalle', {});
+  delete detallesTodo[miSede];
+  DB.set('v360_detalle', detallesTodo);
+  v360ActiveFecha = null;
+  renderVentas360Module(NAV.find(s=>s.id==='gerencia'), null, null, v360LastRuta);
 }
 
 async function v360FileSeleccionado(input){
@@ -18390,7 +18432,6 @@ function v360Render(sec){
 
   const TABS = [
     {id:'resumen', label:'Resumen del día', icon:'chart'},
-    {id:'briefing', label:'Briefing de mañana', icon:'megaphone'},
     {id:'operacion', label:'Cancelaciones y errores', icon:'flag'},
     {id:'detalle', label:'Detalle pormenorizado', icon:'search'},
     {id:'caja', label:'Caja, costos y servicio', icon:'cash'},
@@ -18413,7 +18454,6 @@ function v360Render(sec){
       <button class="tab-btn" style="display:inline-flex;" onclick="v360SetTab(NAV.find(s=>s.id==='gerencia'),'cargar')">Ir a Cargar cierre &rarr;</button>
     </div>`;
   } else if(v360ActiveTab==='resumen') bodyHtml = v360ResumenHtml(day, detalle, hist);
-  else if(v360ActiveTab==='briefing') bodyHtml = v360BriefingHtml(day, detalle, hist);
   else if(v360ActiveTab==='operacion') bodyHtml = v360OperacionHtml(day, detalle);
   else if(v360ActiveTab==='detalle') bodyHtml = v360DetalleHtml(day, detalle);
   else if(v360ActiveTab==='caja') bodyHtml = v360CajaHtml(day, detalle);
@@ -18428,7 +18468,7 @@ function v360Render(sec){
         <div style="flex:1;"><h2>Ventas y Caja</h2><div class="path">${v360LastRuta}</div></div>
         ${daySelectHtml}
       </div>
-      <div class="v360-hint"><b>Cómo usarlo:</b> revisa <b>Resumen del día</b> (ahí saltan las alertas) → lee <b>Briefing de mañana</b> en la reunión del equipo → si necesitas profundizar, entra a Cancelaciones, Detalle, Caja o Tendencias. Cada noche, sube el cierre en <b>Cargar cierre</b>.</div>
+      <div class="v360-hint"><b>Cómo usarlo:</b> revisa <b>Resumen del día</b> (ahí saltan las alertas) — el brief para la reunión del equipo ahora aparece directo en <b>Inicio</b> → si necesitas profundizar, entra a Cancelaciones, Detalle, Caja o Tendencias. Cada noche, sube el cierre en <b>Cargar cierre</b>.</div>
       <div class="tab-bar">${tabsHtml}</div>
       <div id="v360Body">${avisoDetalleFaltante}${bodyHtml}</div>
     </div>`;
