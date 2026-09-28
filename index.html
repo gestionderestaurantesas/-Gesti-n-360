@@ -2414,7 +2414,7 @@ function rolPuestoLabel(id){ const r = ROLES_PUESTO.find(x=>x.id===id); return r
 // ajustar libremente desde Configuración → Roles y tareas. Se seeden
 // solo una vez (si ya existen en DB, se respetan los cambios guardados).
 const ROLES_PERMISOS_SEED = {
-  caja: ['chk_cierre_caja','cf_caja','sc_comprobantes','ast_chat'],
+  caja: ['cf_caja','sc_comprobantes','ast_chat'],
   mesero: ['chk_briefing','chk_mise_servicio','chk_aseo_salon','chk_cierre_servicio','sc_comprobantes','ast_chat'],
   cocina: ['chk_briefing_cocina','chk_mise_cocina_parrilla','chk_mise_cocina_fritos','chk_mise_cocina_armado','chk_mise_cocina_corrientes','chk_mise_cocina_pastas','chk_higiene','chk_prueba_prep','chk_cierre_cocina','coc_comida_personal','coc_bajas','coc_mejora','coc_fotos_platos','ast_chat'],
   steward: ['chk_alistamiento_steward','chk_cierre_steward','ast_chat'],
@@ -2423,9 +2423,9 @@ const ROLES_PERMISOS_SEED = {
   lider_servicio_reservas: ['chk_briefing','chk_mise_servicio','chk_aseo_salon','chk_cierre_servicio','sc_comprobantes','sc_encuesta','ast_chat'],
   lider_cocina: ['chk_briefing_cocina','chk_mise_cocina_parrilla','chk_mise_cocina_fritos','chk_mise_cocina_armado','chk_mise_cocina_corrientes','chk_mise_cocina_pastas','chk_higiene','chk_prueba_prep','chk_alistamiento_steward','chk_cierre_cocina','chk_cierre_steward','coc_comida_personal','coc_bajas','coc_mejora','coc_fotos_platos','ast_chat'],
   aux_compras: ['cf_compras','cf_pagos','mant_proveedores','ast_chat'],
-  inspector: ['chk_cierre_caja','chk_briefing','chk_mise_servicio','chk_aseo_salon','chk_cierre_servicio','chk_briefing_cocina','chk_mise_cocina_parrilla','chk_mise_cocina_fritos','chk_mise_cocina_armado','chk_mise_cocina_corrientes','chk_mise_cocina_pastas','chk_higiene','chk_prueba_prep','chk_alistamiento_steward','chk_cierre_cocina','chk_cierre_steward','chk_mise_bar','chk_aseo_bar','chk_cierre_bar','chk_aseo_cp','chk_aseo_periferica','chk_aseo_banos_internos','chk_aseo_banos_publicos','chk_aseo_traperos','coc_inspeccion','sc_inspeccion','bar_inspeccion','cf_caja','ast_chat'],
-  gerente_operativa: ['chk_cierre_caja','chk_briefing','chk_mise_servicio','chk_aseo_salon','chk_cierre_servicio','chk_briefing_cocina','chk_mise_cocina_parrilla','chk_mise_cocina_fritos','chk_mise_cocina_armado','chk_mise_cocina_corrientes','chk_mise_cocina_pastas','chk_higiene','chk_prueba_prep','chk_alistamiento_steward','chk_cierre_cocina','chk_cierre_steward','chk_mise_bar','chk_aseo_bar','chk_cierre_bar','chk_aseo_cp','chk_aseo_periferica','chk_aseo_banos_internos','chk_aseo_banos_publicos','chk_aseo_traperos','cf_caja','cf_inventarios','cf_planificacion_tareas','sc_comprobantes','sc_encuesta','sc_inspeccion','coc_comida_personal','coc_bajas','coc_mejora','coc_fotos_platos','coc_inspeccion','bar_inspeccion','mant_equipos','mant_preventivo','mant_solicitudes','mant_proveedores','ger_reporte_general360','ast_chat'],
-  gerente_financiera: ['chk_cierre_caja','cf_caja','cf_inventarios','cf_compras','cf_propina','cf_horarios','cf_prevision','cf_pagos','cf_planificacion_tareas','ger_reporte_general360','ast_chat'],
+  inspector: ['chk_briefing','chk_mise_servicio','chk_aseo_salon','chk_cierre_servicio','chk_briefing_cocina','chk_mise_cocina_parrilla','chk_mise_cocina_fritos','chk_mise_cocina_armado','chk_mise_cocina_corrientes','chk_mise_cocina_pastas','chk_higiene','chk_prueba_prep','chk_alistamiento_steward','chk_cierre_cocina','chk_cierre_steward','chk_mise_bar','chk_aseo_bar','chk_cierre_bar','chk_aseo_cp','chk_aseo_periferica','chk_aseo_banos_internos','chk_aseo_banos_publicos','chk_aseo_traperos','coc_inspeccion','sc_inspeccion','bar_inspeccion','cf_caja','ast_chat'],
+  gerente_operativa: ['chk_briefing','chk_mise_servicio','chk_aseo_salon','chk_cierre_servicio','chk_briefing_cocina','chk_mise_cocina_parrilla','chk_mise_cocina_fritos','chk_mise_cocina_armado','chk_mise_cocina_corrientes','chk_mise_cocina_pastas','chk_higiene','chk_prueba_prep','chk_alistamiento_steward','chk_cierre_cocina','chk_cierre_steward','chk_mise_bar','chk_aseo_bar','chk_cierre_bar','chk_aseo_cp','chk_aseo_periferica','chk_aseo_banos_internos','chk_aseo_banos_publicos','chk_aseo_traperos','cf_caja','cf_inventarios','cf_planificacion_tareas','sc_comprobantes','sc_encuesta','sc_inspeccion','coc_comida_personal','coc_bajas','coc_mejora','coc_fotos_platos','coc_inspeccion','bar_inspeccion','mant_equipos','mant_preventivo','mant_solicitudes','mant_proveedores','ger_reporte_general360','ast_chat'],
+  gerente_financiera: ['cf_caja','cf_inventarios','cf_compras','cf_propina','cf_horarios','cf_prevision','cf_pagos','cf_planificacion_tareas','ger_reporte_general360','ast_chat'],
   otros: []
 };
 if(!DB.get('roles_permisos')){ DB.set('roles_permisos', ROLES_PERMISOS_SEED); }
@@ -2935,9 +2935,6 @@ const NAV = [
     // Operación/Gerencia/Calidad, para que se vea uniforme; los grupos
     // siguen existiendo para permisos y para el interruptor de subáreas.
     groups:[
-      { id:'administracion', label:'Administración', icon:'cash', matchArea:'contabilidad', items:[
-        { id:'chk_cierre_caja', label:'Cierre de caja', icon:'checklist', area:'contabilidad', categoria:'cierre', roles:['empleado','administracion','gerencia'], customRender:'renderCierreAreaModule' }
-      ]},
       { id:'servicio_cliente', label:'Servicio al cliente', icon:'user', matchArea:'servicio_cliente', items:[
         { id:'chk_briefing', label:'Briefing de servicio', icon:'megaphone', area:'servicio_cliente', categoria:'briefing', roles:['empleado','administracion','gerencia'], customRender:'renderBriefingServicioModule' },
         { id:'chk_mise_servicio', label:'Mise en place de servicio', icon:'user', area:'servicio_cliente', categoria:'mise_en_place', roles:['empleado','administracion','gerencia'], customRender:'renderAlistamientoAreaModule' },
@@ -4457,7 +4454,6 @@ document.addEventListener('click', function(e){
    ================================================================== */
 const TIPS_ITEM = {
   // — Checklists —
-  chk_cierre_caja: { emoji:'💰', titulo:'Cierre de caja', texto:'Al terminar el turno, verifica el cuadre de caja y los comprobantes. Lo que no cumpla queda registrado como incumplimiento para Gerencia.' },
   chk_briefing: { emoji:'📣', titulo:'Briefing de servicio', texto:'Antes de abrir, alinea al equipo de salón: promociones del día, mesas reservadas, novedades. Toma un par de minutos.' },
   chk_mise_servicio: { emoji:'🍽️', titulo:'Mise en place de servicio', texto:'Deja el salón listo para recibir: mesas montadas, menús a mano, estación de meseros surtida. Revísalo antes de abrir.' },
   chk_aseo_salon: { emoji:'🧹', titulo:'Aseo del salón', texto:'Checklist de limpieza del salón — repásalo antes de abrir o durante el turno, según te corresponda.' },
@@ -5088,7 +5084,7 @@ let cajaLastRuta = 'Operación → Administración → Caja (cierre y comprobant
 function renderCajaModule(sec, group, item, ruta){
   if(ruta) cajaLastRuta = ruta;
   const puedeTodo = SESSION.rol !== 'empleado' || SESSION.area === 'contabilidad';
-  const disponibles = puedeTodo ? ['alistamiento_inicial','cierre','alistamiento_final','comprobantes','recibidos_prod'] : ['comprobantes'];
+  const disponibles = puedeTodo ? ['alistamiento_inicial','cierre','checklist_cierre','alistamiento_final','comprobantes','recibidos_prod'] : ['comprobantes'];
   if(!disponibles.includes(cajaActiveTab)) cajaActiveTab = disponibles[0];
   renderCajaTabs(sec, cajaActiveTab);
 }
@@ -5098,6 +5094,7 @@ function renderCajaTabs(sec, activeId){
   const TODAS = [
     {id:'alistamiento_inicial', label:'Alistamiento inicial (apertura)', icon:'checklist'},
     {id:'cierre', label:'Cierre de caja', icon:'cash'},
+    {id:'checklist_cierre', label:'Checklist de cierre', icon:'checklist'},
     {id:'alistamiento_final', label:'Alistamiento de área (final de jornada)', icon:'checklist'},
     {id:'comprobantes', label:'Comprobantes', icon:'camera'},
     {id:'recibidos_prod', label:'Recibidos de producción' + (pendientesRecibo>0 ? ` (${pendientesRecibo})` : ''), icon:'box'}
@@ -5113,6 +5110,7 @@ function renderCajaTabs(sec, activeId){
   let bodyHtml = '';
   if(activeId==='alistamiento_inicial') bodyHtml = aperturaFormHtml();
   else if(activeId==='cierre') bodyHtml = cierreFormHtml();
+  else if(activeId==='checklist_cierre') bodyHtml = cajaChecklistCierreHtml();
   else if(activeId==='alistamiento_final') bodyHtml = cajaAlistamientoFinalHtml();
   else if(activeId==='recibidos_prod') bodyHtml = cajaRecibidosProdHtml();
   else bodyHtml = comprobantesFormHtml();
@@ -5232,6 +5230,252 @@ function guardarApertura(){
   DB.push('caja_apertura', registro);
   showMsg('ap_msg','Apertura guardada correctamente.','verde');
   renderCajaTabs(NAV.find(s=>s.id==='operacion'), 'alistamiento_inicial');
+}
+
+// ---- Tab: Checklist de cierre — checklist físico de cierre del propio equipo + reporte de incidentes ----
+// (antes vivía como "Cierre de caja" en Checklists → Administración; se trasladó aquí para
+// tener todo lo de Caja en un solo lugar. Usa las mismas colecciones 'cierres_area' / 'incidentes'
+// con area:'contabilidad', así que el historial previo se conserva.)
+let cajaChecklistCierreSubTab = 'checklist';
+let cajaChecklistCierreValues = {};
+let cajaChecklistCierreReady = null;
+let cajaIncidenteFotoData = null;
+
+function cajaChecklistCierreHtml(){
+  const subtabsHtml = [
+    {id:'checklist', label:'Checklist de cierre', icon:'checklist'},
+    {id:'incidentes', label:'Reporte de incidentes', icon:'bell'}
+  ].map(t => `<button class="tab-btn ${t.id===cajaChecklistCierreSubTab?'active':''}" onclick="cajaChecklistCierreSetSubTab('${t.id}')">${ic(t.icon,14)}${t.label}</button>`).join('');
+  const body = cajaChecklistCierreSubTab==='checklist' ? cajaChecklistCierreChecklistHtml() : cajaChecklistCierreIncidentesHtml();
+  return `<div class="tab-bar" style="margin-bottom:12px;">${subtabsHtml}</div>${body}`;
+}
+function cajaChecklistCierreSetSubTab(tabId){
+  cajaChecklistCierreSubTab = tabId;
+  renderCajaTabs(NAV.find(s=>s.id==='operacion'), 'checklist_cierre');
+}
+function cajaChecklistCierreSetCheck(id, val, btnEl){
+  cajaChecklistCierreValues[id] = val;
+  const wrap = document.getElementById('cacc_' + id);
+  if(wrap){
+    wrap.querySelectorAll('.yn-btn').forEach(b => b.classList.remove('active'));
+    if(btnEl) btnEl.classList.add('active');
+  }
+  cajaChecklistCierreUpdateProgress();
+}
+function cajaChecklistCierreSetReady(val){
+  cajaChecklistCierreReady = val;
+  const row = document.getElementById('cac_readyRow');
+  if(row) row.querySelectorAll('.yn-btn').forEach(b=>b.classList.remove('active'));
+  const btn = document.getElementById(val==='Cumple' ? 'cac_readyYes' : 'cac_readyNo');
+  if(btn) btn.classList.add('active');
+}
+function cajaChecklistCierreUpdateProgress(){
+  const items = CIERRE_AREA_ITEMS['contabilidad'] || [];
+  const answered = items.filter(it => cajaChecklistCierreValues[it.id]).length;
+  const pct = items.length ? Math.round((answered / items.length) * 100) : 0;
+  const circle = document.getElementById('cac_progressCircle');
+  if(circle) circle.style.background = `conic-gradient(var(--bronce) ${pct}%, var(--border) ${pct}%)`;
+  const txt = document.getElementById('cac_progressPct');
+  if(txt) txt.textContent = pct + '%';
+}
+function cajaChecklistCierreChecklistHtml(){
+  const items = CIERRE_AREA_ITEMS['contabilidad'] || [];
+  const checksHtml = items.map(it => `
+    <div class="check-row3">
+      <span>${it.label}</span>
+      <div class="toggle-yn" id="cacc_${it.id}">
+        <button type="button" class="yn-btn yes" onclick="cajaChecklistCierreSetCheck('${it.id}','Cumple',this)">Sí</button>
+        <button type="button" class="yn-btn no" onclick="cajaChecklistCierreSetCheck('${it.id}','No cumple',this)">No</button>
+        <button type="button" class="yn-btn na" onclick="cajaChecklistCierreSetCheck('${it.id}','N/A',this)">N/A</button>
+      </div>
+    </div>`).join('');
+
+  const historial = filtrarPorSede(DB.get('cierres_area', [])).filter(h => h.area === 'contabilidad').slice(-8).reverse();
+  const historialHtml = historial.length ? `
+    <table class="mini-table">
+      <thead><tr><th>Fecha</th><th>Sede</th><th>Responsable</th><th>Ítems ok</th><th>Área lista</th></tr></thead>
+      <tbody>${historial.map(h => `<tr>
+        <td>${h.fecha} ${h.hora}</td><td>${sedeLabelGlobal(h.sede)}</td><td>${h.responsable}</td>
+        <td>${h.itemsOk}/${h.itemsTotal}</td>
+        <td>${h.listo ? '<span class="badge badge-verde">Sí</span>' : '<span class="badge badge-rojo">Con pendientes</span>'}</td>
+      </tr>`).join('')}</tbody>
+    </table>` : `<p style="color:var(--text-light);font-size:13px;">Todavía no hay cierres registrados en esta área.</p>`;
+
+  return `
+    <div class="compact-form">
+    <div class="progress-box2">
+      <div class="progress-circle" id="cac_progressCircle" style="background:conic-gradient(var(--bronce) 0%, var(--border) 0%);"><span id="cac_progressPct">0%</span></div>
+      <div class="progress-legend">Progreso del checklist de cierre<br>Responde los ${items.length} puntos para llegar al 100%.</div>
+    </div>
+    <div class="form-field"><label>Responsable del cierre <span class="req-star">*</span></label><input id="cac_responsable" value="${SESSION.nombre}"></div>
+    <div class="toggle-list" style="margin-top:12px;">${checksHtml}</div>
+    <div class="form-field" style="margin-top:8px;">
+      <label>El área queda completamente lista y cerrada <span class="req-star">*</span></label>
+      <div class="toggle-yn" id="cac_readyRow" style="margin-top:5px;">
+        <button type="button" class="yn-btn yes" id="cac_readyYes" onclick="cajaChecklistCierreSetReady('Cumple')">Sí, cerrada</button>
+        <button type="button" class="yn-btn no" id="cac_readyNo" onclick="cajaChecklistCierreSetReady('No cumple')">No, con pendientes</button>
+      </div>
+    </div>
+    <div class="form-field" style="margin-top:8px;">
+      <label>Observaciones o novedades</label>
+      <textarea id="cac_observaciones" rows="2" maxlength="500" placeholder="Opcional"></textarea>
+    </div>
+    </div>
+    <button class="btn-primary" style="width:auto;padding:11px 22px;margin-top:14px;" onclick="cajaGuardarChecklistCierre()">Completar cierre de área</button>
+    <div id="cac_msg"></div>
+    <h3 style="margin:24px 0 10px;font-size:15px;">Historial de cierres</h3>
+    ${historialHtml}
+  `;
+}
+function cajaGuardarChecklistCierre(){
+  const responsable = document.getElementById('cac_responsable').value.trim();
+  const observaciones = document.getElementById('cac_observaciones').value.trim();
+  const items = CIERRE_AREA_ITEMS['contabilidad'] || [];
+
+  if(!responsable){ showMsg('cac_msg','Escribe el responsable del cierre.','rojo'); return; }
+  if(!cajaChecklistCierreReady){ showMsg('cac_msg','Indica si el área queda lista y cerrada.','rojo'); return; }
+
+  const itemsGuardados = items.map(it => ({ id:it.id, label:it.label, val: cajaChecklistCierreValues[it.id] || 'N/A' }));
+  const itemsOk = itemsGuardados.filter(i=>i.val==='Cumple').length;
+  const registro = {
+    area: 'contabilidad', sede: sedeParaGuardar(), usuario: SESSION.usuario, nombre: SESSION.nombre,
+    fecha: hoyStr(), hora: horaStr(),
+    responsable,
+    items: itemsGuardados, itemsOk, itemsTotal: items.length,
+    listo: cajaChecklistCierreReady === 'Cumple',
+    observaciones
+  };
+  DB.push('cierres_area', registro);
+  cajaChecklistCierreValues = {};
+  cajaChecklistCierreReady = null;
+  showMsg('cac_msg','Cierre de área guardado correctamente.','verde');
+  cajaChecklistCierreSetSubTab('checklist');
+}
+function cajaOnFotoIncidenteChange(input){
+  cajaIncidenteFotoData = null;
+  const preview = document.getElementById('cainc_fotoPreview');
+  const file = input.files && input.files[0];
+  if(!file){ if(preview) preview.innerHTML=''; return; }
+  if(preview) preview.innerHTML = '<span style="font-size:11px;color:var(--text-light);">Procesando foto...</span>';
+  const reader = new FileReader();
+  reader.onload = e => {
+    const img = new Image();
+    img.onload = () => {
+      const maxW = 480;
+      const scale = Math.min(1, maxW / img.width);
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.max(1, Math.round(img.width * scale));
+      canvas.height = Math.max(1, Math.round(img.height * scale));
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      cajaIncidenteFotoData = canvas.toDataURL('image/jpeg', 0.6);
+      if(preview) preview.innerHTML = '<img src="'+cajaIncidenteFotoData+'" style="max-width:110px;border-radius:6px;border:1px solid var(--border);display:block;">';
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+function cajaChecklistCierreIncidentesHtml(){
+  cajaIncidenteFotoData = null;
+  const area = 'contabilidad';
+  const meta = AREA_META[area] || { label: 'Caja', color: '#2F7A78' };
+
+  const todos = incidentesDeArea(area).slice().reverse();
+  const abiertos = todos.filter(r => r.estado !== 'cerrado');
+
+  const kpi = (color, iconName, valor, label) => `
+    <div class="module-card" style="cursor:default;">
+      <div class="icon-circle" style="background:${hexToRgba(color,0.14)}; color:${color};">${ic(iconName,22)}</div>
+      <h3>${valor}</h3><p>${label}</p>
+    </div>`;
+  const kpisHtml = `<div class="module-grid" style="margin-bottom:22px;">
+    ${kpi(meta.color,'bell', todos.length, 'Incidentes registrados')}
+    ${kpi('#C0392B','bell', abiertos.length, 'Abiertos / en seguimiento')}
+    ${kpi('#2E7D32','check', todos.length - abiertos.length, 'Cerrados')}
+  </div>`;
+
+  const tipoOptions = INCIDENTE_TIPOS.map(t=>`<option value="${t}">${t}</option>`).join('');
+  const gravedadOptions = INCIDENTE_GRAVEDADES.map(g=>`<option value="${g.id}">${g.label}</option>`).join('');
+
+  const listaHtml = todos.length ? `
+    <table class="mini-table">
+      <thead><tr><th>Fecha</th><th>Tipo</th><th>Gravedad</th><th>Descripción</th><th>Reportado por</th><th>Estado</th><th>Foto</th></tr></thead>
+      <tbody>${todos.map(r => {
+        const g = incGravedadMeta(r.gravedad);
+        return `<tr>
+          <td>${r.fecha} ${r.hora}</td>
+          <td>${r.tipo}</td>
+          <td><span class="badge badge-${g.color}">${g.label}</span></td>
+          <td style="max-width:260px;">${r.descripcion}${r.personas?`<br><span style="color:var(--text-light);font-size:11.5px;">Involucrados: ${r.personas}</span>`:''}${r.accion?`<br><span style="color:var(--text-light);font-size:11.5px;">Acción: ${r.accion}</span>`:''}</td>
+          <td>${r.nombre}</td>
+          <td>
+            <select onchange="cajaCambiarEstadoIncidente('${r.id}', this.value)" style="font-size:11.5px;padding:4px 6px;border-radius:6px;border:1px solid var(--border);background:var(--white);color:var(--text);">
+              ${INCIDENTE_ESTADOS.map(es=>`<option value="${es.id}" ${es.id===r.estado?'selected':''}>${es.label}</option>`).join('')}
+            </select>
+          </td>
+          <td>${r.foto ? `<a href="${r.foto}" target="_blank" rel="noopener">Ver</a>` : '-'}</td>
+        </tr>`;
+      }).join('')}</tbody>
+    </table>` : `<p style="color:var(--text-light);font-size:13px;">Todavía no hay incidentes registrados en esta área.</p>`;
+
+  return `
+    ${kpisHtml}
+    <div class="form-grid">
+      <div class="form-field"><label>Tipo de incidente <span class="req-star">*</span></label>
+        <select id="cainc_tipo"><option value="">Seleccionar...</option>${tipoOptions}</select>
+      </div>
+      <div class="form-field"><label>Gravedad <span class="req-star">*</span></label>
+        <select id="cainc_gravedad"><option value="">Seleccionar...</option>${gravedadOptions}</select>
+      </div>
+      <div class="form-field"><label>Personas involucradas</label><input id="cainc_personas" placeholder="Opcional"></div>
+    </div>
+    <div class="form-field" style="margin-top:10px;"><label>Descripción del incidente <span class="req-star">*</span></label>
+      <textarea id="cainc_descripcion" rows="3" maxlength="600" placeholder="¿Qué pasó, cuándo y dónde exactamente?"></textarea>
+    </div>
+    <div class="form-grid" style="margin-top:10px;">
+      <div class="form-field"><label>Acción tomada</label><textarea id="cainc_accion" rows="2" placeholder="Opcional"></textarea></div>
+      <div class="form-field"><label>Foto o evidencia</label>
+        <input type="file" id="cainc_foto" accept="image/*" onchange="cajaOnFotoIncidenteChange(this)">
+        <div id="cainc_fotoPreview" style="margin-top:6px;"></div>
+      </div>
+    </div>
+    <button class="btn-primary" style="width:auto;padding:11px 22px;margin-top:14px;" onclick="cajaGuardarIncidente()">Registrar incidente</button>
+    <div id="cainc_msg"></div>
+    <h3 style="margin:24px 0 10px;font-size:15px;">Historial de incidentes de esta área</h3>
+    ${listaHtml}
+  `;
+}
+function cajaGuardarIncidente(){
+  const area = 'contabilidad';
+  const tipo = document.getElementById('cainc_tipo').value;
+  const gravedad = document.getElementById('cainc_gravedad').value;
+  const personas = document.getElementById('cainc_personas').value.trim();
+  const descripcion = document.getElementById('cainc_descripcion').value.trim();
+  const accion = document.getElementById('cainc_accion').value.trim();
+
+  if(!tipo){ showMsg('cainc_msg','Selecciona el tipo de incidente.','rojo'); return; }
+  if(!gravedad){ showMsg('cainc_msg','Selecciona la gravedad.','rojo'); return; }
+  if(!descripcion){ showMsg('cainc_msg','Describe brevemente el incidente.','rojo'); return; }
+
+  const registro = {
+    id: 'inc_' + Date.now(),
+    area,
+    sede: sedeParaGuardar(), usuario: SESSION.usuario, nombre: SESSION.nombre,
+    fecha: hoyStr(), hora: horaStr(),
+    tipo, gravedad, personas, descripcion, accion,
+    foto: cajaIncidenteFotoData,
+    estado: 'abierto'
+  };
+  DB.push('incidentes', registro);
+  cajaIncidenteFotoData = null;
+  showMsg('cainc_msg','Incidente registrado.','verde');
+  cajaChecklistCierreSetSubTab('incidentes');
+}
+function cajaCambiarEstadoIncidente(id, nuevoEstado){
+  const arr = DB.get('incidentes', []);
+  const reg = arr.find(r => r.id === id);
+  if(reg){ reg.estado = nuevoEstado; DB.set('incidentes', arr); }
+  cajaChecklistCierreSetSubTab('incidentes');
 }
 
 // ---- Tab: Alistamiento de área (final de jornada) — checklist paralelo de cierre físico de caja + hallazgos ----
