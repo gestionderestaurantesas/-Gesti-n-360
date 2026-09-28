@@ -2840,6 +2840,362 @@ if((DB.get('inv_v2_version', 1)) < 2){
   DB.set('inv_v2_version', 2);
 }
 
+// Inventario de corte a 31 de agosto de 2026 — segunda sesión oficial de
+// conteo (después de la del 31 de julio), importada del Excel que sube
+// gerencia cada mes. Cada producto se empareja por nombre (sin importar
+// mayúsculas ni tildes) con el catálogo ya existente en su departamento; si
+// no existe todavía (ej. un producto nuevo ese mes), se crea. El costo del
+// catálogo se actualiza al de este corte, igual que hace un conteo normal
+// desde la pantalla de Inventarios.
+if(!DB.get('inv_baseline_ago2026_cargado')){
+  const invAgoNormaliza = s => String(s||'').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+  const invAgoProductos = DB.get('inv_productos', []);
+  function invAgoBuscarOCrear(depId, depLabel, categoria, nombre, unidad, costo){
+    const nNorm = invAgoNormaliza(nombre);
+    let p = invAgoProductos.find(x => x.departamento===depId && invAgoNormaliza(x.producto)===nNorm);
+    if(!p){
+      p = { id:'p_ago2026_'+Date.now()+'_'+Math.random().toString(36).slice(2,7), departamento:depId, departamentoLabel:depLabel, categoria, producto:nombre, unidad:unidad||'Unidad', costoUnitario:Math.round(costo||0), sede:'monteria' };
+      invAgoProductos.push(p);
+    } else {
+      p.costoUnitario = Math.round(costo||0);
+    }
+    return p;
+  }
+  function invAgoItem(depId, depLabel, categoria, nombre, cantidad, unidad, costo){
+    const p = invAgoBuscarOCrear(depId, depLabel, categoria, nombre, unidad, costo);
+    const cant = Number(cantidad)||0;
+    const cu = Math.round(costo||0);
+    return { productoId:p.id, producto:nombre, categoria, unidad:unidad||'Unidad', cantidad:cant, costoUnitario:cu, valor:Math.round(cant*cu) };
+  }
+  function invAgoSuma(items){ return Math.round(items.reduce((a,it)=>a+(Number(it.valor)||0),0)); }
+
+  const invAgoSesion = { id:'ses_seed_20260831', fecha:'2026-08-31', hora:'00:00', usuario:'sistema', nombre:'Importado — corte 31 de agosto 2026', creadoEn:'2026-08-31T00:00:00.000Z', cerrada:true, fechaCierre:'2026-08-31', horaCierre:'00:00', cerradoPor:'Importado — corte 31 de agosto 2026' };
+  const invAgoSesiones = DB.get('inv_sesiones', []); invAgoSesiones.push(invAgoSesion); DB.set('inv_sesiones', invAgoSesiones);
+  const invAgoObs = 'Conteo importado del inventario de corte a 31 de agosto de 2026.';
+  const invAgoConteos = DB.get('inv_conteos', []);
+
+  const invAgoItems_centro_produccion = [
+    invAgoItem("centro_produccion","Centro de producción (carnes)","Carnes centro de producción","Cerdo especial",350.0,"Unidades",4408.0),
+    invAgoItem("centro_produccion","Centro de producción (carnes)","Carnes centro de producción","Cerdo parrilla",350.0,"Unidades",5297.0),
+    invAgoItem("centro_produccion","Centro de producción (carnes)","Carnes centro de producción","Lengua",7.0,"Unidades",10000.0),
+    invAgoItem("centro_produccion","Centro de producción (carnes)","Carnes centro de producción","Pechuga infantil",30.0,"Unidades",3300.0),
+    invAgoItem("centro_produccion","Centro de producción (carnes)","Carnes centro de producción","Sobrebarriga",0,"Unidades",9900.0),
+    invAgoItem("centro_produccion","Centro de producción (carnes)","Carnes centro de producción","Costilla procesada",0,"Unidades",24000.0),
+    invAgoItem("centro_produccion","Centro de producción (carnes)","Carnes centro de producción","Ribeye",156.0,"Unidades",18936.0),
+    invAgoItem("centro_produccion","Centro de producción (carnes)","Carnes centro de producción","Punta",32.0,"Unidades",30828.0),
+    invAgoItem("centro_produccion","Centro de producción (carnes)","Carnes centro de producción","Tomahawk",0,"Unidades",45000.0),
+    invAgoItem("centro_produccion","Centro de producción (carnes)","Carnes centro de producción","Tocineta",20.0,"Unidades",40000.0),
+    invAgoItem("centro_produccion","Centro de producción (carnes)","Carnes centro de producción","Chorizo",96.0,"Unidades",2600.0),
+    invAgoItem("centro_produccion","Centro de producción (carnes)","Carnes centro de producción","Cerdo infantil",0,"Unidades",3300.0),
+    invAgoItem("centro_produccion","Centro de producción (carnes)","Carnes centro de producción","Filete de pechuga",0,"Unidades",7500.0),
+    invAgoItem("centro_produccion","Centro de producción (carnes)","Carnes centro de producción","Pato",6.4,"Kilos",25000.0),
+    invAgoItem("centro_produccion","Centro de producción (carnes)","Carnes centro de producción","Lomo fino",12.0,"Kilos",92000.0),
+    invAgoItem("centro_produccion","Centro de producción (carnes)","Carnes centro de producción","Desmechada",5.0,"Kilos",28000.0),
+    invAgoItem("centro_produccion","Centro de producción (carnes)","Carnes centro de producción","Guanciale",10.0,"Kilos",30000.0),
+    invAgoItem("centro_produccion","Centro de producción (carnes)","Carnes centro de producción","Costilla sin procesar",29.4,"Unidades",28000.0),
+    invAgoItem("centro_produccion","Centro de producción (carnes)","Carnes centro de producción","Costilla res",8.4,"Unidades",22000.0),
+    invAgoItem("centro_produccion","Centro de producción (carnes)","Carnes centro de producción","Baby beef",50.0,"Unidades",30000.0),
+    invAgoItem("centro_produccion","Centro de producción (carnes)","Carnes centro de producción","Carnero",9.3,"Kilos",18000.0),
+    invAgoItem("centro_produccion","Centro de producción (carnes)","Carnes centro de producción","Molida",6.0,"Kilos",26000.0),
+    invAgoItem("centro_produccion","Centro de producción (carnes)","Carnes centro de producción","COCA",5.0,"KILOS",20000.0),
+    invAgoItem("centro_produccion","Centro de producción (carnes)","Carnes centro de producción","SALMON",22.7,"KILOS",58000.0),
+  ];
+  invAgoConteos.push({ departamento:"centro_produccion", departamentoLabel:"Centro de producción (carnes)", sesionId:invAgoSesion.id, usuario:'sistema', nombre:invAgoSesion.nombre, fecha:'2026-08-31', hora:'00:00', items:invAgoItems_centro_produccion, valorTotal:invAgoSuma(invAgoItems_centro_produccion), observaciones:invAgoObs });
+
+  const invAgoItems_carnes_cocina = [
+    invAgoItem("carnes_cocina","Carnes de cocina","Carnes de cocina","Pechuga parrilla",137.0,"Unidad",8500.0),
+    invAgoItem("carnes_cocina","Carnes de cocina","Carnes de cocina","Chorizo",35.0,"Unidad",2600.0),
+    invAgoItem("carnes_cocina","Carnes de cocina","Carnes de cocina","Filete pechuga",160.0,"Unidad",7500.0),
+    invAgoItem("carnes_cocina","Carnes de cocina","Carnes de cocina","Pechuga infantil",65.0,"Unidad",3300.0),
+    invAgoItem("carnes_cocina","Carnes de cocina","Carnes de cocina","Sobre",74.0,"Unidad",10000.0),
+    invAgoItem("carnes_cocina","Carnes de cocina","Carnes de cocina","BBQ",0,"Unidad",9720.0),
+    invAgoItem("carnes_cocina","Carnes de cocina","Carnes de cocina","Lengua",1.0,"Unidad",9990.0),
+    invAgoItem("carnes_cocina","Carnes de cocina","Carnes de cocina","Hamburguesa de carnes",0,"Unidad",7500.0),
+    invAgoItem("carnes_cocina","Carnes de cocina","Carnes de cocina","Cerdo infantil",51.0,"Unidad",3200.0),
+    invAgoItem("carnes_cocina","Carnes de cocina","Carnes de cocina","Cerdo parrilla",72.0,"Unidad",5200.0),
+    invAgoItem("carnes_cocina","Carnes de cocina","Carnes de cocina","Especial",90.0,"Unidad",4408.0),
+    invAgoItem("carnes_cocina","Carnes de cocina","Carnes de cocina","Tomahawk",0,"Unidad",45000.0),
+    invAgoItem("carnes_cocina","Carnes de cocina","Carnes de cocina","Punta",105.0,"Unidad",30848.0),
+    invAgoItem("carnes_cocina","Carnes de cocina","Carnes de cocina","Ribeye",36.0,"Unidad",18936.0),
+    invAgoItem("carnes_cocina","Carnes de cocina","Carnes de cocina","Lomo fino",21.0,"Unidad",31000.0),
+    invAgoItem("carnes_cocina","Carnes de cocina","Carnes de cocina","Chicharrón",70.0,"Unidad",7000.0),
+    invAgoItem("carnes_cocina","Carnes de cocina","Carnes de cocina","Desmechada",0,"Unidad",7000.0),
+    invAgoItem("carnes_cocina","Carnes de cocina","Carnes de cocina","Gallina",0,"Unidad",10000.0),
+    invAgoItem("carnes_cocina","Carnes de cocina","Carnes de cocina","Camarón",36.0,"Unidad",9000.0),
+    invAgoItem("carnes_cocina","Carnes de cocina","Carnes de cocina","Robalo",27.0,"Unidad",14500.0),
+    invAgoItem("carnes_cocina","Carnes de cocina","Carnes de cocina","Titi",0,"Unidad",0),
+    invAgoItem("carnes_cocina","Carnes de cocina","Carnes de cocina","Tocineta",0,"Unidad",40000.0),
+    invAgoItem("carnes_cocina","Carnes de cocina","Carnes de cocina","Guanciale",13.0,"Unidad",0),
+    invAgoItem("carnes_cocina","Carnes de cocina","Carnes de cocina","PULPO",1.9,"Unidad",70000.0),
+    invAgoItem("carnes_cocina","Carnes de cocina","Carnes de cocina","SALMON",13.0,"Unidad",17000.0),
+    invAgoItem("carnes_cocina","Carnes de cocina","Carnes de cocina","CAMARON SIN PORCIOAR",2.4,"Unidad",35000.0),
+  ];
+  invAgoConteos.push({ departamento:"carnes_cocina", departamentoLabel:"Carnes de cocina", sesionId:invAgoSesion.id, usuario:'sistema', nombre:invAgoSesion.nombre, fecha:'2026-08-31', hora:'00:00', items:invAgoItems_carnes_cocina, valorTotal:invAgoSuma(invAgoItems_carnes_cocina), observaciones:invAgoObs });
+
+  const invAgoItems_neveras_gaseosas = [
+    invAgoItem("neveras_gaseosas","Bebidas de meseros (gaseosa, agua, cerveza)","Gaseosa","Coca-Cola",88,"Unidad",2100.8333),
+    invAgoItem("neveras_gaseosas","Bebidas de meseros (gaseosa, agua, cerveza)","Gaseosa","Coca-Cola zero",44,"Unidad",2100.8333),
+    invAgoItem("neveras_gaseosas","Bebidas de meseros (gaseosa, agua, cerveza)","Agua","Agua",32,"Unidad",1333.3333),
+    invAgoItem("neveras_gaseosas","Bebidas de meseros (gaseosa, agua, cerveza)","Agua","Soda",58.0,"Unidad",2500.0),
+    invAgoItem("neveras_gaseosas","Bebidas de meseros (gaseosa, agua, cerveza)","Cerveza","Costeñita",0,"Unidad",2500.0),
+    invAgoItem("neveras_gaseosas","Bebidas de meseros (gaseosa, agua, cerveza)","Cerveza","Club",28.0,"Unidad",2436.9667),
+    invAgoItem("neveras_gaseosas","Bebidas de meseros (gaseosa, agua, cerveza)","Cerveza","Heineken",35.0,"Unidad",2700.0),
+    invAgoItem("neveras_gaseosas","Bebidas de meseros (gaseosa, agua, cerveza)","Cerveza","Coronita",104.0,"Unidad",2486.0),
+    invAgoItem("neveras_gaseosas","Bebidas de meseros (gaseosa, agua, cerveza)","Cerveza","Stella Artois",16.0,"Unidad",3022.8821),
+    invAgoItem("neveras_gaseosas","Bebidas de meseros (gaseosa, agua, cerveza)","Gaseosa","Ginger",13.0,"Unidad",5997.5),
+  ];
+  invAgoConteos.push({ departamento:"neveras_gaseosas", departamentoLabel:"Bebidas de meseros (gaseosa, agua, cerveza)", sesionId:invAgoSesion.id, usuario:'sistema', nombre:invAgoSesion.nombre, fecha:'2026-08-31', hora:'00:00', items:invAgoItems_neveras_gaseosas, valorTotal:invAgoSuma(invAgoItems_neveras_gaseosas), observaciones:invAgoObs });
+
+  const invAgoItems_bodega_general = [
+    invAgoItem("bodega_general","Bodega general (materias primas e insumos)","Abarrotes y Despensa","Ajibasco Pequeñ",10.0,"Unidad",5462.0),
+    invAgoItem("bodega_general","Bodega general (materias primas e insumos)","Abarrotes y Despensa","Ajonjoli Tostado",3.0,"Unidad",5800.0),
+    invAgoItem("bodega_general","Bodega general (materias primas e insumos)","Abarrotes y Despensa","Arroz Colavita 500gr",1.0,"Unidad",0.0),
+    invAgoItem("bodega_general","Bodega general (materias primas e insumos)","Abarrotes y Despensa","Arroz Eco",11.0,"Unidad",1550.0),
+    invAgoItem("bodega_general","Bodega general (materias primas e insumos)","Abarrotes y Despensa","Arroz Zulia X Paca",32.0,"Unidad",37695.0),
+    invAgoItem("bodega_general","Bodega general (materias primas e insumos)","Abarrotes y Despensa","Azucar Bulto X 50 Kls",0.5,"Unidad",150000.0),
+    invAgoItem("bodega_general","Bodega general (materias primas e insumos)","Abarrotes y Despensa","Azucar Morena",0,"Unidad",3400.0),
+    invAgoItem("bodega_general","Bodega general (materias primas e insumos)","Abarrotes y Despensa","Azucar Pulverizada 500gr",1.0,"Unidad",11360.0),
+    invAgoItem("bodega_general","Bodega general (materias primas e insumos)","Abarrotes y Despensa","Azucar Sobres x 195",4.0,"Unidad",6700.0),
+    invAgoItem("bodega_general","Bodega general (materias primas e insumos)","Abarrotes y Despensa","Cafe Instantaneo",5.0,"Unidad",8700.0),
+    invAgoItem("bodega_general","Bodega general (materias primas e insumos)","Abarrotes y Despensa","Cafe La Bastilla X 40",1.0,"Unidad",23250.0),
+    invAgoItem("bodega_general","Bodega general (materias primas e insumos)","Abarrotes y Despensa","Canela Astillas",4.0,"Unidad",2400.0),
+    invAgoItem("bodega_general","Bodega general (materias primas e insumos)","Abarrotes y Despensa","Canela Molida",15.0,"Unidad",2400.0),
+    invAgoItem("bodega_general","Bodega general (materias primas e insumos)","Abarrotes y Despensa","Cereza Aro 4000g",1.0,"Unidad",82430.0),
+    invAgoItem("bodega_general","Bodega general (materias primas e insumos)","Abarrotes y Despensa","Cocoa x 230gr",3.0,"Unidad",9990.0),
+    invAgoItem("bodega_general","Bodega general (materias primas e insumos)","Abarrotes y Despensa","Color Rojo (colorante)",2.0,"Unidad",12100.0),
+    invAgoItem("bodega_general","Bodega general (materias primas e insumos)","Abarrotes y Despensa","Condimento Adobo",2.0,"Unidad",14900.0),
+    invAgoItem("bodega_general","Bodega general (materias primas e insumos)","Abarrotes y Despensa","Curcuma",14.0,"Unidad",1650.0),
+    invAgoItem("bodega_general","Bodega general (materias primas e insumos)","Abarrotes y Despensa","Endulzante Natri",2.0,"Unidad",6150.0),
+    invAgoItem("bodega_general","Bodega general (materias primas e insumos)","Abarrotes y Despensa","Fettuccine",9.0,"Unidad",3990.0),
+    invAgoItem("bodega_general","Bodega general (materias primas e insumos)","Abarrotes y Despensa","Fideos",0.0,"Unidad",1100.0),
+    invAgoItem("bodega_general","Bodega general (materias primas e insumos)","Abarrotes y Despensa","Gelatina sin Sabor Aro",36.0,"Unidad",1000.0),
+    invAgoItem("bodega_general","Bodega general (materias primas e insumos)","Abarrotes y Despensa","Kraft Mayonesa 1 Gal",0,"Unidad",86560.0),
+    invAgoItem("bodega_general","Bodega general (materias primas e insumos)","Abarrotes y Despensa","Laurel",8.0,"Unidad",1990.0),
+    invAgoItem("bodega_general","Bodega general (materias primas e insumos)","Abarrotes y Despensa","Lentejas",2.0,"Unidad",1990.0),
+    invAgoItem("bodega_general","Bodega general (materias primas e insumos)","Abarrotes y Despensa","Levadura Activa x 155gr",0.0,"Unidad",9100.0),
+    invAgoItem("bodega_general","Bodega general (materias primas e insumos)","Abarrotes y Despensa","Lonjas de Almendra",0.0,"Unidad",9490.0),
+    invAgoItem("bodega_general","Bodega general (materias primas e insumos)","Abarrotes y Despensa","Maggi Profesional Caja x 270 Cubos",1.0,"Unidad",107600.0),
+    invAgoItem("bodega_general","Bodega general (materias primas e insumos)","Abarrotes y Despensa","Manzanilla Te",1.0,"Unidad",8000.0),
+    invAgoItem("bodega_general","Bodega general (materias primas e insumos)","Abarrotes y Despensa","Mayonesa Fruco 4000gr",1.0,"Unidad",28336.0),
+    invAgoItem("bodega_general","Bodega general (materias primas e insumos)","Abarrotes y Despensa","Mayonesa Kraft 443ml",1.0,"Unidad",25000.0),
+    invAgoItem("bodega_general","Bodega general (materias primas e insumos)","Abarrotes y Despensa","Mayonesa Pomp T X 3900",4.0,"Unidad",31933.0),
+    invAgoItem("bodega_general","Bodega general (materias primas e insumos)","Abarrotes y Despensa","Miel",0.0,"Unidad",8900.0),
+    invAgoItem("bodega_general","Bodega general (materias primas e insumos)","Abarrotes y Despensa","Mix Frutos Secos",3.0,"Unidad",5990.0),
+    invAgoItem("bodega_general","Bodega general (materias primas e insumos)","Abarrotes y Despensa","Mostaza (Mustard)",1.0,"Unidad",0),
+    invAgoItem("bodega_general","Bodega general (materias primas e insumos)","Abarrotes y Despensa","Mostaza Antigua",1.0,"Unidad",14000.0),
+    invAgoItem("bodega_general","Bodega general (materias primas e insumos)","Abarrotes y Despensa","Nuez Moscada",65.0,"Unidad",0.0),
+    invAgoItem("bodega_general","Bodega general (materias primas e insumos)","Abarrotes y Despensa","Oregano",12.0,"Unidad",1990.0),
+    invAgoItem("bodega_general","Bodega general (materias primas e insumos)","Abarrotes y Despensa","Panela Cuadrada X 5",27.0,"Unidad",3800.0),
+    invAgoItem("bodega_general","Bodega general (materias primas e insumos)","Abarrotes y Despensa","Paprika",15.0,"Unidad",1990.0),
+    invAgoItem("bodega_general","Bodega general (materias primas e insumos)","Abarrotes y Despensa","Piaza und",0.0,"Unidad",12300.0),
+    invAgoItem("bodega_general","Bodega general (materias primas e insumos)","Abarrotes y Despensa","Pimienta",10.0,"Unidad",1900.0),
+    invAgoItem("bodega_general","Bodega general (materias primas e insumos)","Abarrotes y Despensa","Pimienta De Olor Kg",1.0,"Unidad",58824.0),
+    invAgoItem("bodega_general","Bodega general (materias primas e insumos)","Abarrotes y Despensa","Pistachos",2.0,"Unidad",7490.0),
+    invAgoItem("bodega_general","Bodega general (materias primas e insumos)","Abarrotes y Despensa","Polvo de Hornear 8gr",1.0,"Unidad",9400.0),
+    invAgoItem("bodega_general","Bodega general (materias primas e insumos)","Abarrotes y Despensa","Sal Paprika x 500gr",2.0,"Unidad",7400.0),
+    invAgoItem("bodega_general","Bodega general (materias primas e insumos)","Abarrotes y Despensa","Sal Parrilla",2.0,"Unidad",1050.0),
+    invAgoItem("bodega_general","Bodega general (materias primas e insumos)","Abarrotes y Despensa","Sal Refisal X Paca X 25",0,"Unidad",31000.0),
+    invAgoItem("bodega_general","Bodega general (materias primas e insumos)","Abarrotes y Despensa","Sal Refisal X Und",12.0,"Unidad",1300.0),
+    invAgoItem("bodega_general","Bodega general (materias primas e insumos)","Abarrotes y Despensa","Sal de Ajo",1.0,"Unidad",7200.0),
+    invAgoItem("bodega_general","Bodega general (materias primas e insumos)","Abarrotes y Despensa","Salsa Bbq X 1000",0,"Unidad",13866.0),
+    invAgoItem("bodega_general","Bodega general (materias primas e insumos)","Abarrotes y Despensa","Salsa Chocolate 1000gr",1.0,"Unidad",16500.0),
+    invAgoItem("bodega_general","Bodega general (materias primas e insumos)","Abarrotes y Despensa","Salsa Dulce Pepinillos Heinz",0,"Unidad",33240.0),
+    invAgoItem("bodega_general","Bodega general (materias primas e insumos)","Abarrotes y Despensa","Salsa Humo Bary X 155",0,"Unidad",3361.0),
+    invAgoItem("bodega_general","Bodega general (materias primas e insumos)","Abarrotes y Despensa","Salsa Inglesa 1LT",0.0,"Unidad",9600.0),
+    invAgoItem("bodega_general","Bodega general (materias primas e insumos)","Abarrotes y Despensa","Salsa Inglesa Bary X 155",0,"Unidad",3571.0),
+    invAgoItem("bodega_general","Bodega general (materias primas e insumos)","Abarrotes y Despensa","Salsa Negra X 1 Lt",1.0,"Unidad",8403.0),
+    invAgoItem("bodega_general","Bodega general (materias primas e insumos)","Abarrotes y Despensa","Salsa Pompeya Trr X4100",0,"Unidad",24790.0),
+    invAgoItem("bodega_general","Bodega general (materias primas e insumos)","Abarrotes y Despensa","Salsa de Chile Dulce Aro 1400gr",1.0,"Unidad",43000.0),
+    invAgoItem("bodega_general","Bodega general (materias primas e insumos)","Abarrotes y Despensa","Salsa de Chile Dulce Best Choice 880gr",0.0,"Unidad",27100.0),
+    invAgoItem("bodega_general","Bodega general (materias primas e insumos)","Abarrotes y Despensa","Salsa de Soya Coruña 1LT",3.0,"Unidad",14100.0),
+    invAgoItem("bodega_general","Bodega general (materias primas e insumos)","Abarrotes y Despensa","Salsa de Tomate Fruco x 4000gr",0.0,"Unidad",66350.0),
+    invAgoItem("bodega_general","Bodega general (materias primas e insumos)","Abarrotes y Despensa","Salsa de Tomate Heinz",2.0,"Unidad",9900.0),
+    invAgoItem("bodega_general","Bodega general (materias primas e insumos)","Abarrotes y Despensa","Salvado de Trigo x 450gr",0.0,"Unidad",10900.0),
+    invAgoItem("bodega_general","Bodega general (materias primas e insumos)","Abarrotes y Despensa","Seasoning Papeleta",2.0,"Unidad",7850.0),
+    invAgoItem("bodega_general","Bodega general (materias primas e insumos)","Abarrotes y Despensa","Seasoning Tarro",1.0,"Unidad",27350.0),
+    invAgoItem("bodega_general","Bodega general (materias primas e insumos)","Abarrotes y Despensa","Sweet-Chili Mp X 3.2Ml",0,"Unidad",75000.0),
+    invAgoItem("bodega_general","Bodega general (materias primas e insumos)","Abarrotes y Despensa","Tomates Secos",4.0,"Unidad",9250.0),
+    invAgoItem("bodega_general","Bodega general (materias primas e insumos)","Abarrotes y Despensa","Tomillo",0,"Unidad",2400.0),
+    invAgoItem("bodega_general","Bodega general (materias primas e insumos)","Abarrotes y Despensa","Trigo x 500gr",3.0,"Unidad",13800.0),
+    invAgoItem("bodega_general","Bodega general (materias primas e insumos)","Abarrotes y Despensa","Vinagre Blanco 5LT",0.0,"Unidad",7850.0),
+    invAgoItem("bodega_general","Bodega general (materias primas e insumos)","Abarrotes y Despensa","Zumo de Limon x 250ml",0.0,"Unidad",3350.0),
+    invAgoItem("bodega_general","Bodega general (materias primas e insumos)","Aseo y Desechables","Bolsa Cubiertera Keep Pq*100",0,"Unidad",3361.0),
+    invAgoItem("bodega_general","Bodega general (materias primas e insumos)","Aseo y Desechables","Bolsa Grande",0,"Unidad",200.0),
+    invAgoItem("bodega_general","Bodega general (materias primas e insumos)","Aseo y Desechables","Bolsa Plastica",0,"Unidad",100.0),
+    invAgoItem("bodega_general","Bodega general (materias primas e insumos)","Aseo y Desechables","Esponja Brillante Dis",10.0,"Unidad",5462.0),
+    invAgoItem("bodega_general","Bodega general (materias primas e insumos)","Aseo y Desechables","Esponja Lider Display",0,"Unidad",13025.0),
+    invAgoItem("bodega_general","Bodega general (materias primas e insumos)","Aseo y Desechables","Gorro Oruga Desechables Blanco 20",0,"Unidad",16807.0),
+    invAgoItem("bodega_general","Bodega general (materias primas e insumos)","Aseo y Desechables","Guante Nitrilo Negro L Cj*100 Und",0,"Unidad",25210.0),
+    invAgoItem("bodega_general","Bodega general (materias primas e insumos)","Aseo y Desechables","Mezclador Sombrilla",0,"Unidad",21008.0),
+    invAgoItem("bodega_general","Bodega general (materias primas e insumos)","Aseo y Desechables","Palillo Dientes X Und",0,"Unidad",672.0),
+    invAgoItem("bodega_general","Bodega general (materias primas e insumos)","Aseo y Desechables","Pitillo Pala Cuchara Colores 28",0,"Unidad",12605.0),
+    invAgoItem("bodega_general","Bodega general (materias primas e insumos)","Aseo y Desechables","Portacomida (contenedor para llevar)",0,"Unidad",300000.0),
+    invAgoItem("bodega_general","Bodega general (materias primas e insumos)","Aseo y Desechables","Servilleta Eco x 200und",0,"Unidad",2200.0),
+    invAgoItem("bodega_general","Bodega general (materias primas e insumos)","Bebidas","Agua Brisa Pet 600Ml X 24",0,"Unidad",32000.0),
+    invAgoItem("bodega_general","Bodega general (materias primas e insumos)","Bebidas","Aguardiente Amarillo 750",1.0,"Unidad",45900.0),
+    invAgoItem("bodega_general","Bodega general (materias primas e insumos)","Bebidas","Aguardiente Antioqueño 375",2.0,"Unidad",23039.0),
+    invAgoItem("bodega_general","Bodega general (materias primas e insumos)","Bebidas","Aguardiente Antioqueño 750",6.0,"Unidad",44203.0),
+    invAgoItem("bodega_general","Bodega general (materias primas e insumos)","Bebidas","Baileys x 1000ml",0,"Unidad",116300.0),
+    invAgoItem("bodega_general","Bodega general (materias primas e insumos)","Bebidas","Bosque de Indias",1.0,"Unidad",73800.0),
+    invAgoItem("bodega_general","Bodega general (materias primas e insumos)","Bebidas","Brandy Domecq",2.0,"Unidad",71809.0),
+    invAgoItem("bodega_general","Bodega general (materias primas e insumos)","Bebidas","Buchanans Deluxe Aged 12 Years",1.0,"Unidad",139900.0),
+    invAgoItem("bodega_general","Bodega general (materias primas e insumos)","Bebidas","Buchanans Master 18 Años Special Reserve 750ml",1.0,"Unidad",198801.0),
+    invAgoItem("bodega_general","Bodega general (materias primas e insumos)","Bebidas","Buchanans Master 750ml",0,"Unidad",198800.0),
+    invAgoItem("bodega_general","Bodega general (materias primas e insumos)","Bebidas","Cerveza Club Colombia Dorada 330X30",0,"Unidad",73109.0),
+    invAgoItem("bodega_general","Bodega general (materias primas e insumos)","Bebidas","Cerveza Coronita Botella X 210Ml X24",0,"Unidad",59664.0),
+    invAgoItem("bodega_general","Bodega general (materias primas e insumos)","Bebidas","Cerveza Stella Artois 330Ml X 24",0,"Unidad",72549.0),
+    invAgoItem("bodega_general","Bodega general (materias primas e insumos)","Bebidas","Coctel Margarita Master",0,"Unidad",34100.0),
+    invAgoItem("bodega_general","Bodega general (materias primas e insumos)","Bebidas","Coctel Piña Colada Mom Master",0,"Unidad",34100.0),
+    invAgoItem("bodega_general","Bodega general (materias primas e insumos)","Bebidas","Don Julio 70",0.0,"Unidad",338954.0),
+    invAgoItem("bodega_general","Bodega general (materias primas e insumos)","Bebidas","Frizantino",0,"Unidad",27990.0),
+    invAgoItem("bodega_general","Bodega general (materias primas e insumos)","Bebidas","Ginger Beer x 4und",0,"Unidad",23990.0),
+    invAgoItem("bodega_general","Bodega general (materias primas e insumos)","Bebidas","Old Parr Aged 12 Years",0,"Unidad",127400.0),
+    invAgoItem("bodega_general","Bodega general (materias primas e insumos)","Bebidas","Pink x 4und",0,"Unidad",18472.0),
+    invAgoItem("bodega_general","Bodega general (materias primas e insumos)","Bebidas","Ron Medellin Botella 12 Años 750cc",1.0,"Unidad",90650.0),
+    invAgoItem("bodega_general","Bodega general (materias primas e insumos)","Bebidas","Ron Medellin Botella 750cc",2.0,"Unidad",48772.0),
+    invAgoItem("bodega_general","Bodega general (materias primas e insumos)","Bebidas","Ron Medellin Botella 8 Años 750cc",2.0,"Unidad",76922.0),
+    invAgoItem("bodega_general","Bodega general (materias primas e insumos)","Bebidas","Ron Viejo de Caldas Blanco 750ml",1.0,"Unidad",40011.0),
+    invAgoItem("bodega_general","Bodega general (materias primas e insumos)","Bebidas","Ron Viejo de Caldas Carta Dorada",5.0,"Unidad",98500.0),
+    invAgoItem("bodega_general","Bodega general (materias primas e insumos)","Bebidas","Ron Viejo de Caldas Oscuro 750ml",1.0,"Unidad",46900.0),
+    invAgoItem("bodega_general","Bodega general (materias primas e insumos)","Bebidas","Tequila Centenario",1.0,"Unidad",115500.0),
+    invAgoItem("bodega_general","Bodega general (materias primas e insumos)","Bebidas","Tequila Jose Cuervo",1.0,"Unidad",83216.0),
+    invAgoItem("bodega_general","Bodega general (materias primas e insumos)","Bebidas","Triple C Coco",0.0,"Unidad",52246.0),
+    invAgoItem("bodega_general","Bodega general (materias primas e insumos)","Bebidas","Triple C Convier",0,"Unidad",65899.0),
+    invAgoItem("bodega_general","Bodega general (materias primas e insumos)","Bebidas","Vino Blanco 750ml",1.0,"Unidad",18500.0),
+    invAgoItem("bodega_general","Bodega general (materias primas e insumos)","Bebidas","Vino Cuatro Cumbres",0.0,"Unidad",24164.0),
+    invAgoItem("bodega_general","Bodega general (materias primas e insumos)","Bebidas","Vino Finca Las Moras Malbec",8.0,"Unidad",34160.0),
+    invAgoItem("bodega_general","Bodega general (materias primas e insumos)","Bebidas","Vino Piccin Lambrusco 750 Rdo x3 Gts Tto Reng",0,"Unidad",136241.0),
+    invAgoItem("bodega_general","Bodega general (materias primas e insumos)","Bebidas","Vino Rosado Segu Olle",0,"Unidad",28500.0),
+    invAgoItem("bodega_general","Bodega general (materias primas e insumos)","Bebidas","Vino Santa Helena Cabernet",1.0,"Unidad",35660.0),
+    invAgoItem("bodega_general","Bodega general (materias primas e insumos)","Bebidas","Vino Sta Carolina Reservado Sauvignon Blanc",0,"Unidad",36605.0),
+    invAgoItem("bodega_general","Bodega general (materias primas e insumos)","Bebidas","Vodka Monteskaya",0,"Unidad",62879.0),
+    invAgoItem("bodega_general","Bodega general (materias primas e insumos)","Bebidas","Whisky Johnnie Walker Black Label Blended",0,"Unidad",156500.0),
+    invAgoItem("bodega_general","Bodega general (materias primas e insumos)","Congelados y Preparados","Papa Aviko Super Crunch 9X9 2,5Kg Cobertura",0,"Unidad",38000.0),
+    invAgoItem("bodega_general","Bodega general (materias primas e insumos)","Dulces y Postres","Bocadillos und",21.0,"Unidad",5150.0),
+    invAgoItem("bodega_general","Bodega general (materias primas e insumos)","Dulces y Postres","Chips de Chocolate x 250gr",3.0,"Unidad",12300.0),
+    invAgoItem("bodega_general","Bodega general (materias primas e insumos)","Dulces y Postres","Chocolatinas Jet",8.0,"Unidad",9990.0),
+    invAgoItem("bodega_general","Bodega general (materias primas e insumos)","Dulces y Postres","Liches Enteros X 565Gr",0,"Unidad",10448.0),
+    invAgoItem("bodega_general","Bodega general (materias primas e insumos)","Dulces y Postres","Menta Helada Surtida X 100Und",0,"Unidad",6971.0),
+    invAgoItem("bodega_general","Bodega general (materias primas e insumos)","Dulces y Postres","Mini Brownie",0.0,"Unidad",8990.0),
+    invAgoItem("bodega_general","Bodega general (materias primas e insumos)","Frutas y Verduras","Aceite Pimpina 18 Ltrs",0.0,"Unidad",95798.0),
+    invAgoItem("bodega_general","Bodega general (materias primas e insumos)","Frutas y Verduras","Esencia Coco X Und",0,"Unidad",1092.0),
+    invAgoItem("bodega_general","Bodega general (materias primas e insumos)","Lacteos y Huevos","Chantilly",2.0,"Unidad",10890.0),
+    invAgoItem("bodega_general","Bodega general (materias primas e insumos)","Lacteos y Huevos","Crema de Leche 200gr",39.0,"Unidad",2400.0),
+    invAgoItem("bodega_general","Bodega general (materias primas e insumos)","Lacteos y Huevos","Leche Condensada (D1)",0,"Unidad",4200.0),
+    invAgoItem("bodega_general","Bodega general (materias primas e insumos)","Lacteos y Huevos","Leche Entera 900ml",7.0,"Unidad",3500.0),
+    invAgoItem("bodega_general","Bodega general (materias primas e insumos)","Lacteos y Huevos","Leche en Polvo 1000gr",20.0,"Unidad",21600.0),
+    invAgoItem("bodega_general","Bodega general (materias primas e insumos)","Lácteos y Huevos","Crem De Leche 1Kg Alq",0,"Unidad",16600.0),
+    invAgoItem("bodega_general","Bodega general (materias primas e insumos)","Lácteos y Huevos","Cunas De Parmesano X Kg",0,"Unidad",77000.0),
+    invAgoItem("bodega_general","Bodega general (materias primas e insumos)","Lácteos y Huevos","Leche De Coco X 400Ml",0,"Unidad",8912.0),
+    invAgoItem("bodega_general","Bodega general (materias primas e insumos)","Pescados y Mariscos","Atun en Lata",0.0,"Unidad",4450.0),
+    invAgoItem("bodega_general","Bodega general (materias primas e insumos)","Pescados y Mariscos","Sardinas en Lata",0.0,"Unidad",6990.0),
+  ];
+  invAgoConteos.push({ departamento:"bodega_general", departamentoLabel:"Bodega general (materias primas e insumos)", sesionId:invAgoSesion.id, usuario:'sistema', nombre:invAgoSesion.nombre, fecha:'2026-08-31', hora:'00:00', items:invAgoItems_bodega_general, valorTotal:invAgoSuma(invAgoItems_bodega_general), observaciones:invAgoObs });
+
+  const invAgoItems_verduras_frutas = [
+    invAgoItem("verduras_frutas","Verduras y frutas","Verduras y tubérculos","Zukini verde",10.0,"KL",5000.0),
+    invAgoItem("verduras_frutas","Verduras y frutas","Verduras y tubérculos","Zukini amarillo",3.0,"KL",5000.0),
+    invAgoItem("verduras_frutas","Verduras y frutas","Verduras y tubérculos","Tomate rojo",6.0,"KL",6000.0),
+    invAgoItem("verduras_frutas","Verduras y frutas","Verduras y tubérculos","Pimentón",4.5,"gr",4000.0),
+    invAgoItem("verduras_frutas","Verduras y frutas","Verduras y tubérculos","Cilantro",1.8,"gr",20000.0),
+    invAgoItem("verduras_frutas","Verduras y frutas","Verduras y tubérculos","Cebollín",0,"gr",4000.0),
+    invAgoItem("verduras_frutas","Verduras y frutas","Verduras y tubérculos","Lechuga crespa",0,"gr",10000.0),
+    invAgoItem("verduras_frutas","Verduras y frutas","Verduras y tubérculos","Cebolla blanca",4.0,"gr",4400.0),
+    invAgoItem("verduras_frutas","Verduras y frutas","Verduras y tubérculos","Remolacha",1.0,"gr",4000.0),
+    invAgoItem("verduras_frutas","Verduras y frutas","Verduras y tubérculos","Ajo",1.0,"gr",7000.0),
+    invAgoItem("verduras_frutas","Verduras y frutas","Verduras y tubérculos","Limón",1.0,"und",6000.0),
+    invAgoItem("verduras_frutas","Verduras y frutas","Verduras y tubérculos","Zanahoria",2.5,"gr",3000.0),
+    invAgoItem("verduras_frutas","Verduras y frutas","Verduras y tubérculos","Cebolla roja",5.0,"gr",3200.0),
+    invAgoItem("verduras_frutas","Verduras y frutas","Verduras y tubérculos","Berenjena",11.0,"gr",2400.0),
+    invAgoItem("verduras_frutas","Verduras y frutas","Verduras y tubérculos","Papaya",5.0,"gr",3000.0),
+    invAgoItem("verduras_frutas","Verduras y frutas","Verduras y tubérculos","Ají criollo",0,"gr",3000.0),
+    invAgoItem("verduras_frutas","Verduras y frutas","Verduras y tubérculos","Pepino",3.0,"gr",3000.0),
+    invAgoItem("verduras_frutas","Verduras y frutas","Verduras y tubérculos","Papa",19.0,"gr",3400.0),
+    invAgoItem("verduras_frutas","Verduras y frutas","Verduras y tubérculos","Cocos",0,"und",3000.0),
+    invAgoItem("verduras_frutas","Verduras y frutas","Verduras y tubérculos","Ñame",16.0,"gr",5000.0),
+    invAgoItem("verduras_frutas","Verduras y frutas","Verduras y tubérculos","Yuca",0,"gr",4000.0),
+    invAgoItem("verduras_frutas","Verduras y frutas","Verduras y tubérculos","Plátano amarillo",88.0,"und",906.0),
+    invAgoItem("verduras_frutas","Verduras y frutas","Verduras y tubérculos","Plátano verde",25.0,"und",850.0),
+  ];
+  invAgoConteos.push({ departamento:"verduras_frutas", departamentoLabel:"Verduras y frutas", sesionId:invAgoSesion.id, usuario:'sistema', nombre:invAgoSesion.nombre, fecha:'2026-08-31', hora:'00:00', items:invAgoItems_verduras_frutas, valorTotal:invAgoSuma(invAgoItems_verduras_frutas), observaciones:invAgoObs });
+
+  const invAgoItems_bar = [
+    invAgoItem("bar","Bar (licores, vinos, mezcladores, postres)","Licores","TEQUILA JOSE CUERVO REPOSADO",1070.0,"750 ML",110.9547),
+    invAgoItem("bar","Bar (licores, vinos, mezcladores, postres)","Licores","TEQUILA 1800",840.0,"750 ML",240.0),
+    invAgoItem("bar","Bar (licores, vinos, mezcladores, postres)","Licores","TEQUILA CENTENARIO",0,"750 ML",154.0),
+    invAgoItem("bar","Bar (licores, vinos, mezcladores, postres)","Licores","TEQUILA REPOSADO TRADICIONAL",0,"750 ML",110.9547),
+    invAgoItem("bar","Bar (licores, vinos, mezcladores, postres)","Licores","RON VIEJO DE CALDAS BLANCO",1725.0,"750 ML",53.348),
+    invAgoItem("bar","Bar (licores, vinos, mezcladores, postres)","Licores","RON MEDELLIN 8 AÑOS",0,"375 ML",102.5627),
+    invAgoItem("bar","Bar (licores, vinos, mezcladores, postres)","Licores","RON MEDELLIN 3 AÑOS",670.0,"375 ML",65.0293),
+    invAgoItem("bar","Bar (licores, vinos, mezcladores, postres)","Licores","MARTINI BIANCO",2270.0,"750 ML",86.6667),
+    invAgoItem("bar","Bar (licores, vinos, mezcladores, postres)","Licores","VODKA ABSOLUT",870.0,"750 ML",126.6667),
+    invAgoItem("bar","Bar (licores, vinos, mezcladores, postres)","Licores","GINEBRA / GORDONS",635.0,"750 ML",100.0),
+    invAgoItem("bar","Bar (licores, vinos, mezcladores, postres)","Licores","AGUARDIENTE AMARILLO",1590.0,"375 ML",61.2),
+    invAgoItem("bar","Bar (licores, vinos, mezcladores, postres)","Licores","BUCHANNAS MASTER",585.0,"750 ML",265.0667),
+    invAgoItem("bar","Bar (licores, vinos, mezcladores, postres)","Licores","BUCHANANS DELUXE (12 AÑOS)",580.0,"750 ML",186.5333),
+    invAgoItem("bar","Bar (licores, vinos, mezcladores, postres)","Licores","BUCHANANS 18 AÑOS",795.0,"750 ML",265.068),
+    invAgoItem("bar","Bar (licores, vinos, mezcladores, postres)","Licores","OLD PARR",2453.0,"750 ML",169.8667),
+    invAgoItem("bar","Bar (licores, vinos, mezcladores, postres)","Licores","DON JULIO",1290.0,"750 ML",451.9387),
+    invAgoItem("bar","Bar (licores, vinos, mezcladores, postres)","Licores","JHONNI WALKER",2165.0,"750 ML",208.6667),
+    invAgoItem("bar","Bar (licores, vinos, mezcladores, postres)","Licores","TRIPLE C",1030.0,"750 ML",69.6613),
+    invAgoItem("bar","Bar (licores, vinos, mezcladores, postres)","Licores","BAILYS CREMA",1520.0,"700 ML",116.3),
+    invAgoItem("bar","Bar (licores, vinos, mezcladores, postres)","Licores","CONVIER COCO",705.0,"750 ML",87.8653),
+    invAgoItem("bar","Bar (licores, vinos, mezcladores, postres)","Vinos","VINO POR COPA",3390.0,"750 ML",40.0),
+    invAgoItem("bar","Bar (licores, vinos, mezcladores, postres)","Vinos","VINO BLANCO",1005.0,"750 ML",24.6667),
+    invAgoItem("bar","Bar (licores, vinos, mezcladores, postres)","Vinos","VINO TINTO",2960.0,"750 ML",47.5467),
+    invAgoItem("bar","Bar (licores, vinos, mezcladores, postres)","Vinos","VINO ROSE",860.0,"750 ML",62.6533),
+    invAgoItem("bar","Bar (licores, vinos, mezcladores, postres)","Vinos","VINO MARIA BARILLA",14360.0,"750 ML",20.0),
+    invAgoItem("bar","Bar (licores, vinos, mezcladores, postres)","Mezcladores","SIROPE DE LICHE",0,"LT",0),
+    invAgoItem("bar","Bar (licores, vinos, mezcladores, postres)","Mezcladores","SIROPE MANZANA JAMAICA",0,"LT",0),
+    invAgoItem("bar","Bar (licores, vinos, mezcladores, postres)","Mezcladores","SIROPE DE MARACUYA",0,"LT",0),
+    invAgoItem("bar","Bar (licores, vinos, mezcladores, postres)","Mezcladores","SIRUPE FRUTOS AMARILLOS",0,"LT",0),
+    invAgoItem("bar","Bar (licores, vinos, mezcladores, postres)","Mezcladores","SIROP MENTA GENJIBRE",0,"LT",0),
+    invAgoItem("bar","Bar (licores, vinos, mezcladores, postres)","Mezcladores","CORDIAL DE GUAYABA AGRIA",0,"Unidad",0),
+    invAgoItem("bar","Bar (licores, vinos, mezcladores, postres)","Mezcladores","SANGRIA",0,"Unidad",0),
+    invAgoItem("bar","Bar (licores, vinos, mezcladores, postres)","Mezcladores","ZUMO DE LIMON 250 ML",0,"250 ML",13.4),
+    invAgoItem("bar","Bar (licores, vinos, mezcladores, postres)","OTROS","CEREZA MAROCHINO LATA",0,"KG",27.7045),
+    invAgoItem("bar","Bar (licores, vinos, mezcladores, postres)","OTROS","AZUCAR",0,"GR",3.0),
+    invAgoItem("bar","Bar (licores, vinos, mezcladores, postres)","OTROS","COCO PULPA",0,"180 GR",1500.0),
+    invAgoItem("bar","Bar (licores, vinos, mezcladores, postres)","Mezcladores","JUGO DE MARACUYA",0,"210 GR",0),
+    invAgoItem("bar","Bar (licores, vinos, mezcladores, postres)","Mezcladores","JUGO COROZO",0,"210 GR",0),
+    invAgoItem("bar","Bar (licores, vinos, mezcladores, postres)","Mezcladores","PULPA DE GUAYABA AGRIA",0,"Unidad",0),
+    invAgoItem("bar","Bar (licores, vinos, mezcladores, postres)","Postres","DULCE DE COCO (PORCION)",0,"Unidad",0),
+    invAgoItem("bar","Bar (licores, vinos, mezcladores, postres)","Postres","ARROZ CON LECHE (PORCION)",0,"Unidad",0),
+    invAgoItem("bar","Bar (licores, vinos, mezcladores, postres)","Postres","TORTAS DE CHOCOLATE",0,"Unidad",0),
+    invAgoItem("bar","Bar (licores, vinos, mezcladores, postres)","Postres","MONGO MONGO",0,"Unidad",0),
+    invAgoItem("bar","Bar (licores, vinos, mezcladores, postres)","Postres","GALLETA DE LIMON (UNIDADES)",0,"Unidad",0),
+  ];
+  invAgoConteos.push({ departamento:"bar", departamentoLabel:"Bar (licores, vinos, mezcladores, postres)", sesionId:invAgoSesion.id, usuario:'sistema', nombre:invAgoSesion.nombre, fecha:'2026-08-31', hora:'00:00', items:invAgoItems_bar, valorTotal:invAgoSuma(invAgoItems_bar), observaciones:invAgoObs });
+
+  const invAgoItems_nevera2p = [
+    invAgoItem("nevera2p","Lácteos y neveras","Quesos y lácteos","Queso azul",2.0,"KL",70000.0),
+    invAgoItem("nevera2p","Lácteos y neveras","Quesos y lácteos","Cuña parmesano",2.0,"KL",75000.0),
+    invAgoItem("nevera2p","Lácteos y neveras","Quesos y lácteos","Queso tajado",10.0,"paquetes",14000.0),
+    invAgoItem("nevera2p","Lácteos y neveras","Quesos y lácteos","Mantequilla Don Olio",80.0,"und",1800.0),
+    invAgoItem("nevera2p","Lácteos y neveras","Papas","papas a la francesa",26.0,"Unidad",37000.0),
+  ];
+  invAgoConteos.push({ departamento:"nevera2p", departamentoLabel:"Lácteos y neveras", sesionId:invAgoSesion.id, usuario:'sistema', nombre:invAgoSesion.nombre, fecha:'2026-08-31', hora:'00:00', items:invAgoItems_nevera2p, valorTotal:invAgoSuma(invAgoItems_nevera2p), observaciones:invAgoObs });
+
+  const invAgoItems_salsas_preparaciones = [
+    invAgoItem("salsas_preparaciones","Salsas y preparaciones","Salsas y preparaciones","Salsa de tocineta",740.0,"gr",0),
+    invAgoItem("salsas_preparaciones","Salsas y preparaciones","Salsas y preparaciones","Guiso de lengua",6000.0,"gr",0),
+    invAgoItem("salsas_preparaciones","Salsas y preparaciones","Salsas y preparaciones","Mote de queso",7000.0,"gr",0),
+    invAgoItem("salsas_preparaciones","Salsas y preparaciones","Salsas y preparaciones","Sopa de gallina",2690.0,"gr",0),
+    invAgoItem("salsas_preparaciones","Salsas y preparaciones","Salsas y preparaciones","Bastimento sopa de gallina",2730.0,"gr",0),
+    invAgoItem("salsas_preparaciones","Salsas y preparaciones","Salsas y preparaciones","Caldo de pato",1360.0,"gr",0),
+    invAgoItem("salsas_preparaciones","Salsas y preparaciones","Salsas y preparaciones","Caldo/guiso de carnero",2320.0,"gr",0),
+    invAgoItem("salsas_preparaciones","Salsas y preparaciones","Salsas y preparaciones","Arroz personal",870.0,"gr",0),
+    invAgoItem("salsas_preparaciones","Salsas y preparaciones","Salsas y preparaciones","Salsa de maracuyá",0,"gr",0),
+    invAgoItem("salsas_preparaciones","Salsas y preparaciones","Salsas y preparaciones","Salsa de champiñones",0,"gr",0),
+    invAgoItem("salsas_preparaciones","Salsas y preparaciones","Salsas y preparaciones","Salsa BBQ",0,"gr",0),
+  ];
+  invAgoConteos.push({ departamento:"salsas_preparaciones", departamentoLabel:"Salsas y preparaciones", sesionId:invAgoSesion.id, usuario:'sistema', nombre:invAgoSesion.nombre, fecha:'2026-08-31', hora:'00:00', items:invAgoItems_salsas_preparaciones, valorTotal:invAgoSuma(invAgoItems_salsas_preparaciones), observaciones:invAgoObs });
+
+  DB.set('inv_productos', invAgoProductos);
+  DB.set('inv_conteos', invAgoConteos);
+  DB.set('inv_baseline_ago2026_cargado', true);
+}
+
 /* ==================================================================
    ÍCONOS
    ================================================================== */
