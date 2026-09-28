@@ -19056,11 +19056,11 @@ function sedeGenerarPass(){
   for(let i=0;i<6;i++) out += chars.charAt(Math.floor(Math.random()*chars.length));
   return out;
 }
-// Solo Checklists y Operación entran al selector de módulos por sede —
-// Gerencia y HJ-IA son pantallas de gestión/soporte, no se restringen
+// Solo Checklists, Operación y Calidad entran al selector de módulos por
+// sede — Gerencia y HJ-IA son pantallas de gestión/soporte, no se restringen
 // por sede (ver sedeItemActivo, más arriba en el bloque de permisos).
 function sedeItemsOperativos(){
-  return todosLosGruposConItems().filter(x => x.sec.id === 'operacion' || x.sec.id === 'checklists');
+  return todosLosGruposConItems().filter(x => x.sec.id === 'operacion' || x.sec.id === 'checklists' || x.sec.id === 'calidad');
 }
 
 function renderSedesModule(sec, group, item, ruta){
