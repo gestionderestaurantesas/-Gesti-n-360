@@ -15518,6 +15518,7 @@ const REPORTE_GENERAL_360_TABS = [
   { id:'ventas', label:'Ventas', icon:'trend', fn:'renderVentas360Module' },
   { id:'inventario', label:'Inventario', icon:'box', fn:'renderReporteInventarioGerencia' },
   { id:'caja', label:'Caja', icon:'cash', fn:'renderReporteCajaGerencia' },
+  { id:'caja_ventas', label:'Caja - Ventas', icon:'trend', fn:'renderReporteCajaVentasGerencia' },
   { id:'bajas', label:'Bajas', icon:'down', fn:'renderReporteBajasGerencia' },
   { id:'sucesos', label:'Sucesos por área', icon:'bell', fn:'renderReporteSucesosAreaGerencia' },
   { id:'hallazgos', label:'Hallazgos de inspección', icon:'search', fn:'renderReporteHallazgosGerencia' },
@@ -15679,6 +15680,129 @@ function renderReporteCajaGerencia(sec, group, item, ruta){
       ${tabla(cierres.slice(0,30), colsCierre)}
       <h3 style="font-size:15px;margin:24px 0 10px;">Histórico de comprobantes de transferencia</h3>
       ${tabla(comprobantes.slice(0,30), colsComp)}
+    </div>`;
+  document.getElementById('content').innerHTML = html;
+}
+
+// ---- Gerencia: Caja - Ventas (panel gerencial consolidado, inspirado en la
+// app de referencia de Caja: KPIs de ventas por medio de pago, descuadres,
+// cumplimiento de datáfono/facturación y ranking de responsables, con
+// filtro de rango de fechas) ----
+let cvRangoDesde = null, cvRangoHasta = null;
+function cvSetRango(desde, hasta){
+  cvRangoDesde = desde || null;
+  cvRangoHasta = hasta || null;
+  reporteGeneral360SetTab('caja_ventas');
+}
+function cvEnRango(fecha){
+  if(!fecha) return false;
+  if(cvRangoDesde && fecha < cvRangoDesde) return false;
+  if(cvRangoHasta && fecha > cvRangoHasta) return false;
+  return true;
+}
+function renderReporteCajaVentasGerencia(sec, group, item, ruta){
+  const todosCierres = filtrarPorSede(DB.get('caja_cierre', []));
+  const todosComp = filtrarPorSede(DB.get('caja_comprobantes', []));
+  const hayRango = !!(cvRangoDesde || cvRangoHasta);
+  const cierres = (hayRango ? todosCierres.filter(c=>cvEnRango(c.fecha)) : todosCierres).slice().reverse();
+  const comprobantes = (hayRango ? todosComp.filter(c=>cvEnRango(c.fecha)) : todosComp).slice().reverse();
+
+  const sum = key => cierres.reduce((a,c)=>a+(Number(c[key])||0),0);
+  const totalEfectivo = sum('efectivoContado'), totalTransf = sum('transfContadas'), totalTarjetas = sum('tarjetasContadas');
+  const totalVentas = totalEfectivo + totalTransf + totalTarjetas;
+  const totalOtrasFormas = sum('anticiposSistema') + sum('bonosSistema') + sum('cortesiaSistema') + sum('creditoSistema');
+  const totalVentasCompleto = totalVentas + totalOtrasFormas;
+  const totalDescuadre = cierres.reduce((a,c)=>a+Math.abs(c.dEfectivo||0)+Math.abs(c.dTransf||0)+Math.abs(c.dTarjetas||0),0);
+  const conDescuadre = cierres.filter(c=>(c.dEfectivo||0)!==0 || (c.dTransf||0)!==0 || (c.dTarjetas||0)!==0);
+  const promDescuadre = cierres.length ? totalDescuadre / cierres.length : 0;
+  const pctTarjetas = totalVentas > 0 ? Math.round((totalTarjetas/totalVentas)*100) : 0;
+  const totalMontoComp = comprobantes.reduce((a,c)=>a+(Number(c.monto)||0),0);
+  const bolsaPendientes = cierres.filter(c=>c.bolsaSeguridad && c.bolsaEstado!=='recibida').length;
+
+  const datafonoTxt = r => [r.datafonos&&r.datafonos.p1?'P1':null, r.datafonos&&r.datafonos.p2?'P2':null, r.datafonos&&r.datafonos.alt?'Alt':null].filter(Boolean).join(', ') || '-';
+  const diffBadge = v => (v||0)===0 ? '<span class="badge badge-verde">$0</span>' : '<span class="badge badge-rojo">'+fmtMoney(v)+'</span>';
+
+  const kpi = (color, iconName, valor, label, sub) => `
+    <div class="stat-card2 ${sub && sub.mal ? 'bad':''}">
+      <div class="lbl" style="display:flex;align-items:center;gap:6px;"><span class="icon-circle" style="width:22px;height:22px;background:${hexToRgba(color,0.14)};color:${color};display:inline-flex;align-items:center;justify-content:center;border-radius:50%;">${ic(iconName,13)}</span>${label}</div>
+      <div class="val">${valor}</div>
+      ${sub ? `<div class="sub">${sub.texto}</div>` : ''}
+    </div>`;
+
+  const kpisHtml = `<div class="stat-grid2">
+    ${kpi('#2E7D32','cash', cierres.length, 'Cierres en el rango')}
+    ${kpi('#3B6EA8','trend', fmtMoney(totalVentas), 'Ventas totales', {texto:'Efectivo + transferencias + tarjetas'})}
+    ${kpi('#6B4E9E','chart', fmtMoney(totalVentasCompleto), 'Ventas totales (con otras formas)', {texto:'Incluye anticipos, bonos, cortesía y crédito'})}
+    ${kpi(totalDescuadre>0?'#C0392B':'#2E7D32','bell', fmtMoney(totalDescuadre), 'Descuadre acumulado', {texto:conDescuadre.length+' cierres con diferencia', mal:totalDescuadre>0})}
+    ${kpi('#B87333','cash', fmtMoney(promDescuadre), 'Descuadre promedio / cierre')}
+    ${kpi('#1E5A70','trend', pctTarjetas+'%', 'Datáfono / tarjetas', {texto:'% de las ventas totales'})}
+    ${kpi('#2E7D32','camera', comprobantes.length, 'Comprobantes de transferencia', {texto:fmtMoney(totalMontoComp)+' en total'})}
+    ${kpi(bolsaPendientes>0?'#C0392B':'#2E7D32','box', bolsaPendientes, 'Bolsas de seguridad pendientes', {mal:bolsaPendientes>0})}
+  </div>`;
+
+  const byResp = {};
+  cierres.forEach(c=>{
+    const key = c.responsable || c.nombre || 'Sin nombre';
+    if(!byResp[key]) byResp[key] = { cierres:0, conDescuadre:0, total:0 };
+    byResp[key].cierres++;
+    const d = Math.abs(c.dEfectivo||0)+Math.abs(c.dTransf||0)+Math.abs(c.dTarjetas||0);
+    if(d>0) byResp[key].conDescuadre++;
+    byResp[key].total += d;
+  });
+  const ranking = Object.entries(byResp).sort((a,b)=>b[1].total-a[1].total);
+  const rankingHtml = ranking.length ? `
+    <table class="mini-table">
+      <thead><tr><th>Responsable</th><th>Cierres</th><th>Con descuadre</th><th>Total descuadre</th></tr></thead>
+      <tbody>${ranking.map(([name,s])=>`<tr><td>${name}</td><td>${s.cierres}</td><td>${s.conDescuadre}</td><td>${fmtMoney(s.total)}</td></tr>`).join('')}</tbody>
+    </table>` : `<p style="color:var(--text-light);font-size:13px;">Sin datos en el rango.</p>`;
+
+  const tabla = (rows, cols) => rows.length ? `
+    <table class="mini-table">
+      <thead><tr>${cols.map(c=>`<th>${c.h}</th>`).join('')}</tr></thead>
+      <tbody>${rows.map(r=>`<tr>${cols.map(c=>`<td>${c.v(r)}</td>`).join('')}</tr>`).join('')}</tbody>
+    </table>` : `<p style="color:var(--text-light);font-size:13px;">Sin datos en el rango.</p>`;
+
+  const colsCierre = [
+    {h:'Fecha', v:r=>r.fecha+' '+r.hora}, {h:'Sede', v:r=>sedeLabelGlobal(r.sede)}, {h:'Responsable', v:r=>r.responsable||r.nombre},
+    {h:'Datáfono', v:datafonoTxt},
+    {h:'Efectivo (dif)', v:r=>fmtMoney(r.efectivoContado)+' ('+diffBadge(r.dEfectivo||0)+')'},
+    {h:'Transf. (dif)', v:r=>fmtMoney(r.transfContadas)+' ('+diffBadge(r.dTransf||0)+')'},
+    {h:'Tarjetas (dif)', v:r=>fmtMoney(r.tarjetasContadas)+' ('+diffBadge(r.dTarjetas||0)+')'},
+    {h:'Gastos', v:r=>fmtMoney(r.gastosCaja)},
+    {h:'Bolsa seguridad', v:r=>fmtMoney(r.bolsaSeguridad)}
+  ];
+  const colsComp = [
+    {h:'Fecha', v:r=>r.fecha+' '+r.hora}, {h:'Sede', v:r=>sedeLabelGlobal(r.sede)}, {h:'Mesa', v:r=>r.mesa||'-'},
+    {h:'Nombre', v:r=>r.nombreRecibe||r.nombre}, {h:'Monto', v:r=> r.monto ? fmtMoney(r.monto) : '-'},
+    {h:'Usado en cierre', v:r=> r.usadoEnCierre ? '<span class="badge badge-verde">Sí</span>' : '<span class="badge badge-gris">No</span>'}
+  ];
+
+  const rangoHtml = `
+    <div class="form-grid" style="margin-bottom:18px;align-items:end;">
+      <div class="form-field"><label>Desde</label><input type="date" id="cv_desde" value="${cvRangoDesde||''}"></div>
+      <div class="form-field"><label>Hasta</label><input type="date" id="cv_hasta" value="${cvRangoHasta||''}"></div>
+      <div class="form-field" style="align-self:end;">
+        <button class="btn-primary" onclick="cvSetRango(document.getElementById('cv_desde').value, document.getElementById('cv_hasta').value)">Filtrar</button>
+      </div>
+      ${hayRango ? `<div class="form-field" style="align-self:end;"><button class="btn-secondary" onclick="cvSetRango(null,null)">Ver todo</button></div>` : ''}
+    </div>`;
+
+  const html = `
+    <div class="panel">
+      <div class="panel-header">
+        <div class="icon-circle" style="background:${hexToRgba(sec.color,0.14)}; color:${sec.color};">${ic('trend',21)}</div>
+        <div><h2>Caja - Ventas</h2><div class="path">${ruta}</div></div>
+      </div>
+      ${rangoHtml}
+      ${kpisHtml}
+      <h3 style="font-size:15px;margin:24px 0 10px;">Ranking de responsables (por descuadre acumulado)</h3>
+      ${rankingHtml}
+      <h3 style="font-size:15px;margin:24px 0 10px;">Cierres con diferencias o novedades</h3>
+      ${tabla(conDescuadre, colsCierre)}
+      <h3 style="font-size:15px;margin:24px 0 10px;">Histórico de cierres de caja</h3>
+      ${tabla(cierres.slice(0,50), colsCierre)}
+      <h3 style="font-size:15px;margin:24px 0 10px;">Histórico de comprobantes de transferencia</h3>
+      ${tabla(comprobantes.slice(0,50), colsComp)}
     </div>`;
   document.getElementById('content').innerHTML = html;
 }
