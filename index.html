@@ -2234,6 +2234,14 @@ if(!DB.get('usuarios_monteria_jul2026_cargado')){
   if(_usCambio2) DB.set('usuarios', _usActuales2);
   DB.set('usuarios_monteria_jul2026_cargado', true);
 }
+if(!DB.get('usuario_gerente_chinu_cargado')){
+  const _usActuales3 = DB.get('usuarios', USUARIOS_SEED) || [];
+  if(!_usActuales3.some(u => u.usuario === 'gerente.chinu')){
+    _usActuales3.push({usuario:'gerente.chinu', pass:'', nombre:'Gerente de sede Chinú', cargo:'Gerente de sede', sede:'chinu', area:'todas', rol:'gerencia', activo:true, rolPuesto:'', itemsExtra:[]});
+    DB.set('usuarios', _usActuales3);
+  }
+  DB.set('usuario_gerente_chinu_cargado', true);
+}
 
 // Cuenta de pruebas "chinu" (sede fija, no "todas") para que Harol pueda
 // probar el comportamiento con sede bloqueada sin usar su propio usuario
@@ -2492,8 +2500,8 @@ function rolPuestoLabel(id){ const r = ROLES_PUESTO.find(x=>x.id===id); return r
 // ajustar libremente desde Configuración → Roles y tareas. Se seeden
 // solo una vez (si ya existen en DB, se respetan los cambios guardados).
 const ROLES_PERMISOS_SEED = {
-  caja: ['cf_caja','sc_comprobantes','ast_chat'],
-  mesero: ['chk_briefing','chk_mise_servicio','chk_aseo_salon','chk_cierre_servicio','sc_comprobantes','ast_chat'],
+  caja: ['cf_caja','sc_comprobantes','sc_comandas','ast_chat'],
+  mesero: ['chk_briefing','chk_mise_servicio','chk_aseo_salon','chk_cierre_servicio','sc_comprobantes','sc_comandas','ast_chat'],
   cocina: ['chk_briefing_cocina','chk_mise_cocina_parrilla','chk_mise_cocina_fritos','chk_mise_cocina_armado','chk_mise_cocina_corrientes','chk_mise_cocina_pastas','chk_higiene','chk_prueba_prep','chk_cierre_cocina','coc_comida_personal','coc_bajas','coc_mejora','coc_fotos_platos','ast_chat'],
   steward: ['chk_alistamiento_steward','chk_cierre_steward','ast_chat'],
   bar: ['chk_mise_bar','chk_aseo_bar','chk_cierre_bar','ast_chat'],
@@ -2515,6 +2523,17 @@ else {
     _rpActual.mesero.push('sc_comprobantes');
     DB.set('roles_permisos', _rpActual);
   }
+  // Migración no destructiva: da acceso a "Mesas con cuenta separada"
+  // (comandas/prefacturas por persona) a mesero y caja sin pisar cambios
+  // que el gerente ya haya guardado manualmente.
+  let _rpCambioComandas = false;
+  ['mesero','caja'].forEach(function(rolId){
+    if(_rpActual && Array.isArray(_rpActual[rolId]) && !_rpActual[rolId].includes('sc_comandas')){
+      _rpActual[rolId].push('sc_comandas');
+      _rpCambioComandas = true;
+    }
+  });
+  if(_rpCambioComandas) DB.set('roles_permisos', _rpActual);
 }
 function rolesPermisosGet(){ return DB.get('roles_permisos', ROLES_PERMISOS_SEED); }
 
@@ -3453,6 +3472,7 @@ const NAV = [
       ]},
       { id:'servicio_cliente', label:'Servicio al cliente', icon:'user', matchArea:'servicio_cliente', items:[
         { id:'sc_comprobantes', label:'Comprobantes de transferencias', icon:'camera', roles:['empleado','administracion','gerencia'], customRender:'renderComprobantesStandalone' },
+        { id:'sc_comandas', label:'Mesas con cuenta separada', icon:'printer', roles:['empleado','administracion','gerencia'], customRender:'renderComandasModule' },
         { id:'sc_encuesta', label:'Encuesta de satisfacción', icon:'star', roles:['administracion','gerencia'], customRender:'renderEncuestaModule' }
       ]},
       { id:'cocina', label:'Cocina', icon:'chef', matchArea:'cocina', items:[
@@ -3785,10 +3805,14 @@ function withAreaDividers(items){
    RENDER: SIDEBAR
    ================================================================== */
 function renderSidebar(){
-  // Esta primera versión es un solo negocio: en vez de "Sede Chinú" o
-  // "Sede Todas las sedes", se muestra directamente el nombre configurado
-  // en Parámetros del restaurante.
-  document.getElementById('sedeLabelSidebar').textContent = appNombreNegocio();
+  // Ya hay más de una sede real (Montería y Chinú), así que este texto
+  // debe reflejar la sede del usuario que inició sesión — no un nombre
+  // global fijo, porque si no, un gerente de Montería ve "Chinú" aquí
+  // (el nombre que quedó guardado en Parámetros del restaurante) aunque
+  // esté trabajando en Montería. Solo para la cuenta general (sede
+  // "todas") sí tiene sentido mostrar el nombre del negocio completo.
+  document.getElementById('sedeLabelSidebar').textContent =
+    (SESSION.sede && SESSION.sede !== 'todas') ? sedeLabelGlobal(SESSION.sede) : appNombreNegocio();
 
   const nav = document.getElementById('navList');
   nav.querySelectorAll('.nav-section').forEach(n=>n.remove());
@@ -6685,16 +6709,16 @@ function renderComprobantesStandalone(sec, group, item, ruta){
    Colección: comandas_impresas (solo un registro liviano de cada vez
    que se imprime, para tener rastro — no vuelve a mostrar el pedido).
    ================================================================== */
-let comandasLastRuta = 'Operación → Servicio al cliente → Comandas por persona (imprimir)';
+let comandasLastRuta = 'Operación → Servicio al cliente → Mesas con cuenta separada';
 let comandaMesa = '';
 let comandaZona = '';
-let comandaPersonas = [{ nombre:'', pedido:'' }];
+let comandaPersonas = [{ nombre:'', pedido:'', total:'' }];
 
 function renderComandasModule(sec, group, item, ruta){
   if(ruta) comandasLastRuta = ruta;
   comandaMesa = '';
   comandaZona = '';
-  comandaPersonas = [{ nombre:'', pedido:'' }];
+  comandaPersonas = [{ nombre:'', pedido:'', total:'' }];
   renderComandasBody(sec);
 }
 // Número de comanda simple y consecutivo (como el #21913 de la impresora
@@ -6720,12 +6744,16 @@ function renderComandasBody(sec){
         ${comandaPersonas.length > 1 ? `<button onclick="comandaQuitarPersona(${idx})" style="border:none;background:none;color:var(--rojo);font-size:12px;cursor:pointer;">Quitar</button>` : ''}
       </div>
       <div class="form-field" style="margin-bottom:8px;">
-        <label>Nombre de la persona</label>
-        <input type="text" value="${comandasEscapar(p.nombre)}" placeholder="Ej: Juan, Silla 2, Niño..." oninput="comandaActualizarNombre(${idx}, this.value)">
+        <label>Nombre y apellido de la persona</label>
+        <input type="text" value="${comandasEscapar(p.nombre)}" placeholder="Ej: Juan Pérez (si hay otro Juan, pon el apellido para no confundirlos)" oninput="comandaActualizarNombre(${idx}, this.value)">
       </div>
-      <div class="form-field">
+      <div class="form-field" style="margin-bottom:8px;">
         <label>Pedido (un plato por línea)</label>
         <textarea rows="3" placeholder="1 Mojarra frita&#10;1 Limonada de coco (sin hielo)" oninput="comandaActualizarPedido(${idx}, this.value)">${comandasEscapar(p.pedido)}</textarea>
+      </div>
+      <div class="form-field">
+        <label>Total a cobrar a esta persona (opcional, para la prefactura)</label>
+        <input type="text" inputmode="decimal" value="${comandasEscapar(p.total)}" placeholder="Ej: 45000" oninput="comandaActualizarTotal(${idx}, this.value)">
       </div>
     </div>`).join('');
 
@@ -6733,10 +6761,10 @@ function renderComandasBody(sec){
     <div class="panel">
       <div class="panel-header">
         <div class="icon-circle" style="background:${hexToRgba(sec.color,0.14)}; color:${sec.color};">${ic('printer',21)}</div>
-        <div><h2>Comandas por persona</h2><div class="path">${comandasLastRuta}</div></div>
+        <div><h2>Mesas con cuenta separada</h2><div class="path">${comandasLastRuta}</div></div>
       </div>
       <p style="font-size:12.5px;color:var(--text-light);margin-bottom:14px;">
-        Escribe la mesa y el pedido de cada persona, y al imprimir sale una comanda de 80mm POR PERSONA con su nombre bien visible — así en cocina y en el salón es fácil identificar quién pidió qué. En el diálogo de impresión, elige la impresora térmica del pase.
+        Para mesas numerosas que piden la cuenta por separado: escribe la mesa y el pedido de cada persona. Con "Imprimir comandas" sale un ticket de 80mm POR PERSONA con su nombre bien visible, para que cocina y salón identifiquen quién pidió qué. Si además escribes el total de cada persona, con "Imprimir prefacturas" sale un ticket de cobro individual por persona, para que nadie tenga que buscar la cuenta de nadie al final. En el diálogo de impresión, elige la impresora térmica del pase.
       </p>
       <div class="compact-form">
       <div class="form-grid" style="max-width:420px;margin-bottom:10px;">
@@ -6756,9 +6784,12 @@ function renderComandasBody(sec){
       <div class="form-section-title" style="margin-top:0;">Personas y sus pedidos</div>
       ${personasHtml}
       <button class="tab-btn" style="margin-bottom:16px;" onclick="comandaAgregarPersona()">+ Agregar persona</button>
-      <div>
-        <button class="btn-primary" style="width:auto;padding:11px 22px;" onclick="comandaImprimir()">${ic('printer',15)} Imprimir comandas</button>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;">
+        <button class="btn-primary" style="width:auto;padding:11px 22px;" onclick="comandaImprimir()">${ic('printer',15)} Imprimir comandas (por persona)</button>
+        <button class="btn-primary" style="width:auto;padding:11px 22px;background:var(--teal);" onclick="comandaImprimirPorVariedad()">${ic('chef',15)} Imprimir comandas de cocina (agrupadas por plato)</button>
+        <button class="btn-primary" style="width:auto;padding:11px 22px;background:var(--dorado);" onclick="prefacturaImprimir()">${ic('cash',15)} Imprimir prefacturas</button>
       </div>
+      <p style="font-size:11px;color:var(--text-light);margin-top:8px;">"Comandas (por persona)" es para que salón/mesero identifique de quién es cada plato. "Comandas de cocina" agrupa los platos iguales (mismo término y guarnición) para que cocina los saque juntos, imprimiendo un corte de impresora por cada plato. "Prefacturas" es para cobrar a cada persona por separado.</p>
       <div id="comanda_msg"></div>
     </div>`;
   document.getElementById('content').innerHTML = html;
@@ -6767,13 +6798,14 @@ function renderComandasBody(sec){
 
 function comandaActualizarNombre(idx, valor){ if(comandaPersonas[idx]) comandaPersonas[idx].nombre = valor; }
 function comandaActualizarPedido(idx, valor){ if(comandaPersonas[idx]) comandaPersonas[idx].pedido = valor; }
+function comandaActualizarTotal(idx, valor){ if(comandaPersonas[idx]) comandaPersonas[idx].total = valor; }
 function comandaAgregarPersona(){
-  comandaPersonas.push({ nombre:'', pedido:'' });
+  comandaPersonas.push({ nombre:'', pedido:'', total:'' });
   renderComandasBody();
 }
 function comandaQuitarPersona(idx){
   comandaPersonas.splice(idx, 1);
-  if(!comandaPersonas.length) comandaPersonas = [{ nombre:'', pedido:'' }];
+  if(!comandaPersonas.length) comandaPersonas = [{ nombre:'', pedido:'', total:'' }];
   renderComandasBody();
 }
 
@@ -6854,7 +6886,7 @@ function comandaAplicarPedidoDetectado(idx){
   comandaMesa = p.mesa || '';
   comandaZona = p.zona || '';
   const nPersonas = (p.personas && p.personas > 0) ? Math.min(p.personas, 20) : 1;
-  comandaPersonas = Array.from({length: nPersonas}, () => ({ nombre:'', pedido:'' }));
+  comandaPersonas = Array.from({length: nPersonas}, () => ({ nombre:'', pedido:'', total:'' }));
   comandaPersonas[0].pedido = (p.items || []).join('\n');
   renderComandasBody();
   showMsg('comanda_msg', 'Se cargó Mesa ' + (comandaMesa || '?') + ' con ' + (p.items||[]).length + ' platos en "Persona 1"'
@@ -6918,6 +6950,179 @@ function comandaImprimir(){
   });
 
   showMsg('comanda_msg', conPedido.length + ' comanda' + (conPedido.length===1?'':'s') + ' lista' + (conPedido.length===1?'':'s') + ' para imprimir — se abrió la ventana de impresión (elige ahí la impresora térmica).', 'verde');
+}
+
+/* Comandas de cocina agrupadas por variedad — protocolo de mesas con
+   cuenta dividida: en vez de una comanda por persona, cocina recibe un
+   ticket por CADA PLATO (con el nombre de a quién pertenece), pero
+   ordenados para que los platos iguales (mismo texto: mismo término,
+   misma guarnición) salgan pegados uno detrás de otro, y dentro de un
+   mismo plato base (ej. "Punta de anca"), primero el término menos
+   cocido. Cada plato se imprime en su propio corte de la impresora
+   térmica, en el orden en que se deben ir sacando. */
+const COMANDA_TERMINO_ORDEN = ['azul','rojo','poco cocido','poco hecho','tres cuartos','término medio','termino medio','al punto','bien cocido','bien hecho','muy cocido'];
+
+function comandaBaseTexto(texto){
+  let t = String(texto||'').trim().replace(/^\d+\s*[xX]?\s+/, '');
+  const low = t.toLowerCase();
+  const cortes = [' con ', ' término', ' termino', ' al punto', ','];
+  let idx = t.length;
+  cortes.forEach(c => { const i = low.indexOf(c); if(i > -1 && i < idx) idx = i; });
+  return t.slice(0, idx).trim().toLowerCase();
+}
+
+function comandaTerminoIndice(texto){
+  const low = String(texto||'').toLowerCase();
+  for(let i=0;i<COMANDA_TERMINO_ORDEN.length;i++){ if(low.includes(COMANDA_TERMINO_ORDEN[i])) return i; }
+  return 999;
+}
+
+function comandaImprimirPorVariedad(){
+  const items = [];
+  comandaPersonas.forEach(p => {
+    const nombre = (p.nombre||'').trim() || 'Sin nombre';
+    String(p.pedido||'').split('\n').map(l => l.trim()).filter(Boolean).forEach(linea => {
+      items.push({ nombre, texto: linea, base: comandaBaseTexto(linea), termino: comandaTerminoIndice(linea) });
+    });
+  });
+  if(!items.length){
+    showMsg('comanda_msg', 'Escribe primero el pedido de al menos una persona.', 'rojo');
+    return;
+  }
+  const clavesUnicas = [];
+  const gruposPorClave = {};
+  items.forEach(it => {
+    const clave = it.texto.toLowerCase();
+    if(!gruposPorClave[clave]){ gruposPorClave[clave] = { base: it.base, termino: it.termino, texto: it.texto, items: [] }; clavesUnicas.push(clave); }
+    gruposPorClave[clave].items.push(it);
+  });
+  clavesUnicas.sort((a, b) => {
+    const ga = gruposPorClave[a], gb = gruposPorClave[b];
+    if(ga.base !== gb.base) return ga.base < gb.base ? -1 : 1;
+    if(ga.termino !== gb.termino) return ga.termino - gb.termino;
+    return ga.texto.localeCompare(gb.texto);
+  });
+  const itemsOrdenados = [];
+  clavesUnicas.forEach(clave => { gruposPorClave[clave].items.forEach(it => itemsOrdenados.push(it)); });
+
+  const fecha = hoyStr();
+  const hora = horaStr();
+  const sedeNombre = sedeLabelGlobal(sedeParaGuardar());
+  const numero = comandaSiguienteNumero();
+  const totalPlatos = itemsOrdenados.length;
+
+  const ticketsHtml = itemsOrdenados.map((it, i) => `
+    <div class="comanda-ticket">
+      <div style="display:flex;justify-content:space-between;font-size:11px;">
+        <b>#${numero}</b><span>${hora}</span>
+      </div>
+      <div style="text-align:center;font-weight:700;font-size:13px;">${paramsRestaurante().nombreRestaurante.toUpperCase()}</div>
+      <div style="text-align:center;font-size:11px;">CUENTA DIVIDIDA — Mesa ${comandasEscapar(comandaMesa) || '-'}${comandaZona ? ' — ' + comandasEscapar(comandaZona) : ''}</div>
+      <div class="comanda-linea">--------------------------------</div>
+      <div style="font-size:9px;">Orden de producción: plato ${i+1} de ${totalPlatos}</div>
+      <div style="font-size:16px;font-weight:700;margin:4px 0;">${comandasEscapar(it.texto)}</div>
+      <div class="comanda-linea">--------------------------------</div>
+      <div style="font-size:13px;">Para: <b>${comandasEscapar(it.nombre)}</b></div>
+      <div class="comanda-linea">--------------------------------</div>
+      <div style="font-size:10px;">Atiende: ${comandasEscapar(SESSION.nombre)} — ${fecha}</div>
+    </div>`).join('');
+
+  const ventana = window.open('', '_blank', 'width=380,height=600');
+  if(!ventana){
+    showMsg('comanda_msg', 'El navegador bloqueó la ventana de impresión. Permite ventanas emergentes para este sitio e inténtalo de nuevo.', 'rojo');
+    return;
+  }
+  ventana.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Comandas de cocina</title>
+    <style>
+      @page{ size:80mm auto; margin:0; }
+      *{ box-sizing:border-box; }
+      body{ font-family:'Courier New',Courier,monospace; width:80mm; margin:0; padding:2mm 3mm; color:#000; }
+      .comanda-ticket{ page-break-after:always; padding-bottom:6px; }
+      .comanda-ticket:last-child{ page-break-after:auto; }
+      .comanda-linea{ font-size:11px; letter-spacing:-0.5px; }
+    </style>
+    </head><body>${ticketsHtml}</body></html>`);
+  ventana.document.close();
+  const lanzarImpresion = function(){ try{ ventana.focus(); ventana.print(); }catch(e){} };
+  ventana.onload = lanzarImpresion;
+  setTimeout(lanzarImpresion, 350);
+
+  DB.push('comandas_impresas', {
+    sede: sedeParaGuardar(), usuario: SESSION.usuario, nombre: SESSION.nombre,
+    fecha, hora, numero, mesa: comandaMesa, zona: comandaZona, personas: comandaPersonas.length,
+    tipo: 'variedad', platos: totalPlatos
+  });
+
+  showMsg('comanda_msg', totalPlatos + ' plato' + (totalPlatos===1?'':'s') + ' listo' + (totalPlatos===1?'':'s') + ' para imprimir, agrupados para cocina — se abrió la ventana de impresión (elige ahí la impresora térmica).', 'verde');
+}
+
+/* Prefacturas individuales — mismo listado de personas/pedidos de arriba,
+   pero en formato de cuenta de cobro (con el total que el mesero escribió
+   para cada persona), para que cada quien pague la suya sin que el mesero
+   tenga que rebuscar en una cuenta mezclada. Uso interno / apoyo para
+   cobrar — no reemplaza la factura real que emite el punto de venta. */
+function prefacturaImprimir(){
+  const conDatos = comandaPersonas.filter(p => (p.pedido||'').trim() || (p.total||'').toString().trim());
+  if(!conDatos.length){
+    showMsg('comanda_msg', 'Escribe al menos el pedido o el total de una persona antes de imprimir prefacturas.', 'rojo');
+    return;
+  }
+  const fecha = hoyStr();
+  const hora = horaStr();
+  const sedeNombre = sedeLabelGlobal(sedeParaGuardar());
+  const numero = comandaSiguienteNumero();
+  const totalPersonas = conDatos.length;
+  const sumaGeneral = conDatos.reduce((acc, p) => acc + (parseFloat((p.total||'0').toString().replace(/[^0-9.]/g,'')) || 0), 0);
+
+  const ticketsHtml = conDatos.map((p, i) => {
+    const totalNum = parseFloat((p.total||'0').toString().replace(/[^0-9.]/g,'')) || 0;
+    return `
+    <div class="comanda-ticket">
+      <div style="display:flex;justify-content:space-between;font-size:11px;">
+        <b>#${numero}</b><span>${hora}</span>
+      </div>
+      <div style="text-align:center;font-weight:700;font-size:13px;">${paramsRestaurante().nombreRestaurante.toUpperCase()}</div>
+      <div style="text-align:center;font-size:11px;">PREFACTURA — Sede ${comandasEscapar(sedeNombre)}${comandaZona ? ' — ' + comandasEscapar(comandaZona) : ''}</div>
+      <div class="comanda-linea">--------------------------------</div>
+      <div style="display:flex;justify-content:space-between;"><span><b>Mesa:</b> ${comandasEscapar(comandaMesa) || '-'}</span><span>${totalPersonas} cuenta${totalPersonas===1?'':'s'}</span></div>
+      <div style="font-size:16px;font-weight:700;margin:4px 0;text-align:center;border:1px solid #000;padding:3px 0;">${comandasEscapar(p.nombre) || ('Persona ' + (i+1))}</div>
+      <div class="comanda-linea">--------------------------------</div>
+      <div style="white-space:pre-wrap;font-size:12px;">${comandasEscapar(p.pedido) || '(sin detalle de pedido)'}</div>
+      <div class="comanda-linea">--------------------------------</div>
+      <div style="display:flex;justify-content:space-between;font-size:15px;font-weight:700;margin:4px 0;"><span>TOTAL A PAGAR</span><span>${totalNum ? fmtCOP(totalNum) : '____________'}</span></div>
+      <div class="comanda-linea">--------------------------------</div>
+      <div style="font-size:10px;">Atiende: ${comandasEscapar(SESSION.nombre)} — ${fecha}</div>
+      <div style="font-size:9px;color:#444;margin-top:4px;">Uso interno para cobrar por separado — no reemplaza la factura oficial.</div>
+    </div>`;
+  }).join('');
+
+  const ventana = window.open('', '_blank', 'width=380,height=600');
+  if(!ventana){
+    showMsg('comanda_msg', 'El navegador bloqueó la ventana de impresión. Permite ventanas emergentes para este sitio e inténtalo de nuevo.', 'rojo');
+    return;
+  }
+  ventana.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Prefacturas</title>
+    <style>
+      @page{ size:80mm auto; margin:0; }
+      *{ box-sizing:border-box; }
+      body{ font-family:'Courier New',Courier,monospace; width:80mm; margin:0; padding:2mm 3mm; color:#000; }
+      .comanda-ticket{ page-break-after:always; padding-bottom:6px; }
+      .comanda-ticket:last-child{ page-break-after:auto; }
+      .comanda-linea{ font-size:11px; letter-spacing:-0.5px; }
+    </style>
+    </head><body>${ticketsHtml}</body></html>`);
+  ventana.document.close();
+  const lanzarImpresion = function(){ try{ ventana.focus(); ventana.print(); }catch(e){} };
+  ventana.onload = lanzarImpresion;
+  setTimeout(lanzarImpresion, 350);
+
+  DB.push('comandas_impresas', {
+    sede: sedeParaGuardar(), usuario: SESSION.usuario, nombre: SESSION.nombre,
+    fecha, hora, numero, mesa: comandaMesa, zona: comandaZona, personas: conDatos.length,
+    tipo: 'prefactura', totalGeneral: sumaGeneral
+  });
+
+  showMsg('comanda_msg', conDatos.length + ' prefactura' + (conDatos.length===1?'':'s') + ' lista' + (conDatos.length===1?'':'s') + ' para imprimir — se abrió la ventana de impresión (elige ahí la impresora térmica).', 'verde');
 }
 
 /* ==================================================================
