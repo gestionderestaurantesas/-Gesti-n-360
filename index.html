@@ -4922,7 +4922,7 @@ function topbarToggleUsuario(){
     <div class="user-panel-body">
       <div class="user-panel-row"><span>Usuario</span><b>${SESSION.usuario}</b></div>
       <div class="user-panel-row"><span>Área</span><b>${SESSION.area || '—'}</b></div>
-      <div class="user-panel-row"><span>Negocio</span><b>${appNombreNegocio()}</b></div>
+      <div class="user-panel-row"><span>Sede</span><b>${(SESSION.sede && SESSION.sede !== 'todas') ? sedeLabelGlobal(SESSION.sede) : appNombreNegocio()}</b></div>
       ${SESSION.googleEmail ? '<div class="user-panel-row"><span>Correo</span><b>'+SESSION.googleEmail+'</b></div>' : ''}
     </div>
     <button type="button" class="user-panel-logout" onclick="logout()">Cerrar sesión</button>
@@ -21954,7 +21954,7 @@ function renderAreaTabs(){
   const fmtHora = (typeof appFmtHora12 === 'function') ? appFmtHora12 : function(h){ return h+':00'; };
   document.getElementById('area-desc').textContent = `Área: ${cur.nombre} · hora a hora, de ${fmtHora(hi)} a ${fmtHora(HORA_FIN)}`;
   const badge = document.getElementById('sede-badge');
-  if(badge) badge.textContent = (typeof appNombreNegocio === 'function') ? appNombreNegocio() : '';
+  if(badge) badge.textContent = (SESSION.sede && SESSION.sede !== 'todas') ? sedeLabelGlobal(SESSION.sede) : ((typeof appNombreNegocio === 'function') ? appNombreNegocio() : '');
 }
 function setArea(id){
   // Un líder de turno solo puede quedarse en su propia área.
