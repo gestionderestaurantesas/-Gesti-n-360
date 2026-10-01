@@ -4735,6 +4735,11 @@ function homeBriefingHtml(){
   return `<section class="hm-panel">${v360BriefingHtml(day, detalleReal, hist)}</section>`;
 }
 function goHome(){
+  // La pantalla de Inicio del empleado es la única que se simplifica sin
+  // barra lateral (ya trae todo lo que necesita ahí mismo). En cualquier
+  // otro módulo la barra debe estar disponible para poder navegar — ver
+  // el toggle equivalente en entrarModulo().
+  document.body.classList.toggle('sin-sidebar', SESSION.rol === 'empleado');
   navEmpujarHash('#');
   setActiveNav(null);
   document.getElementById('crumbLabel').innerHTML = '<b>Inicio</b>';
@@ -5070,6 +5075,9 @@ function openModule(sec, group, item){
 }
 
 function entrarModulo(sec, group, item){
+  // Al entrar a cualquier módulo (incluso un empleado) se necesita la
+  // barra lateral para poder moverse — solo Inicio la oculta (ver goHome()).
+  document.body.classList.remove('sin-sidebar');
   if(typeof fp360LiberarCamara === 'function') fp360LiberarCamara();
   if(typeof fp360DetenerPollingTemperatura === 'function') fp360DetenerPollingTemperatura();
   navEmpujarHash(navHashDe(sec.id, group.id, item.id));
