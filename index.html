@@ -23913,6 +23913,19 @@ function encuestaQrChinuHtml(){
       <a class="btn-primary" style="display:inline-block;width:auto;padding:9px 16px;text-decoration:none;" href="${qrSrc}" download="qr-encuesta-chinu.png">Descargar QR</a>
     </div>`;
 }
+// Montería todavía no tiene formulario nativo por QR como Chinú — sus
+// respuestas se recolectan en la hoja de Google Sheets "Recolección de
+// data - Cordova Restaurant" (la misma que ya se lee para traer los
+// datos, ver ENCUESTA_SHEET_URL más abajo). Este botón es solo un acceso
+// directo a esa hoja para abrirla/editarla, no reemplaza esa hoja.
+const ENCUESTA_MONTERIA_SHEET_URL_EDITAR = 'https://docs.google.com/spreadsheets/d/1wcILXZfJIaUSHoUbOo5kn-Ajyvr1vTL9hSK8DT28qz4/edit?usp=sharing';
+function encuestaLinkMonteriaHtml(){
+  return `<div class="form-section-title">Encuesta de Montería (Google Sheets)</div>
+    <div class="module-card" style="cursor:default;max-width:320px;text-align:center;">
+      <p style="font-size:11.5px;color:var(--text-light);margin-bottom:10px;">Montería todavía recolecta sus respuestas en esta hoja de Google Sheets (no por QR nativo como Chinú). Ábrela aquí para ver o agregar respuestas.</p>
+      <a class="btn-primary" style="display:inline-block;width:auto;padding:9px 16px;text-decoration:none;" href="${ENCUESTA_MONTERIA_SHEET_URL_EDITAR}" target="_blank" rel="noopener">Abrir hoja de Montería</a>
+    </div>`;
+}
 // Roster fijo: solo estos 7 meseros existen realmente en la operación.
 // Cualquier otro valor que llegue en la columna "Mesero" de la hoja de
 // Google Sheets (typos, personal que ya no trabaja, pruebas) se ignora
@@ -23932,6 +23945,17 @@ function encuestaSetSedeVista(sec, val){
 // que solo restringe si SESSION.sede no es "todas") y les aplica ADEMÁS
 // el selector de pestaña Chinú/Montería que gerencia puede elegir para
 // ver las dos sedes por separado en vez de mezcladas.
+// Para los bloques de QR/link (que no son datos, así que filtrarPorSede
+// no los toca solo): si gerencia (sede "todas") eligió una pestaña
+// Chinú/Montería, se respeta esa elección; si no, se usa la sede real de
+// la cuenta — así una cuenta de Montería nunca ve el bloque de Chinú y
+// viceversa, sin necesidad de tocar el selector de pestañas.
+function encuestaSedeEfectiva(){
+  if(encuestaSedeVista === 'chinu' || encuestaSedeVista === 'monteria') return encuestaSedeVista;
+  const s = SESSION && SESSION.sede;
+  if(s === 'chinu' || s === 'monteria') return s;
+  return 'todas';
+}
 function encuestaArrSedeVista(){
   const arr = filtrarPorSede(DB.get('encuesta_satisfaccion', []));
   if(encuestaSedeVista === 'chinu') return arr.filter(r => (r.sede||'').toLowerCase() === 'chinu');
@@ -24213,7 +24237,8 @@ function encuestaResumenHtml(sec){
     <div class="form-section-title" style="margin-top:0;">Sincronización</div>
     ${encuestaSyncBannerHtml()}
 
-    ${encuestaSedeVista === 'monteria' ? '' : encuestaQrChinuHtml()}
+    ${encuestaSedeEfectiva() === 'chinu' ? '' : encuestaLinkMonteriaHtml()}
+    ${encuestaSedeEfectiva() === 'monteria' ? '' : encuestaQrChinuHtml()}
 
     <div class="module-grid" style="margin:18px 0;">
       <div class="module-card" style="cursor:default;"><div class="icon-circle" style="background:${hexToRgba(sec.color,0.14)};color:${sec.color};">${ic('star',22)}</div><h3>${total}</h3><p>Respuestas totales</p></div>
