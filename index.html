@@ -2242,6 +2242,14 @@ if(!DB.get('usuario_gerente_chinu_cargado')){
   }
   DB.set('usuario_gerente_chinu_cargado', true);
 }
+if(!DB.get('usuario_luisa_bello_cargado')){
+  const _usActuales4 = DB.get('usuarios', USUARIOS_SEED) || [];
+  if(!_usActuales4.some(u => u.usuario === 'luisa.bello')){
+    _usActuales4.push({usuario:'luisa.bello', pass:'', nombre:'Luisa Bello', cargo:'Líder de servicio al cliente', sede:'monteria', area:'servicio_cliente', rol:'administracion', activo:true, rolPuesto:'lider_servicio_cliente', itemsExtra:[]});
+    DB.set('usuarios', _usActuales4);
+  }
+  DB.set('usuario_luisa_bello_cargado', true);
+}
 
 // Cuenta de pruebas "chinu" (sede fija, no "todas") para que Harol pueda
 // probar el comportamiento con sede bloqueada sin usar su propio usuario
@@ -2506,7 +2514,14 @@ const ROLES_PERMISOS_SEED = {
   steward: ['chk_alistamiento_steward','chk_cierre_steward','ast_chat'],
   bar: ['chk_mise_bar','chk_aseo_bar','chk_cierre_bar','ast_chat'],
   produccion: ['chk_aseo_cp','ast_chat'],
-  lider_servicio_reservas: ['chk_briefing','chk_mise_servicio','chk_aseo_salon','chk_cierre_servicio','sc_comprobantes','sc_encuesta','ast_chat'],
+  lider_servicio_reservas: ['chk_briefing','chk_mise_servicio','chk_aseo_salon','chk_cierre_servicio','sc_comprobantes','sc_comandas','sc_encuesta','ast_chat'],
+  // Puesto "sugerido" al crear usuarios desde Configuración → Sedes (ver
+  // ROLES_PUESTO). Antes no tenía lista propia aquí, lo que significaba
+  // sin querer "sin restricción" (itemPermitidoPorRolPuesto deja pasar
+  // todo cuando el puesto no tiene lista configurada) — incluía el
+  // dashboard de gerencia. Se deja explícitamente SIN ger_reporte_general360
+  // ni otros módulos de administración/gerencia.
+  lider_servicio_cliente: ['chk_briefing','chk_mise_servicio','chk_aseo_salon','chk_cierre_servicio','sc_comprobantes','sc_comandas','sc_encuesta','ast_chat'],
   lider_cocina: ['chk_briefing_cocina','chk_mise_cocina_parrilla','chk_mise_cocina_fritos','chk_mise_cocina_armado','chk_mise_cocina_corrientes','chk_mise_cocina_pastas','chk_higiene','chk_prueba_prep','chk_alistamiento_steward','chk_cierre_cocina','chk_cierre_steward','coc_comida_personal','coc_bajas','coc_mejora','coc_fotos_platos','ast_chat'],
   aux_compras: ['cf_compras','cf_pagos','mant_proveedores','ast_chat'],
   inspector: ['chk_briefing','chk_mise_servicio','chk_aseo_salon','chk_cierre_servicio','chk_briefing_cocina','chk_mise_cocina_parrilla','chk_mise_cocina_fritos','chk_mise_cocina_armado','chk_mise_cocina_corrientes','chk_mise_cocina_pastas','chk_higiene','chk_prueba_prep','chk_alistamiento_steward','chk_cierre_cocina','chk_cierre_steward','chk_mise_bar','chk_aseo_bar','chk_cierre_bar','chk_aseo_cp','chk_aseo_periferica','chk_aseo_banos_internos','chk_aseo_banos_publicos','chk_aseo_traperos','coc_inspeccion','sc_inspeccion','bar_inspeccion','cf_caja','ast_chat'],
@@ -2527,13 +2542,22 @@ else {
   // (comandas/prefacturas por persona) a mesero y caja sin pisar cambios
   // que el gerente ya haya guardado manualmente.
   let _rpCambioComandas = false;
-  ['mesero','caja'].forEach(function(rolId){
+  ['mesero','caja','lider_servicio_reservas'].forEach(function(rolId){
     if(_rpActual && Array.isArray(_rpActual[rolId]) && !_rpActual[rolId].includes('sc_comandas')){
       _rpActual[rolId].push('sc_comandas');
       _rpCambioComandas = true;
     }
   });
   if(_rpCambioComandas) DB.set('roles_permisos', _rpActual);
+  // Migración no destructiva: el puesto "lider_servicio_cliente" (sugerido
+  // al crear usuarios desde Sedes) no tenía lista propia, lo que sin
+  // querer le daba acceso a TODO (incluido el dashboard de gerencia) a
+  // cualquier cuenta ya creada con ese puesto. Se le da una lista explícita
+  // de servicio al cliente, sin módulos de administración/gerencia.
+  if(_rpActual && !_rpActual.lider_servicio_cliente){
+    _rpActual.lider_servicio_cliente = ['chk_briefing','chk_mise_servicio','chk_aseo_salon','chk_cierre_servicio','sc_comprobantes','sc_comandas','sc_encuesta','ast_chat'];
+    DB.set('roles_permisos', _rpActual);
+  }
 }
 function rolesPermisosGet(){ return DB.get('roles_permisos', ROLES_PERMISOS_SEED); }
 
