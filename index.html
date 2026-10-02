@@ -14414,11 +14414,18 @@ function checklist360RenderBody(sec){
   const porDefinicion = {};
   let totalCumplidos = 0, totalEvaluados = 0;
 
+  // Igual que en homeDatosDelDia() (Inicio): si la cuenta tiene un área
+  // específica asignada (no gerencia general, no "todas"), este reporte
+  // solo debe contar lo de SU área — antes sumaba mise en place y
+  // checklists de todas las áreas sin distinguir quién está logueado.
+  const filtrarPorAreaSesion = !!(SESSION && SESSION.rol !== 'gerencia' && SESSION.area && SESSION.area !== 'todas');
+
   fechas.forEach(fecha => {
     const resultados = incumplimientosDetectarDia(fecha);
     resultados.forEach(r => {
       const def = INCUMPLIMIENTOS_DEFINICIONES.find(d=>d.id===r.defId);
       const area = def ? checklist360AreaDeDef(def) : null;
+      if(filtrarPorAreaSesion && area !== SESSION.area) return;
       totalEvaluados++;
       if(r.cumplido) totalCumplidos++;
 
