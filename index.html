@@ -20966,7 +20966,10 @@ async function pagosCargarDesdeGoogleSheets(silencioso){
   pagosAutoStatus = 'cargando';
   if(!silencioso) pagosRefrescarBanner();
   try{
-    const resp = await fetch(url, { cache:'no-store' });
+    // Mismo motivo que en Encuesta de satisfacción: el navegador no puede
+    // pedirle el CSV directo a docs.google.com (CORS), así que se pasa
+    // por /api/sheet-proxy — ver api/sheet-proxy.js.
+    const resp = await fetch('/api/sheet-proxy?url=' + encodeURIComponent(url), { cache:'no-store' });
     if(!resp.ok) throw new Error('HTTP ' + resp.status);
     const text = await resp.text();
     const rows = encuestaParseCSV(text); // parser CSV genérico, ya usado por Encuesta
@@ -23767,7 +23770,10 @@ async function encuestaCargarDesdeGoogleSheets(silencioso){
   encuestaAutoStatus = 'cargando';
   if(!silencioso) encuestaRefrescarBanner();
   try{
-    const resp = await fetch(ENCUESTA_SHEET_URL, { cache:'no-store' });
+    // Google no deja pedir el CSV directamente desde el navegador (CORS),
+    // así que se pasa por /api/sheet-proxy (servidor propio) en vez de
+    // pedírselo directo a docs.google.com — ver api/sheet-proxy.js.
+    const resp = await fetch('/api/sheet-proxy?url=' + encodeURIComponent(ENCUESTA_SHEET_URL), { cache:'no-store' });
     if(!resp.ok) throw new Error('HTTP ' + resp.status);
     const text = await resp.text();
     const rows = encuestaParseCSV(text);
