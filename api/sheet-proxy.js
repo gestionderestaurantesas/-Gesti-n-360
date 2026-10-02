@@ -42,7 +42,16 @@ module.exports = async function handler(req, res){
   }
 
   try{
-    const respuesta = await fetch(destino.toString(), { cache: 'no-store' });
+    // Google le responde 401 a peticiones servidor-a-servidor sin un
+    // User-Agent de navegador (lo trata como bot), aunque la hoja sea
+    // pública — por eso hay que simular uno.
+    const respuesta = await fetch(destino.toString(), {
+      cache: 'no-store',
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+        'Accept': 'text/csv,*/*'
+      }
+    });
     if(!respuesta.ok){
       res.status(502).json({ error: 'google_sheets_error', status: respuesta.status });
       return;
