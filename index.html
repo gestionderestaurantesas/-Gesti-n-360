@@ -4000,6 +4000,18 @@ function homeDatosDelDia(){
   try{
     resultados = (typeof incumplimientosDetectarDia === 'function') ? incumplimientosDetectarDia(hoy) : [];
   }catch(e){ resultados = []; }
+  // Si la cuenta tiene un área específica asignada (ej. un líder de
+  // Servicio al cliente, no gerencia general), el resumen de Inicio solo
+  // debe contar los checklists de SU área — antes contaba los de toda
+  // la sede (cocina, bar, aseo, etc.) aunque esa persona solo responda
+  // por una parte de la operación.
+  if(SESSION && SESSION.rol !== 'gerencia' && SESSION.area && SESSION.area !== 'todas'){
+    resultados = resultados.filter(r => {
+      let def = null;
+      try{ def = INCUMPLIMIENTOS_DEFINICIONES.find(d => d.id === r.defId) || null; }catch(e){}
+      return homeAreaDeDef(def) === SESSION.area;
+    });
+  }
   const total = resultados.length;
   const cumplidos = resultados.filter(r => r.cumplido).length;
   // "pendientes" aquí ya se muestra en Inicio con esa palabra (no como
