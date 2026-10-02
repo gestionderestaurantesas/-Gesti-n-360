@@ -5545,7 +5545,11 @@ function horaMinutosAhora(){
 function sedeActivaFiltro(){ return SESSION.sede === 'todas' ? null : SESSION.sede; }
 function filtrarPorSede(arr){
   const s = sedeActivaFiltro();
-  return s ? arr.filter(r => r.sede === s) : arr;
+  // Comparación sin distinguir mayúsculas/espacios: algunos datos (como
+  // los importados de Google Sheets) pueden traer la sede con otra
+  // capitalización (ej. "Monteria" en vez de "monteria") y antes se
+  // perdían silenciosamente en este filtro.
+  return s ? arr.filter(r => String(r.sede||'').trim().toLowerCase() === s) : arr;
 }
 function sedeParaGuardar(){ return SESSION.sede === 'todas' ? 'chinu' : SESSION.sede; }
 function showMsg(elId, text, color){
@@ -23802,7 +23806,11 @@ async function encuestaCargarDesdeGoogleSheets(silencioso){
         telefono: iTelefono>=0 ? (row[iTelefono]||'') : '',
         correo: iCorreo>=0 ? (row[iCorreo]||'') : '',
         calificacion: calif,
-        sede: iSede>=0 ? (row[iSede]||'') : '',
+        // Siempre 'monteria' (minúsculas, sin tilde): esta hoja de Google
+        // Sheets es solo de Montería, y guardar el valor tal cual venía
+        // del CSV (ej. "Monteria" con mayúscula) hacía que el filtro por
+        // sede nunca encontrara coincidencia y todo se contara como 0.
+        sede: 'monteria',
         mesero: iMesero>=0 ? (row[iMesero]||'') : '',
         comentario: iComentario>=0 ? (row[iComentario]||'') : ''
       });
